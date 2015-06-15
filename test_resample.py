@@ -33,7 +33,7 @@ Nl = head['NAXIS3']
 flux = f[0].data
 
 l_orig = get_wl(head)
-l_res = np.arange(l_ini, l_fin, dl)
+l_res = np.arange(l_ini, l_fin + dl, dl)
 
 flux_res = np.zeros((len(l_res), Ny, Nx))
 
