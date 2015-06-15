@@ -1,5 +1,6 @@
 data/starlight/input
 data/starlight/log
 data/starlight/output
+data/starlight/bc2003
 data/cubes/*.fits
 .DS_Store

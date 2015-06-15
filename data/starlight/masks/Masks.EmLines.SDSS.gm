@@ -1,0 +1,27 @@
+11
+3710.0	3744.0	0.0  [OII]          3726+3729 emission line
+3858.0	3880.0	0.0  [NeIII]        3869 emission line
+3960.0	3980.0	0.0  Hepsilon       3970 emission line (over CaII H)
+4092.0	4112.0	0.0  Hdelta         4102 emission line
+4330.0	4350.0	0.0  Hgamma         4340 emission line
+4848.0	4874.0	0.0  Hbeta          4861 emission line
+4940.0	5028.0	0.0  [OIII]         4959 & 5007 emission lines
+5866.0	5916.0	0.0  HeI & NaD      5876 emission line & ~ 5890 ISM absorption
+6280.0	6320.0	0.0  [OI]           6300 emission line
+6528.0	6608.0	0.0  Halpha & [NII] 6563, 6548 & 6583 emission lines
+6696.0	6752.0	0.0  [SII]          6717 & 6731 emission lines
+
+List of windows containing typical optical emission lines.
+They were checked against a sample of ~ 200 SDSS spectra.
+These are masked out (weight = 0) in the synthesis of the starlight spectrum.
+
+If you want to, on the contrary, given MORE weight to some windows
+(eg, key absorption features) do as in the example below for Ca II K &
+G-bands:
+
+3912.0	3952.0	2.0  CaII K         Give 2 X more weight to CaII K absorption!
+4278.0	4318.0	2.0  G-band         Give 2 X more weight to G-band absorption!
+
+OBS: In case of overlaping ranges, last entries take precedence!
+
+Cid@UFSC - 13/September/2003
