@@ -1,0 +1,21 @@
+1                                                     [Number of objects]
+./bc2003/               [base_dir]
+./input/                [obs_dir]
+./masks/                [mask_dir]
+./                      [etc_dir]
+./output/                [out_dir]
+-93020362                                             [your phone number]
+5590.0                                                [llow_SN]   lower-lambda of S/N window
+5680.0                                                [lupp_SN]   upper-lambda of S/N window
+4300.0                                                [Olsyn_ini] lower-lambda for fit
+6800.0                                                [Olsyn_fin] upper-lambda for fit
+1.0                                                   [Odlsyn]    delta-lambda for fit
+1.0                                                   [fscale_chi2] fudge-factor for chi2
+FIT                                                   [FIT/FXK] Fit or Fix kinematics
+0                                                     [IsErrSpecAvailable]  1/0 = Yes/No
+0                                                     [IsFlagSpecAvailable] 1/0 = Yes/No
+0                                                     [IsPHOcOn] 1/0 = Yes/No  <=== !PHO! ATT: still needs coding + testing!
+0                                                     [IsQHRcOn] 1/0 = Yes/No  <=== !QHR!
+0                                                     [IsFIRcOn] 1/0 = Yes/No  <=== !FIR!
+1.000e-15                                             [flux_unit] multiply spectrum in arq_obs by this to obtain ergs/s/cm2/Angs
+test.in nodata 20. PMSv03.NR2.OPT.config Base.BC03.N Masks.EmLines.SDSS.gm CCM 0.0 300.0 test.out
