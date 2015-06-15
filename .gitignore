@@ -1,3 +1,5 @@
-starlight/input
-starlight/log
-starlight/output
+data/starlight/input
+data/starlight/log
+data/starlight/output
+data/cubes/*.fits
+.DS_Store
