@@ -25,7 +25,8 @@ dtype=[('id', '|S05'),
 def read_masterlist(filename, galaxy_id=None):
     import numpy as np
     ml = np.genfromtxt(filename, dtype, skip_header=2)
-    if id is not None:
-        return ml[np.where(ml['id'] == galaxy_id)[0]]
+    if galaxy_id is not None:
+        index = np.where(ml['id'] == galaxy_id)[0]
+        return np.squeeze(ml[index][0])
     else:
         return ml

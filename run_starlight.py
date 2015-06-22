@@ -61,7 +61,7 @@ class GridManager(object):
     def __init__(self, starlight_dir, cube, keywords=None):
         self.keywords = keywords
         self.starlightDir = starlight_dir
-        self.galaxyId = get_galaxy_id(cube)
+        self.galaxyId = keywords['id']
         self.l_obs, self.f_obs, self.f_err, self.f_flag = self.readData(cube)
         self._gridTemplate, self._runTemplate = self._getTemplates()
         self._createDirs()
@@ -183,8 +183,8 @@ cube = args.cube[0]
 nproc = args.nproc if args.nproc > 1 else 1
 
 ml = read_masterlist(args.masterlist)
-flag_gal = (ml['id'] == path.basename(cube).split('_')[0])[0]
-keywords = ml[flag_gal]
+galaxyId = get_galaxy_id(cube)
+keywords = read_masterlist(args.masterlist, galaxyId)
 
 print 'Loading grid manager.'
 gm = GridManager(args.starlightDir, cube, keywords)
