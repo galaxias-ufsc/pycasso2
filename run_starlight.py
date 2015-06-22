@@ -5,9 +5,9 @@ Created on Jun 17, 2013
 '''
 
 from diving3d.masterlist import read_masterlist
-from pystarlight.util.StarlightUtils import spec_resample
 from pystarlight.util.gridfile import GridFile
 from pystarlight.util import starlight_runner as sr
+import pystarlight.util.specHelpers as specH
 
 import pyfits
 from astropy.io import ascii
@@ -54,8 +54,8 @@ def get_wl(head):
 ###############################################################################
 class GridManager(object):
     flux_unit = 1e-15
-    _l_ini = 4300.0
-    _l_fin = 6800.0
+    _l_ini = 4000.0
+    _l_fin = 7200.0
     _dl = 1.0
     
     def __init__(self, starlight_dir, cube, keywords=None):
@@ -67,25 +67,28 @@ class GridManager(object):
         self._createDirs()
     
         
-    def readData(self, cube):
-        f = pyfits.open(cube)
+    def readData(self, cube, debug = False):
+        # Reading fits
+        s2d = specH.Spec2D(fobs_norm = 1)
+        s2d.readFitsFile(cube, specOnly = True, lorig = 'lrest')
 
-        head = f[0].header
-        l_orig = get_wl(head)
-        Nx = head['NAXIS1']
-        Ny = head['NAXIS2']
-        flux = f[0].data
-        
+        # Resampling
+        print "Resampling spectra."
         l_res = np.arange(self._l_ini, self._l_fin + self._dl, self._dl)
-        flux_res = np.zeros((len(l_res), Ny, Nx))
-        for j in xrange(Ny):
-            for i in xrange(Nx):
-                print 'Resampling spaxel %d,%d' % (i,j)
-                flux_res[:, j, i] = spec_resample(l_orig, l_res, flux[:, j, i])
-        
-        assert np.allclose(np.trapz(flux, l_orig, axis=0), np.trapz(flux_res, l_res, axis=0), atol=0.1)
-        return l_res, flux_res, None, None
+        s2d_resam = s2d.resample(l_res, lorig = 'lrest')
 
+        # Checking resampling
+        s2d.check_resampling(s2d_resam)
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.figure(1)
+            plt.clf()
+            plt.plot(s2d.lrest, s2d.spec__lyx[:, 0, 0], 'k', linestyle = 'steps-mid', label = 'resamp')   
+            plt.plot(s2d_resam.lrest, s2d_resam.spec__lyx[:, 0, 0], 'r', linestyle = 'steps-mid', label = 'orig')
+            plt.legend()
+            
+        return s2d_resam.lrest, s2d_resam.spec__lyx, None, None
+    
         
     def _getTemplates(self):
         template_path = path.join(self.starlightDir, 'grid.template.in')
@@ -157,7 +160,9 @@ class GridManager(object):
 ###############################################################################
 
 
-sr.starlight_exec_path = '/Users/andre/astro/qalifa/pystarlight/src/pystarlight/mock/mock_starlight.py'
+#sr.starlight_exec_path = '/Users/andre/astro/qalifa/pystarlight/src/pystarlight/mock/mock_starlight.py'
+#sr.starlight_exec_path = '/Users/natalia/code/python/pystarlight/src/pystarlight/mock/mock_starlight.py'
+sr.starlight_exec_path = '/Users/natalia/data/diving3d/data/starlight/PANcMEx_StarlightChains_v03b.osx.exe'
 
 parser = argparse.ArgumentParser(description='Run starlight for a B/D decomposition.')
 
@@ -178,8 +183,8 @@ cube = args.cube[0]
 nproc = args.nproc if args.nproc > 1 else 1
 
 ml = read_masterlist(args.masterlist)
-# FIXME: look up the master list, right now this only works for T001.
-keywords = ml[0]
+flag_gal = (ml['id'] == path.basename(cube).split('_')[0])[0]
+keywords = ml[flag_gal]
 
 print 'Loading grid manager.'
 gm = GridManager(args.starlightDir, cube, keywords)
