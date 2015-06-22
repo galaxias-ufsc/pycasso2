@@ -5,7 +5,7 @@ Created on 15/06/2015
 '''
 
 
-__all__ = ['read_masterlist']
+__all__ = ['read_masterlist', 'get_galaxy_id']
 
 
 dtype=[('id', '|S05'),
@@ -30,3 +30,9 @@ def read_masterlist(filename, galaxy_id=None):
         return np.squeeze(ml[index][0])
     else:
         return ml
+
+
+def get_galaxy_id(cube):
+    from os.path import basename
+    return basename(cube).split('_')[0]
+
