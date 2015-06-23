@@ -48,6 +48,8 @@ def read_masterlist(filename, galaxy_id=None):
     ml = np.genfromtxt(filename, masterlist_dtype, skip_header=2)
     if galaxy_id is not None:
         index = np.where(ml['id'] == galaxy_id)[0]
+        if len(index) == 0:
+            raise Exception('Entry %s not found in masterlist %s.' % (galaxy_id, filename))
         return np.squeeze(ml[index][0])
     else:
         return ml
