@@ -19,7 +19,8 @@ masterlist_dtype=[('id', '|S05'),
        ('epsilon', 'float64'),
        ('DL', 'float64'),
        ('eDL', 'float64'),
-       ('EL', '|S05')]
+       ('EL', '|S05'),
+       ('grating', '|S04')]
 
 
 def read_masterlist(filename, galaxy_id=None):
