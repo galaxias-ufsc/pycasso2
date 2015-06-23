@@ -4,7 +4,7 @@ Created on Jun 17, 2013
 @author: andre
 '''
 
-from diving3d.masterlist import read_masterlist
+from diving3d.tables import read_masterlist
 from pystarlight.util.gridfile import GridFile
 from pystarlight.util import starlight_runner as sr
 import pystarlight.util.specHelpers as specH
