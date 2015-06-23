@@ -4,8 +4,9 @@ Created on 15/06/2015
 @author: andre
 '''
 
+from .resampling import apply_redshift
 
-__all__ = ['read_masterlist', 'get_galaxy_id']
+__all__ = ['read_masterlist', 'get_wavelength_mask', 'get_galaxy_id']
 
 
 masterlist_dtype=[('id', '|S05'),
@@ -29,7 +30,6 @@ def read_masterlist(filename, galaxy_id=None):
     
     Parameters
     ----------
-    
     filename : string
         Path to the file containing the masterlist.
         
@@ -56,6 +56,53 @@ def read_masterlist(filename, galaxy_id=None):
 
 
 def get_galaxy_id(cube):
+    '''
+    Return the ID of the cube, which can be used to index the masterlist.
+    '''
     from os.path import basename
     return basename(cube).split('_')[0]
+
+
+
+def get_wavelength_mask(maskfile, wl, z=0.0, dest='rest'):
+    '''
+    Read a STARLIGHT mask file, optionally applying redshift correction,
+    returning a boolean array of masked wavelengths.
+    
+    Parameters
+    ----------
+    maskfile : string
+        Path to mask file.
+        
+    wl : array
+        Wavelength array.
+        
+    z : float, optional.
+        Redshift. Default: ``0.0`` (no redshift).
+        
+    dest : string, optional
+        Destination frame. Either ``'rest'`` or ``'observed'``.
+        Default: ``'rest'``.
+    
+    Returns
+    -------
+    wl_mask : array
+        Boolean array with same shape as ``wl`` marking the masked
+        wavelengths as ``True``.
+    '''
+    import numpy as np
+    import atpy
+    import pystarlight.io  # @UnusedImport
+    
+    t = atpy.Table(maskfile, type='starlight_mask')
+    masked_wl = np.zeros(wl.shape, dtype='bool')
+    for i in xrange(len(t)):
+        l_low, l_upp, line_w, _ = t[i]
+        if line_w > 0.0: continue
+        if z > 0.0:
+            l_low, l_upp = apply_redshift([l_low, l_upp], z, dest)
+        masked_wl |= (wl > l_low) & (wl < l_upp)
+    return masked_wl
+
+
 

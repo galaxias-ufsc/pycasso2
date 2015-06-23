@@ -9,7 +9,7 @@ import numpy as np
 
 from . import flags
 
-__all__ = ['resample_spectra', 'reshape_spectra']
+__all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift']
 
 
 
@@ -46,4 +46,37 @@ def reshape_spectra(f_obs, f_flag, center, new_shape):
     
     return res_f_obs, res_f_flag, res_center
     
+
+def apply_redshift(l, z, dest='rest'):
+    '''
+    Apply redshift correction to wavelength from to rest or observed frames.
     
+    Parameters
+    ----------
+    l : array
+        Wavelength array.
+        
+    z : array or float.
+        Redshift.
+        
+    dest : string, optional
+        Destination frame. Either ``'rest'`` or ``'observed'``.
+        Default: ``'rest'``.
+    
+    Returns
+    -------
+    l_red : array
+        Redshifted wavelength array. If ``z`` is an array,
+        ``l_red`` will have the shape ``l.shape + z.shape``.
+    '''
+    if dest == 'rest':
+        op = lambda x, y: x * y
+    elif dest == 'observed':
+        op = lambda x, y: x / y
+        
+    if np.array(z).shape == ():
+        return op(l, 1. + z)
+    else:
+        return op(l[:, np.newaxis], 1. + z[np.newaxis, :])
+
+
