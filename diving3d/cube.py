@@ -47,7 +47,6 @@ def get_reference_pixel(header):
 def fix_header(header):
     for c in header.cards:
         c.verify('fix')
-        print c
 
 
 class D3DFitsCube(object):
@@ -131,6 +130,16 @@ class D3DFitsCube(object):
     @property
     def l_obs(self):
         return get_axis_coordinates(self._header, 3)
+
+
+    @property
+    def y_coords(self):
+        return get_axis_coordinates(self._header, 2)
+
+
+    @property
+    def x_coords(self):
+        return get_axis_coordinates(self._header, 1)
 
 
 
