@@ -8,7 +8,7 @@ from astropy.io import fits
 import numpy as np
 from diving3d.resampling import resample_spectra, reshape_spectra
 
-
+__all__ = ['D3DFitsCube']
 
 def get_axis_coordinates(header, ax, dtype='float64'):
     N = header['NAXIS']
@@ -52,17 +52,23 @@ def fix_header(header):
 class D3DFitsCube(object):
     
     def __init__(self, cubefile=None):
-        pass
+        if cubefile is None:
+            return
+        self._load(cubefile)
         
         
     @classmethod
     def from_reduced(cls, redcube, **kwargs):
+        '''
+        FIXME: doc me! 
+        '''
         # FIXME: sanitize kwargs
         l_ini = kwargs['l_ini']
         l_fin = kwargs['l_fin']
         dl = kwargs['dl']
         Nx = kwargs['width']
         Ny = kwargs['height']
+        ml = kwargs['ml']
 
         # FIXME: sanitize file I/O
         header = fits.getheader(redcube)
@@ -80,13 +86,15 @@ class D3DFitsCube(object):
         f_obs, f_flag, new_center = reshape_spectra(f_obs, f_flag, center, new_shape)
 
         # Update WCS
-        set_axis_coordinates(header, ax=1, crpix=new_center[2], crval=0.0, N=new_shape[2])
-        set_axis_coordinates(header, ax=2, crpix=new_center[1], crval=0.0, N=new_shape[1])
+        set_axis_coordinates(header, ax=1, crpix=new_center[2], N=new_shape[2])
+        set_axis_coordinates(header, ax=2, crpix=new_center[1], N=new_shape[1])
         set_axis_coordinates(header, ax=3, crpix=0, crval=l_obs[0], cdelt=dl, N=new_shape[0])
 
         d3dcube = cls()
         d3dcube._initFits(f_obs, header)
         d3dcube._addExtension(f_flag, name='F_FLAG')
+        
+        d3dcube.updateMasterList(ml)
         return d3dcube
     
     
@@ -94,22 +102,21 @@ class D3DFitsCube(object):
         phdu = fits.PrimaryHDU(data, header)
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
-        self._check()
 
     
-    def load(self, cubefile):
+    def updateMasterList(self, ml):
+        for key in ml.dtype.names:
+            self._header['HIERARCH MASTERLIST ' + key.upper()] = ml[key]
+    
+    
+    def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList['PRIMARY'].header
-        self._check()
         
         
     def write(self, filename, overwrite=False):
         self._HDUList.writeto(filename, clobber=overwrite)
 
-    
-    def _check(self):
-        pass
-    
     
     def _addExtension(self, data, name, overwrite=False):
         if name in self._HDUList and not overwrite:

@@ -37,16 +37,18 @@ resamcube = 'data/cubes/T001_resampled.fits'
 masterlist = 'data/masterlist_sampleT.txt'
 mask_template = 'data/Masks.gap.%s'
 
+galaxyId = get_galaxy_id(redcube)
+ml = read_masterlist(masterlist, galaxyId)
+
 kwargs = dict(l_ini=4000.0,
               l_fin=7200.0,
               dl=1.0,
               width=100,
-              height=100)
+              height=100,
+              ml=ml)
 
 d3d = D3DFitsCube.from_reduced(redcube, **kwargs)
 
-galaxyId = get_galaxy_id(redcube)
-ml = read_masterlist(masterlist, galaxyId)
 z = velocity_to_redshift(ml['V_hel'])
 maskfile = mask_template % ml['grating']
 gap_mask = get_wavelength_mask(maskfile, d3d.l_obs, z, dest='rest')
