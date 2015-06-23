@@ -44,11 +44,6 @@ def get_reference_pixel(header):
     return (crval_l, crval_y, crval_x)
 
 
-def fix_header(header):
-    for c in header.cards:
-        c.verify('fix')
-
-
 class D3DFitsCube(object):
     
     def __init__(self, cubefile=None):
@@ -72,7 +67,6 @@ class D3DFitsCube(object):
 
         # FIXME: sanitize file I/O
         header = fits.getheader(redcube)
-        fix_header(header)
         f_obs_orig = fits.getdata(redcube)
         
         # TODO: how to handle redshift?
@@ -115,7 +109,7 @@ class D3DFitsCube(object):
         
         
     def write(self, filename, overwrite=False):
-        self._HDUList.writeto(filename, clobber=overwrite)
+        self._HDUList.writeto(filename, clobber=overwrite, output_verify='fix')
 
     
     def _addExtension(self, data, name, overwrite=False):
