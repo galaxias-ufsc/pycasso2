@@ -8,7 +8,7 @@ from astropy.io import fits
 import numpy as np
 from diving3d.resampling import resample_spectra, reshape_spectra
 
-__all__ = ['D3DFitsCube']
+__all__ = ['D3DFitsCube', 'get_axis_coordinates', 'get_cube_limits']
 
 def get_axis_coordinates(header, ax, dtype='float64'):
     N = header['NAXIS']
@@ -50,6 +50,14 @@ def safe_getheader(f, ext=0):
         hdu.verify('fix')
         return hdu.header
         
+
+def get_cube_limits(cube, ext):
+    header = fits.getheader(cube, ext)
+    l_obs = get_axis_coordinates(header, ax=3)
+    yy = get_axis_coordinates(header, ax=2)
+    xx = get_axis_coordinates(header, ax=1)
+    return l_obs.min(), l_obs.max(), len(yy), len(xx) 
+
 
 class D3DFitsCube(object):
     
