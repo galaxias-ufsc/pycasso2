@@ -44,6 +44,13 @@ def get_reference_pixel(header):
     return (crval_l, crval_y, crval_x)
 
 
+def safe_getheader(f, ext=0):
+    with fits.open(f) as hl:
+        hdu = hl[ext]
+        hdu.verify('fix')
+        return hdu.header
+        
+
 class D3DFitsCube(object):
     
     def __init__(self, cubefile=None):
@@ -53,7 +60,7 @@ class D3DFitsCube(object):
         
         
     @classmethod
-    def from_reduced(cls, redcube, **kwargs):
+    def from_reduced(cls, redcube, obscube, **kwargs):
         '''
         FIXME: doc me! 
         '''
@@ -66,7 +73,12 @@ class D3DFitsCube(object):
         ml = kwargs['ml']
 
         # FIXME: sanitize file I/O
-        header = fits.getheader(redcube)
+        header = safe_getheader(redcube)
+        obs_header = safe_getheader(obscube)
+        for k in obs_header.keys():
+            if k in header or k == 'COMMENT' or k == '': continue
+            header[k] = obs_header[k]
+        
         f_obs_orig = fits.getdata(redcube)
         
         # TODO: how to handle redshift?
