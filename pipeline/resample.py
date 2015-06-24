@@ -20,7 +20,8 @@ overwrite = False
 redcube = 'data/cubes/T001_AV_r_d_NIT_6_fft_x_0pt15_y_0pt15_n_eq_6_bg_rec_wav_rec_pca_dop_hel.fits'
 resamcube = 'data/cubes/T001_resampled.fits'
 masterlist = 'data/masterlist_sampleT.txt'
-mask_template = 'data/Masks.gap.%s'
+gap_mask_template = 'data/Masks.gap.%s'
+telluric_mask_file = 'data/Masks.telluric'
 
 galaxyId = get_galaxy_id(redcube)
 ml = read_masterlist(masterlist, galaxyId)
@@ -35,8 +36,10 @@ kwargs = dict(l_ini=4000.0,
 d3d = D3DFitsCube.from_reduced(redcube, **kwargs)
 
 z = velocity_to_redshift(ml['V_hel'])
-maskfile = mask_template % ml['grating']
-gap_mask = get_wavelength_mask(maskfile, d3d.l_obs, z, dest='rest')
+gap_mask_file = gap_mask_template % ml['grating']
+gap_mask = get_wavelength_mask(gap_mask_file, d3d.l_obs, z, dest='rest')
+telluric_mask = get_wavelength_mask(telluric_mask_file, d3d.l_obs, z, dest='rest')
 d3d.f_flag[gap_mask] |= flags.ccd_gap
+d3d.f_flag[telluric_mask] |= flags.telluric
 
 d3d.write(resamcube, overwrite=overwrite)
