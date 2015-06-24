@@ -21,7 +21,10 @@ masterlist_dtype=[('id', '|S05'),
        ('DL', 'float64'),
        ('eDL', 'float64'),
        ('EL', '|S05'),
-       ('grating', '|S04')]
+       ('grating', '|S04'),
+       ('cube', '|S0128'),
+       ('cube_obs', '|S0128'),
+       ]
 
 
 def read_masterlist(filename, galaxy_id=None):

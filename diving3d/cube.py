@@ -99,7 +99,9 @@ class D3DFitsCube(object):
 
     
     def updateMasterList(self, ml):
+        ignored = ['cube', 'cube_obs']
         for key in ml.dtype.names:
+            if key in ignored: continue
             self._header['HIERARCH MASTERLIST ' + key.upper()] = ml[key]
     
     
