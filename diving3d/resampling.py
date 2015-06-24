@@ -9,7 +9,7 @@ import numpy as np
 
 from . import flags
 
-__all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift']
+__all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift', 'velocity_to_redshift']
 
 
 
@@ -79,4 +79,8 @@ def apply_redshift(l, z, dest='rest'):
     else:
         return op(l[:, np.newaxis], 1. + z[np.newaxis, :])
 
+
+def velocity_to_redshift(v):
+    c = 299792458.0 # km/s
+    return v / c
 

@@ -13,7 +13,7 @@ def plot_example(d3d, galaxyId, y_slice):
     xx = d3d.x_coords
     yy = d3d.y_coords
     ll = d3d.l_obs
-    plt.pcolormesh(xx, ll, d3d.f_flag[:, y_slice, :])
+    plt.pcolormesh(xx, ll, d3d.f_flag[:, y_slice, :], cmap='cubehelix_r')
     plt.xlabel(r'R.A. [arcsec]')
     plt.ylabel(r'Wavelength [$\AA$]')
     plt.xlim(xx.min(), xx.max())

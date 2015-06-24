@@ -9,11 +9,8 @@ Resample spectra in 1 \AA bins and change wavelength interval.
 
 from diving3d.cube import D3DFitsCube
 from diving3d.tables import get_galaxy_id, read_masterlist, get_wavelength_mask
+from diving3d.resampling import velocity_to_redshift
 from diving3d import flags
-
-def velocity_to_redshift(v):
-    c = 299792458.0 # km/s
-    return v / c
 
 # TODO: read resampling setup from a config file
 overwrite = False

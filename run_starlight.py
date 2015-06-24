@@ -159,10 +159,8 @@ class GridManager(object):
 
 ###############################################################################
 
-
-#sr.starlight_exec_path = '/Users/andre/astro/qalifa/pystarlight/src/pystarlight/mock/mock_starlight.py'
-#sr.starlight_exec_path = '/Users/natalia/code/python/pystarlight/src/pystarlight/mock/mock_starlight.py'
-sr.starlight_exec_path = '/Users/natalia/data/diving3d/data/starlight/PANcMEx_StarlightChains_v03b.osx.exe'
+#import pystarlight
+#sr.starlight_exec_path = path.join(pystarlight.__path__, 'mock/mock_starlight.py')
 
 parser = argparse.ArgumentParser(description='Run starlight for a B/D decomposition.')
 
