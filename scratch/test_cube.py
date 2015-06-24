@@ -23,7 +23,7 @@ def plot_example(d3d, galaxyId, y_slice):
     plt.show()
 
 
-cube = 'data/cubes/T001_resampled.fits'
+cube = 'data/cubes_out/T001_resampled.fits'
 galaxy_id = get_galaxy_id(cube)
 d3d = D3DFitsCube(cube)
 
