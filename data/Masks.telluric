@@ -1,7 +1,0 @@
-1
-6275.0  6320.0  0.0  O2 (Telluric)  6279
-
-List of Telluric lines present in the observed spectra.
-
-Note that these are in OBSERVED frame, and
-must be de-redshifted before applying to data.
