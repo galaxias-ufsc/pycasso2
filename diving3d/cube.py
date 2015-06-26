@@ -4,44 +4,13 @@ Created on 22/06/2015
 @author: andre
 '''
 
+from .resampling import resample_spectra, reshape_spectra
+from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel
+
 from astropy.io import fits
 import numpy as np
-from diving3d.resampling import resample_spectra, reshape_spectra
 
-__all__ = ['D3DFitsCube', 'get_axis_coordinates', 'get_cube_limits']
-
-def get_axis_coordinates(header, ax, dtype='float64'):
-    N = header['NAXIS']
-    if ax < 0 or ax > N:
-        raise Exception('Axis %d not in range (1, %d)' % (ax, N))
-    crpix = float(header['CRPIX%d' % ax]) - 1
-    crval = header['CRVAL%d' % ax]
-    cdelt = header['CDELT%d' % ax]
-    naxis = header['NAXIS%d' % ax]
-    c_ini = crval - crpix * cdelt
-    c_fin = c_ini + cdelt * (naxis - 1)
-    return np.linspace(c_ini, c_fin, naxis, dtype=dtype)
-
-
-def set_axis_coordinates(header, ax, crpix=None, crval=None, cdelt=None, N=None):
-    naxes = header['NAXIS']
-    if ax < 0 or ax > naxes:
-        raise Exception('Axis %d not in range (1, %d)' % (ax, N))
-    if crpix is not None:
-        header['CRPIX%d' % ax] = crpix + 1
-    if crval is not None:
-        header['CRVAL%d' % ax] = crval
-    if cdelt is not None:
-        header['CDELT%d' % ax] = cdelt
-    if N is not None:
-        header['NAXIS%d' % ax] = N
-
-
-def get_reference_pixel(header):
-    crval_x = float(header['CRPIX1']) - 1
-    crval_y = float(header['CRPIX2']) - 1
-    crval_l = float(header['CRPIX3']) - 1
-    return (crval_l, crval_y, crval_x)
+__all__ = ['D3DFitsCube']
 
 
 def safe_getheader(f, ext=0):
@@ -51,17 +20,10 @@ def safe_getheader(f, ext=0):
         return hdu.header
         
 
-def get_cube_limits(cube, ext):
-    header = fits.getheader(cube, ext)
-    l_obs = get_axis_coordinates(header, ax=3)
-    yy = get_axis_coordinates(header, ax=2)
-    xx = get_axis_coordinates(header, ax=1)
-    return l_obs.min(), l_obs.max(), len(yy), len(xx) 
-
-
 class D3DFitsCube(object):
     
     def __init__(self, cubefile=None):
+        self.keywords = {}
         if cubefile is None:
             return
         self._load(cubefile)
@@ -100,13 +62,13 @@ class D3DFitsCube(object):
         f_obs, f_flag, new_center = reshape_spectra(f_obs, f_flag, center, new_shape)
 
         # Update WCS
-        set_axis_coordinates(header, ax=1, crpix=new_center[2], N=new_shape[2])
-        set_axis_coordinates(header, ax=2, crpix=new_center[1], N=new_shape[1])
-        set_axis_coordinates(header, ax=3, crpix=0, crval=l_obs[0], cdelt=dl, N=new_shape[0])
+        set_axis_WCS(header, ax=1, crpix=new_center[2], naxis=new_shape[2])
+        set_axis_WCS(header, ax=2, crpix=new_center[1], naxis=new_shape[1])
+        set_axis_WCS(header, ax=3, crpix=0, crval=l_obs[0], cdelt=dl, naxis=new_shape[0])
 
         d3dcube = cls()
         d3dcube._initFits(f_obs, header)
-        d3dcube._addExtension(f_flag, name='F_FLAG')
+        d3dcube._addExtension(f_flag, name='F_FLAG', kind='cube')
         
         d3dcube.updateMasterList(ml)
         return d3dcube
@@ -134,20 +96,29 @@ class D3DFitsCube(object):
         self._HDUList.writeto(filename, clobber=overwrite, output_verify='fix')
 
     
-    def _addExtension(self, data, name, overwrite=False):
+    def _addExtension(self, data, name, kind='cube', overwrite=False):
         if name in self._HDUList and not overwrite:
             raise Exception('Extension %s already exists, you may use overwrite=True.')
-        self._HDUList.append(fits.ImageHDU(data, name=name))
+        imhdu = fits.ImageHDU(data, name=name)
+        if kind == 'cube':
+            copy_WCS(self._header, imhdu.header, axes=[1, 2, 3])
+        else:
+            raise Exception('Unknown extension kind "%s".' % kind)
+        self._HDUList.append(imhdu)
+    
+    
+    def _getExtensionData(self, name):
+        return self._HDUList[name].data
     
     
     @property
     def f_obs(self):
-        return self._HDUList['PRIMARY'].data
+        return self._getExtensionData('PRIMARY')
     
 
     @property
     def f_flag(self):
-        return self._HDUList['F_FLAG'].data
+        return self._getExtensionData('F_FLAG')
 
     
     @property

@@ -19,7 +19,7 @@ def resample_spectra(spectra, l_orig, l_resam):
     '''
     R = stutil.ReSamplingMatrixNonUniform(l_orig, l_resam)
     spectra = np.tensordot(R, spectra, (1,0))
-    flagged = np.zeros_like(spectra, dtype='int') + flags.no_data
+    flagged = np.zeros_like(spectra, dtype='int32') + flags.no_data
     good = (l_resam >= l_orig[0]) & (l_resam <= l_orig[-1])
     flagged[good] = 0
     return spectra, flagged
@@ -39,7 +39,7 @@ def reshape_spectra(f_obs, f_flag, center, new_shape):
     
     res_f_obs = np.zeros((new_shape))
     res_f_obs[:, y0:yf, x0:xf] = f_obs
-    res_f_flag = np.ones_like(res_f_obs, dtype='int') * flags.no_data
+    res_f_flag = np.zeros_like(res_f_obs, dtype='int32') + flags.no_data
     res_f_flag[:, y0:yf, x0:xf] = f_flag
     
     res_center = (center[0], new_shape[1] / 2, new_shape[2] / 2)

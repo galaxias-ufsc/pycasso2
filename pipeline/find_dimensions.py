@@ -4,7 +4,7 @@ Created on 24/06/2015
 @author: andre
 '''
 from diving3d.tables import read_masterlist, get_galaxy_id
-from diving3d.cube import get_cube_limits
+from diving3d.wcs import get_cube_limits
 from diving3d.config import get_config, default_config_path, save_config
 import numpy as np
 from os import path
