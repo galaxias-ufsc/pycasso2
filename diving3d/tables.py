@@ -6,7 +6,8 @@ Created on 15/06/2015
 
 from .resampling import apply_redshift
 
-__all__ = ['read_masterlist', 'get_wavelength_mask', 'get_galaxy_id']
+__all__ = ['read_masterlist', 'get_wavelength_mask', 'get_galaxy_id',
+           'write_starlight_input']
 
 
 masterlist_dtype=[('id', '|S05'),
@@ -108,4 +109,14 @@ def get_wavelength_mask(maskfile, wl, z=0.0, dest='rest'):
     return masked_wl
 
 
+def write_starlight_input(wl, flux, err, flags, filename):
+    from astropy.io import ascii
+    import numpy as np
+    
+    flags = np.where(flags, 1.0, 0.0)
+    if flags is not None and err is not None:
+        cols = [wl, flux, err, flags]
+    else:
+        cols = [wl, flux]
+    ascii.write(cols, filename, Writer=ascii.NoHeader)
 

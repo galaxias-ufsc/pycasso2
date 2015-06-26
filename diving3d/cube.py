@@ -185,6 +185,32 @@ class D3DFitsCube(object):
     
     
     @property
+    def id(self):
+        return self.masterlist['ID']
+    
+    
+    @property
     def object_name(self):
         return self.masterlist['NAME']
     
+    
+    def getSpatialMask(self, threshold=0.5):
+        '''
+        Return a spatial mask containing spaxels that have less than
+        a given fraction of masked spectral pixels.
+        
+        Parameters
+        ----------
+        threshold : float, optional
+            Fraction of spectral pixels that must be flagged
+            in the spaxel for it to be masked.
+            Default: ``0.5``
+            
+        Returns
+        -------
+        mask : array
+            A 2-d boolean image with the same x and y dimensions
+            as the cube, where ``True`` means the pixel is masked.
+        '''
+        flagged = (self.f_flag > 0).astype(int).sum(axis=0)
+        return flagged > threshold * len(self.l_obs)
