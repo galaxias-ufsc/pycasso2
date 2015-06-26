@@ -21,9 +21,12 @@ def safe_getheader(f, ext=0):
         
 
 class D3DFitsCube(object):
+    _ext_f_obs = 'PRIMARY'
+    _ext_f_flag = 'F_FLAG'
+    _masterlist_prefix = 'MASTERLIST '
     
     def __init__(self, cubefile=None):
-        self.keywords = {}
+        self.masterlist = {}
         if cubefile is None:
             return
         self._load(cubefile)
@@ -41,6 +44,7 @@ class D3DFitsCube(object):
         Nx = kwargs['width']
         Ny = kwargs['height']
         ml = kwargs['ml']
+        flux_unit = kwargs['flux_unit']
 
         # FIXME: sanitize file I/O
         header = safe_getheader(redcube)
@@ -48,6 +52,7 @@ class D3DFitsCube(object):
         for k in obs_header.keys():
             if k in header or k == 'COMMENT' or k == '': continue
             header[k] = obs_header[k]
+        header['HIERARCH PIPE FLUX_UNIT'] = flux_unit
         
         f_obs_orig = fits.getdata(redcube)
         
@@ -70,7 +75,8 @@ class D3DFitsCube(object):
         d3dcube._initFits(f_obs, header)
         d3dcube._addExtension(f_flag, name='F_FLAG', kind='cube')
         
-        d3dcube.updateMasterList(ml)
+        d3dcube._saveMasterList(ml)
+        d3dcube._populateMasterList()
         return d3dcube
     
     
@@ -80,16 +86,25 @@ class D3DFitsCube(object):
         self._header = phdu.header
 
     
-    def updateMasterList(self, ml):
-        ignored = ['cube', 'cube_obs']
+    def _saveMasterList(self, ml):
+        header_ignored = ['cube', 'cube_obs']
         for key in ml.dtype.names:
-            if key in ignored: continue
-            self._header['HIERARCH MASTERLIST ' + key.upper()] = ml[key]
+            if key in header_ignored: continue
+            hkey = 'HIERARCH %s %s' % (self._masterlist_prefix, key.upper())
+            self._header[hkey] = ml[key]
+    
+    
+    def _populateMasterList(self):
+        for hkey in self._header.keys():
+            if not hkey.startswith(self._masterlist_prefix): continue
+            key = hkey.replace(self._masterlist_prefix, '')
+            self.masterlist[key] = self._header[hkey]
     
     
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
-        self._header = self._HDUList['PRIMARY'].header
+        self._header = self._HDUList[self._ext_f_obs].header
+        self._populateMasterList()
         
         
     def write(self, filename, overwrite=False):
@@ -113,12 +128,12 @@ class D3DFitsCube(object):
     
     @property
     def f_obs(self):
-        return self._getExtensionData('PRIMARY')
+        return self._getExtensionData(self._ext_f_obs)
     
 
     @property
     def f_flag(self):
-        return self._getExtensionData('F_FLAG')
+        return self._getExtensionData(self._ext_f_flag)
 
     
     @property
@@ -136,4 +151,12 @@ class D3DFitsCube(object):
         return get_axis_coordinates(self._header, 1)
 
 
-
+    @property
+    def flux_unit(self):
+        return self._header['PIPE FLUX_UNIT']
+    
+    
+    @property
+    def object_name(self):
+        return self.masterlist['NAME']
+    

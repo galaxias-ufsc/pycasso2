@@ -35,6 +35,7 @@ kwargs = dict(l_ini=cfg.getfloat('dimensions', 'l_ini'),
               dl=cfg.getfloat('dimensions', 'dl'),
               width=cfg.getint('dimensions', 'Nx'),
               height=cfg.getint('dimensions', 'Ny'),
+              flux_unit=cfg.getfloat('general', 'flux_unit'),
               ml=ml)
 
 d3d = D3DFitsCube.from_reduced(cube, cube_obs, **kwargs)

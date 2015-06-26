@@ -10,21 +10,21 @@ __all__ = ['read_masterlist', 'get_wavelength_mask', 'get_galaxy_id']
 
 
 masterlist_dtype=[('id', '|S05'),
-       ('name', '|S12'),
-       ('V_hel', 'float64'),
-       ('morph', '|S05'),
-       ('T', 'float64'),
-       ('R_e', 'float64'),
-       ('M_K', 'float64'),
-       ('n_s', 'float64'),
-       ('epsilon', 'float64'),
-       ('DL', 'float64'),
-       ('eDL', 'float64'),
-       ('EL', '|S05'),
-       ('grating', '|S04'),
-       ('cube', '|S0128'),
-       ('cube_obs', '|S0128'),
-       ]
+                  ('name', '|S12'),
+                  ('V_hel', 'float64'),
+                  ('morph', '|S05'),
+                  ('T', 'float64'),
+                  ('R_e', 'float64'),
+                  ('M_K', 'float64'),
+                  ('n_s', 'float64'),
+                  ('epsilon', 'float64'),
+                  ('DL', 'float64'),
+                  ('eDL', 'float64'),
+                  ('EL', '|S05'),
+                  ('grating', '|S04'),
+                  ('cube', '|S0128'),
+                  ('cube_obs', '|S0128'),
+                  ]
 
 
 def read_masterlist(filename, galaxy_id=None):

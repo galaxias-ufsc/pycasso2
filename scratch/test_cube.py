@@ -7,19 +7,32 @@ Created on 23/06/2015
 from diving3d.cube import D3DFitsCube
 from diving3d.tables import get_galaxy_id
 
-def plot_example(d3d, galaxyId, y_slice):
+def plot_example(d3d, galaxyId, x_slice):
     import matplotlib.pyplot as plt
     plt.ioff()
+    plt.figure()
     xx = d3d.x_coords
     yy = d3d.y_coords
     ll = d3d.l_obs
-    plt.pcolormesh(xx, ll, d3d.f_flag[:, y_slice, :], cmap='cubehelix_r')
-    plt.xlabel(r'R.A. [arcsec]')
-    plt.ylabel(r'Wavelength [$\AA$]')
-    plt.xlim(xx.min(), xx.max())
-    plt.ylim(ll.min(), ll.max())
-    plt.title('%s - flags example @ dec = %.02f "' % (galaxyId, yy[y_slice]))
+    
+    plt.subplot(211)
+    plt.pcolormesh(ll, yy, d3d.f_obs[:, :, x_slice].T * d3d.flux_unit, cmap='cubehelix_r')
+    plt.ylabel(r'dec. [arcsec]')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.xlim(ll.min(), ll.max())
+    plt.title(r'%s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (galaxyId, xx[x_slice]))
     plt.colorbar()
+    
+    plt.subplot(212)
+    plt.pcolormesh(ll, yy, d3d.f_flag[:, :, x_slice].T, cmap='cubehelix_r')
+    plt.ylabel(r'dec. [arcsec]')
+    plt.ylim(yy.min(), yy.max())
+    plt.xlabel(r'Wavelength [$\AA$]')
+    plt.xlim(ll.min(), ll.max())
+    plt.title('flags')
+    plt.colorbar()
+    
     plt.show()
 
 
@@ -27,4 +40,8 @@ cube = 'data/cubes_out/T001_resampled.fits'
 galaxy_id = get_galaxy_id(cube)
 d3d = D3DFitsCube(cube)
 
-plot_example(d3d, galaxy_id, y_slice=10)
+print 'Masterlist:'
+for k, v in d3d.masterlist.iteritems():
+    print '%010s: %020s' % (k, str(v))
+
+plot_example(d3d, galaxy_id, x_slice=10)
