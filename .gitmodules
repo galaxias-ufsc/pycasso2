@@ -1,3 +1,3 @@
 [submodule "data"]
 	path = data
-	url = git@bitbucket.org:joaowoj/diving3d-data.git
+url=git@bitbucket.org:nvasari/diving3d-data.git
