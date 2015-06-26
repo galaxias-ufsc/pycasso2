@@ -7,7 +7,7 @@ Created on 26/06/2015
 from astropy.io import fits
 import numpy as np
 
-__all__ = ['get_axis_coordinates', 'set_axis_WCS', 'copy_WCS', 'get_cube_limits']
+__all__ = ['get_axis_coordinates', 'set_axis_WCS', 'copy_WCS', 'get_cube_limits', 'get_shape']
 
 
 def get_axis_coordinates(header, ax, dtype='float64'):
@@ -60,6 +60,13 @@ def get_cube_limits(cube, ext):
     return l_obs.min(), l_obs.max(), len(yy), len(xx) 
 
 
+def get_shape(header):
+    Nx = header['NAXIS1']
+    Ny = header['NAXIS2']
+    Nl = header['NAXIS3']
+    return (Nl, Ny, Nx)
+
+    
 def copy_WCS(orig_header, dest_header, axes):
     if np.isscalar(axes):
         axes = [axes]

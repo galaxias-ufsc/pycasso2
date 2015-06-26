@@ -5,7 +5,7 @@ Created on 22/06/2015
 '''
 
 from .resampling import resample_spectra, reshape_spectra
-from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel
+from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape
 
 from astropy.io import fits
 import numpy as np
@@ -22,6 +22,8 @@ def safe_getheader(f, ext=0):
 
 class D3DFitsCube(object):
     _ext_f_obs = 'PRIMARY'
+    _ext_f_syn = 'F_SYN'
+    _ext_f_wei = 'F_WEI'
     _ext_f_flag = 'F_FLAG'
     _masterlist_prefix = 'MASTERLIST'
     
@@ -73,7 +75,7 @@ class D3DFitsCube(object):
 
         d3dcube = cls()
         d3dcube._initFits(f_obs, header)
-        d3dcube._addExtension(f_flag, name='F_FLAG', kind='cube')
+        d3dcube._addExtension('F_FLAG', data=f_flag, kind='cube')
         
         d3dcube._saveMasterList(ml)
         d3dcube._populateMasterList()
@@ -110,11 +112,26 @@ class D3DFitsCube(object):
         
     def write(self, filename, overwrite=False):
         self._HDUList.writeto(filename, clobber=overwrite, output_verify='fix')
-
     
-    def _addExtension(self, data, name, kind='cube', overwrite=False):
-        if name in self._HDUList and not overwrite:
-            raise Exception('Extension %s already exists, you may use overwrite=True.')
+    
+    def createSynthesisCubes(self):
+        if not self._hasExtension(self._ext_f_syn):
+            self._addExtension(self._ext_f_syn)
+        if not self._hasExtension(self._ext_f_wei):
+            self._addExtension(self._ext_f_wei)
+        
+        
+    def _hasExtension(self, name):
+        return name in self._HDUList
+    
+     
+    def _addExtension(self, name, data=None, dtype=None, kind='cube', overwrite=False):
+        if self._hasExtension(name) and not overwrite:
+            raise Exception('Extension %s already exists, you may use overwrite=True.' % name)
+        if data is None:
+            if dtype is None:
+                dtype='float64'
+            data = np.zeros(get_shape(self._header), dtype=dtype)
         imhdu = fits.ImageHDU(data, name=name)
         if kind == 'cube':
             copy_WCS(self._header, imhdu.header, axes=[1, 2, 3])
@@ -130,6 +147,16 @@ class D3DFitsCube(object):
     @property
     def f_obs(self):
         return self._getExtensionData(self._ext_f_obs)
+    
+
+    @property
+    def f_syn(self):
+        return self._getExtensionData(self._ext_f_syn)
+    
+
+    @property
+    def f_wei(self):
+        return self._getExtensionData(self._ext_f_wei)
     
 
     @property
