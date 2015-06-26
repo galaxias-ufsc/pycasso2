@@ -62,9 +62,9 @@ class SynthesisAdapter(object):
     def __init__(self, cube, starlight_dir, grid_template_path):
         self.starlightDir = starlight_dir
         self._d3d = D3DFitsCube(cube)
+        self.galaxyId = self._d3d.id
         self._readData()
         self._gridTemplate, self._runTemplate = self._getTemplates(grid_template_path)
-        self.galaxyId = self._d3d.id
         self._createDirs()
         
     
@@ -168,5 +168,5 @@ class SynthesisAdapter(object):
             
     
     def writeCube(self, filename, overwrite=False):
-        self._d3d.write(filename, overwrite=False)
+        self._d3d.write(filename, overwrite=overwrite)
         
