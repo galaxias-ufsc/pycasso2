@@ -23,7 +23,7 @@ def safe_getheader(f, ext=0):
 class D3DFitsCube(object):
     _ext_f_obs = 'PRIMARY'
     _ext_f_flag = 'F_FLAG'
-    _masterlist_prefix = 'MASTERLIST '
+    _masterlist_prefix = 'MASTERLIST'
     
     def __init__(self, cubefile=None):
         self.masterlist = {}
@@ -98,6 +98,7 @@ class D3DFitsCube(object):
         for hkey in self._header.keys():
             if not hkey.startswith(self._masterlist_prefix): continue
             key = hkey.replace(self._masterlist_prefix, '')
+            key = key.strip()
             self.masterlist[key] = self._header[hkey]
     
     
