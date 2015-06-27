@@ -12,7 +12,7 @@ __all__ = ['get_axis_coordinates', 'set_axis_WCS', 'copy_WCS', 'get_cube_limits'
 
 def get_axis_coordinates(header, ax, dtype='float64'):
     naxes = header['NAXIS']
-    if ax < 0 or ax > naxes:
+    if ax < 1 or ax > naxes:
         raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
     crpix, crval, cdelt, naxis = get_axis_WCS(header, ax)
     c_ini = crval - crpix * cdelt
@@ -22,7 +22,7 @@ def get_axis_coordinates(header, ax, dtype='float64'):
 
 def set_axis_WCS(header, ax, crpix=None, crval=None, cdelt=None, naxis=None):
     naxes = header['NAXIS']
-    if ax < 0 or ax > naxes:
+    if ax < 1 or ax > naxes:
         raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
     if crpix is not None:
         header['CRPIX%d' % ax] = crpix + 1
@@ -36,7 +36,7 @@ def set_axis_WCS(header, ax, crpix=None, crval=None, cdelt=None, naxis=None):
 
 def get_axis_WCS(header, ax):
     naxes = header['NAXIS']
-    if ax < 0 or ax > naxes:
+    if ax < 1 or ax > naxes:
         raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
     crpix = float(header['CRPIX%d' % ax]) - 1
     crval = header['CRVAL%d' % ax]
