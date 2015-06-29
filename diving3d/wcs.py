@@ -17,7 +17,7 @@ def get_axis_coordinates(header, ax, dtype='float64'):
     crpix, crval, cdelt, naxis = get_axis_WCS(header, ax)
     c_ini = crval - crpix * cdelt
     c_fin = c_ini + cdelt * (naxis - 1)
-    return np.arange(c_ini, c_fin + cdelt, cdelt, dtype=dtype)
+    return np.linspace(c_ini, c_fin, naxis, dtype=dtype)
 
 
 def set_axis_WCS(header, ax, crpix=None, crval=None, cdelt=None, naxis=None):
