@@ -5,9 +5,11 @@ Created on 26/06/2015
 '''
 
 from astropy.io import fits
+from astropy import log
 import numpy as np
 
-__all__ = ['get_axis_coordinates', 'set_axis_WCS', 'copy_WCS', 'get_cube_limits', 'get_shape']
+__all__ = ['get_axis_coordinates', 'set_axis_WCS', 'copy_WCS', 'get_cube_limits',
+           'get_shape', 'd3d_fix_crpix']
 
 
 def get_axis_coordinates(header, ax, dtype='float64'):
@@ -34,6 +36,20 @@ def set_axis_WCS(header, ax, crpix=None, crval=None, cdelt=None, naxis=None):
         header['NAXIS%d' % ax] = naxis
 
 
+def d3d_fix_crpix(header, ax):
+    '''
+    Check for crazy bugs in the Diving3D cubes WCS.
+    '''
+    naxes = header['NAXIS']
+    if ax < 1 or ax > naxes:
+        raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
+    crpix = float(header['CRPIX%d' % ax])
+    if crpix <= 0.0:
+        log.warn('Fixing CRPIX for axis %d.' % ax)
+        naxis = header['NAXIS%d' % ax]
+        header['CRPIX%d' % ax] = naxis / 2.0 + 0.5
+    
+    
 def get_axis_WCS(header, ax):
     naxes = header['NAXIS']
     if ax < 1 or ax > naxes:

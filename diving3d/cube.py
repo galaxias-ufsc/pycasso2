@@ -5,7 +5,7 @@ Created on 22/06/2015
 '''
 
 from .resampling import resample_spectra, reshape_spectra
-from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape
+from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix
 
 from astropy.io import fits
 import numpy as np
@@ -50,6 +50,8 @@ class D3DFitsCube(object):
 
         # FIXME: sanitize file I/O
         header = safe_getheader(redcube)
+        d3d_fix_crpix(header, 1)
+        d3d_fix_crpix(header, 2)
         obs_header = safe_getheader(obscube)
         for k in obs_header.keys():
             if k in header or k == 'COMMENT' or k == '': continue
