@@ -9,7 +9,7 @@ Resample spectra in 1 \AA bins and change wavelength interval.
 
 from diving3d.cube import D3DFitsCube
 from diving3d.tables import read_masterlist, get_wavelength_mask
-from diving3d.resampling import velocity_to_redshift
+from diving3d.resampling import velocity2redshift
 from diving3d import flags
 from diving3d.config import get_config, default_config_path
 
@@ -61,7 +61,7 @@ print 'Loading cubes %s and %s.' % (cube, cube_obs)
 d3d = D3DFitsCube.from_reduced(cube, cube_obs, **kwargs)
 
 print 'Applying gap and telluric lines masks.'
-z = velocity_to_redshift(ml['V_hel'])
+z = velocity2redshift(ml['V_hel'])
 gap_mask_file = gap_mask_template % ml['grating']
 gap_mask = get_wavelength_mask(gap_mask_file, d3d.l_obs, z, dest='rest')
 telluric_mask = get_wavelength_mask(telluric_mask_file, d3d.l_obs, z, dest='rest')

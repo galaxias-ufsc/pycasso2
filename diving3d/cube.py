@@ -182,6 +182,11 @@ class D3DFitsCube(object):
 
 
     @property
+    def center(self):
+        return get_reference_pixel(self._header)
+
+
+    @property
     def flux_unit(self):
         return self._header['PIPE FLUX_UNIT']
     

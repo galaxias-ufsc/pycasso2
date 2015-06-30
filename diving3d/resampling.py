@@ -9,7 +9,8 @@ import numpy as np
 
 from . import flags
 
-__all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift', 'velocity_to_redshift']
+__all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift', 'velocity2redshift',
+           'interp1d_spectra', 'gaussian1d_spectra']
 
 
 
@@ -80,7 +81,79 @@ def apply_redshift(l, z, dest='rest'):
         return op(l[:, np.newaxis], 1. + z[np.newaxis, :])
 
 
-def velocity_to_redshift(v):
+def velocity2redshift(v):
     c = 299792458.0 # km/s
     return v / c
+
+
+def fwhm2sigma(fwhm):
+    return fwhm / (2 * np.sqrt(2 * np.log(2)))
+
+
+def interp1d_spectra(l, flux, flags=None):
+    '''
+    Interpolate linearly 1-d spectra to fill all the gaps and
+    extend the limits (copies the boundaries).
+    
+    Parameters
+    ----------
+    l : array
+        Wavelength array.
+    
+    flux : array
+        [Masked] array with gaps.
+    
+    flags : array, optional
+        Array with flags as integers. Bad values
+        are greater than zero. Must be set if
+        ``flux`` is not a masked array. Default: ``None``.
+    
+    Returns
+    -------
+    flux_interp : array
+        The same as ``flux``, wit gaps replaced by linear interpolation.
+    '''
+    if not isinstance(flux, np.ma.MaskedArray):
+        if flags is None:
+            raise Exception('flux must be a masked array if flags is not set.')
+        flux = np.ma.array(flux, mask=flags > 0)
+    lc = l[~flux.mask]
+    fc = flux.compressed()
+    return np.interp(l, lc, fc)
+
+
+def gaussian1d_spectra(fwhm, l, flux, flags=None):
+    '''
+    Filter 1-d spectra using a Gaussian kernel. Interpolate linearly
+    the flagged wavelengths before applying the filter.
+    
+    Parameters
+    ----------
+    fwhm : float
+        Full width at half maximum of the gaussian.
+    
+    l : array
+        Wavelength array.
+    
+    flux : array
+        [Masked] array with gaps.
+    
+    flags : array, optional
+        Array with flags as integers. Bad values
+        are greater than zero. Must be set if
+        ``flux`` is not a masked array. Default: ``None``.
+    
+    Returns
+    -------
+    flux_gauss : array
+        The same as ``flux``, interpolated by a gaussian kernel.
+    '''
+    flux_i = interp1d_spectra(l, flux, flags)
+    dl = (l[1] - l[0])
+    sig = fwhm2sigma(fwhm)
+    l_gauss = np.arange(min(-2 * dl, -5 * sig), max(2 * dl + 1, 5 * sig + 1), dl)
+    amp = 1.0 / (sig * np.sqrt(2.0 * np.pi))
+    gauss = dl * amp * np.exp( -0.5 * (l_gauss / sig)**2 )
+    return np.convolve(flux_i,  gauss, 'same')
+    
 
