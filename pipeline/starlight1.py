@@ -24,10 +24,10 @@ def parse_args():
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count()-1,
                         help='Number of worker processes.')
-    parser.add_argument('--chunk-size', dest='chunkSize', type=int, default=10,
+    parser.add_argument('--chunk-size', dest='chunkSize', type=int, default=5,
                         help='Grid chunk size, defaults to the same as --nproc.')
-    parser.add_argument('--timeout', dest='timeout', type=int, default=20,
-                        help='Timeout of starlight processes, in minutes. Defaults to 4.')
+    parser.add_argument('--timeout', dest='timeout', type=int, default=30,
+                        help='Timeout of starlight processes, in minutes.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
     parser.add_argument('--debug', dest='debug', action='store_true',
