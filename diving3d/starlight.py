@@ -163,8 +163,9 @@ class SynthesisAdapter(object):
             
         for x, y, ts in grid.getTables():
             log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))
-            self.f_syn[:, y, x] = ts.spectra.f_syn
-            self.f_wei[:, y, x] = ts.spectra.f_syn
+            f_obs_norm = ts.keywords['fobs_norm']
+            self.f_syn[:, y, x] = ts.spectra.f_syn * f_obs_norm / grid.fluxUnit
+            self.f_wei[:, y, x] = ts.spectra.f_wei
             
     
     def writeCube(self, filename, overwrite=False):
