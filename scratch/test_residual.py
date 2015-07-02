@@ -137,7 +137,7 @@ def rms_box(width, ll, flux, threshold=0.5):
         f = flux[l1:l2]
         Ngood = (~f.mask).astype('int').sum(axis=0)
         print 'box l=%.1f AA (%d fluxes)' % (ll[l], Nbox)
-        rms[l] = np.sqrt((f * f).sum(axis=0) / Ngood) 
+        rms[l] = np.sqrt((f * f).sum(axis=0) / (Ngood - 1)) 
         rms[l][Ngood < (threshold * Nbox)] = np.ma.masked
     return interp_spectra(ll, rms)
 
@@ -159,7 +159,7 @@ flagged[is_eline] = True
 f_obs = np.ma.array(d3d.f_obs * d3d.flux_unit, mask=flagged)
 f_syn = np.ma.array(d3d.f_syn * d3d.flux_unit, mask=flagged)
 f_res = f_obs - f_syn
-f_res_filt = filter_spectra(30.0, ll, f_res)
+f_res_filt = filter_spectra(15.0, ll, f_res)
 f_err = rms_box(100.0, ll, f_res_filt, threshold=0.5)
 
 center = d3d.center

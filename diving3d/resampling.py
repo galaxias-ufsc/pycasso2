@@ -16,7 +16,23 @@ __all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift', 'velocity2re
 
 def resample_spectra(spectra, l_orig, l_resam):
     '''
-    FIXME: document reshape_image
+    Resample IFS wavelength-wise.
+    
+    Parameters
+    ----------
+    spectra : array
+        Spectra to be resampled.
+    
+    l_orig : array
+        Original wavelength base of ``spectra``.
+    
+    l_resam : array
+        Destination wavelength base.
+    
+    Returns
+    -------
+    spectra_resam : array
+        Spectra resampled to ``l_resam``.
     '''
     R = stutil.ReSamplingMatrixNonUniform(l_orig, l_resam)
     spectra = np.tensordot(R, spectra, (1,0))
@@ -28,7 +44,34 @@ def resample_spectra(spectra, l_orig, l_resam):
 
 def reshape_spectra(f_obs, f_flag, center, new_shape):
     '''
-    FIXME: document reshape_image
+    Reshape IFS into a new spatial shape, putting the given
+    photometric center at the center of the new IFS.
+    Flag the newly added pixels as ``no_data``.
+    
+    Parameters
+    ----------
+    f_obs : array
+        Flux, will remain unchanged.
+    
+    f_flag : array
+        Flags.
+    
+    center : tuple (l, y, x)
+        IFS center, or reference pixel.
+    
+    new_shape : tuple (Nl, Ny, Nx)
+        New shape.
+    
+    Returns
+    -------
+    res_f_obs : array
+        Reshaped ``f_obs``.
+    
+    res_f_flag : array
+        Reshaped ``f_flag``
+    
+    res_center : tuple (l, y, x)
+        New center or reference pixel of image.
     '''
     shape = f_obs.shape
     y_axis = 1
