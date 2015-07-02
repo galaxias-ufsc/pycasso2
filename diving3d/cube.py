@@ -8,6 +8,7 @@ from .resampling import resample_spectra, reshape_spectra
 from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix
 
 from astropy.io import fits
+from astropy import log
 import numpy as np
 
 __all__ = ['D3DFitsCube']
@@ -21,11 +22,24 @@ def safe_getheader(f, ext=0):
         
 
 class D3DFitsCube(object):
+    _masterlist_prefix = 'MASTERLIST'
+
     _ext_f_obs = 'PRIMARY'
     _ext_f_syn = 'F_SYN'
     _ext_f_wei = 'F_WEI'
     _ext_f_flag = 'F_FLAG'
-    _masterlist_prefix = 'MASTERLIST'
+
+    _ext_popZ_base = 'POPZ_BASE'
+    _ext_popage_base = 'POPAGE_BASE'
+    _ext_popx = 'POPX'
+    _ext_popmu_ini = 'POPMU_INI'
+    _ext_popmu_cor = 'POPMU_COR'
+    
+    _pop_len = None
+    
+    _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
+                         'A_V', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
+                         'Nglobal_steps', 'chi2']
     
     def __init__(self, cubefile=None):
         self.masterlist = {}
@@ -77,7 +91,7 @@ class D3DFitsCube(object):
 
         d3dcube = cls()
         d3dcube._initFits(f_obs, header)
-        d3dcube._addExtension('F_FLAG', data=f_flag, kind='cube')
+        d3dcube._addExtension(cls._ext_f_flag, data=f_flag, kind='spectra')
         
         d3dcube._saveMasterList(ml)
         d3dcube._populateMasterList()
@@ -116,34 +130,77 @@ class D3DFitsCube(object):
         self._HDUList.writeto(filename, clobber=overwrite, output_verify='fix')
     
     
-    def createSynthesisCubes(self):
-        if not self._hasExtension(self._ext_f_syn):
-            self._addExtension(self._ext_f_syn)
-        if not self._hasExtension(self._ext_f_wei):
-            self._addExtension(self._ext_f_wei)
+    def createSynthesisCubes(self, pop_len):
+        self._pop_len = pop_len
+        self._addExtension(self._ext_f_syn, overwrite=True)
+        self._addExtension(self._ext_f_wei, overwrite=True)
+        self._addExtension(self._ext_popage_base, kind='population', overwrite=True)
+        self._addExtension(self._ext_popZ_base, kind='population', overwrite=True)
+        self._addExtension(self._ext_popx, kind='population', overwrite=True)
+        self._addExtension(self._ext_popmu_ini, kind='population', overwrite=True)
+        self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
+
+        for ext in self._ext_keyword_list:
+            self._addExtension(ext, kind='image', overwrite=True)
         
         
     def _hasExtension(self, name):
         return name in self._HDUList
     
      
-    def _addExtension(self, name, data=None, dtype=None, kind='cube', overwrite=False):
-        if self._hasExtension(name) and not overwrite:
-            raise Exception('Extension %s already exists, you may use overwrite=True.' % name)
+    def _addExtension(self, name, data=None, dtype=None, kind='spectra', overwrite=False):
+        name = name.upper()
+        shape = self._getExtensionShape(kind)
         if data is None:
             if dtype is None:
                 dtype='float64'
-            data = np.zeros(get_shape(self._header), dtype=dtype)
+            data = np.zeros(shape, dtype=dtype)
+        if self._hasExtension(name):
+            if not overwrite:
+                log.warn('Tried to create extension %s but it already exists.' % name)
+            else:
+                log.warn('Overwriting existing extension %s.' % name)
+                ext_data = self._getExtensionData(name)
+                ext_data[...] = data
+            return
         imhdu = fits.ImageHDU(data, name=name)
-        if kind == 'cube':
-            copy_WCS(self._header, imhdu.header, axes=[1, 2, 3])
+        self._setExtensionWCS(imhdu, kind)
+        self._HDUList.append(imhdu)
+    
+    
+    def _setExtensionWCS(self, hdu, kind):
+        if kind == 'spectra':
+            copy_WCS(self._header, hdu.header, axes=[1, 2, 3])
+        elif kind == 'image':
+            copy_WCS(self._header, hdu.header, axes=[1, 2])
+        elif kind == 'population':
+            copy_WCS(self._header, hdu.header, axes=[1, 2], dest_axes=[2, 3])
         else:
             raise Exception('Unknown extension kind "%s".' % kind)
-        self._HDUList.append(imhdu)
+    
+    
+    def _getExtensionShape(self, kind):
+        spectra_shape = get_shape(self._header)
+        if kind == 'spectra':
+            return spectra_shape
+        elif kind == 'image':
+            return spectra_shape[1:]
+        elif kind == 'population':
+            if self._pop_len is None:
+                raise Exception('Undefined population vector length.')
+            return spectra_shape[1:] + (self._pop_len,)
+        else:
+            raise Exception('Unknown extension kind "%s".' % kind)
     
     
     def _getExtensionData(self, name):
         return self._HDUList[name].data
+    
+    
+    def getSynthExtension(self, name):
+        if name not in self._ext_keyword_list:
+            raise Exception('%s is not a synthesis extension.' % name)
+        return self._getExtensionData(name)
     
     
     @property
@@ -165,6 +222,46 @@ class D3DFitsCube(object):
     def f_flag(self):
         return self._getExtensionData(self._ext_f_flag)
 
+    
+    @property
+    def popage_base(self):
+        return self._getExtensionData(self._ext_popage_base)
+
+    
+    @property
+    def popZ_base(self):
+        return self._getExtensionData(self._ext_popZ_base)
+
+    
+    @property
+    def popx(self):
+        return self._getExtensionData(self._ext_popx)
+
+    
+    @property
+    def popmu_ini(self):
+        return self._getExtensionData(self._ext_popmu_ini)
+
+    
+    @property
+    def popmu_cor(self):
+        return self._getExtensionData(self._ext_popmu_cor)
+
+    
+    @property
+    def A_V(self):
+        return self._getExtensionData('A_V')
+
+    
+    @property
+    def v_0(self):
+        return self._getExtensionData('V_0')
+    
+    
+    @property
+    def v_d(self):
+        return self._getExtensionData('V_D')
+    
     
     @property
     def l_obs(self):

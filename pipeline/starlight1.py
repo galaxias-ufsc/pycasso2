@@ -36,6 +36,13 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
+def get_pop_len(grids):
+    for g in grids:
+        if len(g.completed) == 0: continue
+        ts = g.getTables()[0][2]
+        return len(ts.population.popx)
+    raise Exception('No output found in grids.')
+
 log.setLevel('DEBUG')
 args = parse_args()
 cfg = get_config(args.configFile)
@@ -51,7 +58,7 @@ else:
 cube_out_dir = cfg.get('path', 'cubes_out')
 masterlist = cfg.get('tables', 'masterlist')
 cube = path.join(cube_out_dir, '%s_resampled.fits' % galaxy_id)
-temp_cube = path.join(cube_out_dir, '%s_resam_synth.fits' % galaxy_id)
+temp_cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
 starlight_dir = cfg.get('starlight', 'starlight_dir')
 grid_template = cfg.get('starlight', 'grid_template')
 
@@ -69,8 +76,11 @@ print 'Waiting jobs completion.'
 runner.wait()
 
 print 'Creating synthesis cubes.'
-sa.createSynthesisCubes()
-for grid in runner.getOutputGrids():
+output_grids = runner.getOutputGrids()
+
+sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
+
+for grid in output_grids:
     print 'Reading results of grid %s.' % grid.name
     sa.updateSynthesis(grid)
     

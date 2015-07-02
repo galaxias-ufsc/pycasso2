@@ -83,10 +83,18 @@ def get_shape(header):
     return (Nl, Ny, Nx)
 
     
-def copy_WCS(orig_header, dest_header, axes):
+def copy_WCS(orig_header, dest_header, axes, dest_axes=None):
     if np.isscalar(axes):
         axes = [axes]
-    for ax in axes:
-        crpix, crval, cdelt, naxis = get_axis_WCS(orig_header, ax)
-        set_axis_WCS(dest_header, ax, crpix, crval, cdelt, naxis)
+    if dest_axes is None:
+        dest_axes = axes
+    elif np.isscalar(dest_axes):
+        dest_axes = [dest_axes]
+    if not len(axes) == len(dest_axes):
+        raise ValueError('number of axes do not match.')
+    
+    for orig_ax, dest_ax in zip(axes, dest_axes):
+        crpix, crval, cdelt, naxis = get_axis_WCS(orig_header, orig_ax)
+        set_axis_WCS(dest_header, dest_ax, crpix, crval, cdelt, naxis)
+
 
