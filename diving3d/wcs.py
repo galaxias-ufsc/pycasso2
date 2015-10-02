@@ -98,3 +98,13 @@ def copy_WCS(orig_header, dest_header, axes, dest_axes=None):
         set_axis_WCS(dest_header, dest_ax, crpix, crval, cdelt, naxis)
 
 
+def find_nearest_index(array, value):
+    '''
+    Return the array index that is closest to the valued provided. Note that
+    this is intended for use with coordinates array.
+    '''
+    from numpy import abs
+    idx = (abs(array-value)).argmin()
+    return idx
+
+

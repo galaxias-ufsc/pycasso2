@@ -7,10 +7,11 @@ Created on 23/06/2015
 from diving3d.cube import D3DFitsCube
 from diving3d.tables import get_galaxy_id, get_wavelength_mask
 from diving3d.resampling import gaussian1d_spectra, interp1d_spectra
+from diving3d.wcs import find_nearest_index
 
 import numpy as np
 
-def plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, x_slice):
+def plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, center):
     import matplotlib.pyplot as plt
         
     plotpars = {'legend.fontsize': 8,
@@ -18,7 +19,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, 
                 'ytick.labelsize': 10,
                 'text.fontsize': 10,
                 'axes.titlesize': 12,
-                'lines.linewidth': 0.5,
+                'lines.linewidth': 1.0,
                 'font.family': 'Times New Roman',
     #             'figure.subplot.left': 0.08,
     #             'figure.subplot.bottom': 0.08,
@@ -33,7 +34,10 @@ def plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, 
     
     vmax = f_syn.max() * 1.1
     err_lim = 5.0
+    x_slice = center[2]
     
+    plt.close('all')
+    plt.figure(1, figsize=(8, 7))
     plt.subplot(311)
     plt.pcolormesh(ll, yy, f_obs[:, :, x_slice].T, vmin=0.0, vmax=vmax, cmap='cubehelix_r')
     plt.ylabel(r'dec. [arcsec]')
@@ -49,7 +53,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, 
     plt.ylim(yy.min(), yy.max())
     plt.gca().xaxis.set_ticklabels([])
     plt.xlim(ll.min(), ll.max())
-    plt.title(r'flux (synthetic)')
+    plt.title(r'Synthetic flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.colorbar()
     
     plt.subplot(313)
@@ -61,34 +65,49 @@ def plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, 
     plt.title('residual [%]')
     plt.colorbar()
     
-    plt.figure(2)
+    plt.figure(2, figsize=(8, 7))
     plt.subplot(211)
-    err = f_err.sum(axis=2).sum(axis=1)
-    f = f_obs.sum(axis=2).sum(axis=1)
-    s = f_syn.sum(axis=2).sum(axis=1)
-    plt.plot(ll, f, 'k-', label='observed')
-    plt.plot(ll, s, 'r-', label='synthetic')
-    plt.plot(ll, err, 'g-', label='error')
-    plt.ylabel(r'flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
+    err = f_err[:, center[1], center[2]]
+    f = f_obs[:, center[1], center[2]]
+    s = f_syn[:, center[1], center[2]]
+    plt.plot(ll, np.log10(f), 'k-', label='observed')
+    plt.plot(ll, np.log10(s), 'r-', label='synthetic')
+    plt.plot(ll, np.log10(err), 'b-', label='error')
+    plt.ylabel(r'$\log F_\lambda$ [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.xlim(ll.min(), ll.max())
     plt.gca().xaxis.set_ticklabels([])
-    plt.legend(loc='upper left')
-    plt.title('%s - fluxes summed for all pixels' % galaxy_id)
+    plt.legend(loc='center right')
+    plt.title('%s - center spaxel' % galaxy_id)
 
     plt.subplot(212)
-    r = f_res.sum(axis=2).sum(axis=1) * 100.0 / f
-    r_filt = f_res_filt.sum(axis=2).sum(axis=1) * 100.0 / f
-    err = f_err.sum(axis=2).sum(axis=1) * 100.0 / f
-    plt.plot(ll, r, 'g-', label='residual')
-    plt.plot(ll, r_filt, 'b-', label='residual (rectified)')
-    plt.plot(ll, err, 'r-', label='error (estimated)')
+    r = f_res[:, center[1], center[2]] * 100.0 / f
+    r_filt = f_res_filt[:, center[1], center[2]] * 100.0 / f
+    err = f_err[:, center[1], center[2]] * 100.0 / f
+    plt.plot(ll, r, 'm-', label='residual')
+    plt.plot(ll, r_filt, 'g-', label='residual (rectified)')
+    plt.plot(ll, err, 'b-', label='error (estimated)')
     plt.plot(ll, np.zeros_like(ll), 'k:')
     plt.ylabel(r'residual flux [%]')
     plt.xlabel(r'Wavelength [$\AA$]')
     plt.ylim(-err_lim, err_lim)
     plt.xlim(ll.min(), ll.max())
     plt.legend(loc='lower right')
+    
+    plt.figure(3, figsize=(6, 7))
+    l_norm = 5635.0 #AA
+    i_norm = find_nearest_index(ll, l_norm)
+    signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
+    noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
+    plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
+    plt.colorbar()
+    plt.gca().set_aspect('equal')
+    plt.xlim(-1.5, 1.5)
+    plt.ylim(-2.5, 2.5)
+    plt.xlabel(r'R. A. [arcsec]')
+    plt.ylabel(r'dec. [arcsec]')
+    plt.title(r'%s - S/N at $5635\,\AA$' % galaxy_id)
     plt.show()
+    
 
 
 def filter_spectra(fwhm, ll, flux):
@@ -163,6 +182,5 @@ f_res_filt = filter_spectra(15.0, ll, f_res)
 f_err = rms_box(100.0, ll, f_res_filt, threshold=0.5)
 
 center = d3d.center
-x_slice = center[2]
 
-plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, x_slice)
+plot_spectra(f_obs, f_syn, f_res, f_res_filt, f_err, ll, yy, xx, galaxy_id, center)

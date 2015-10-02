@@ -33,6 +33,7 @@ def plot_age(at_flux, yy, xx, galaxy_id):
     
     plt.subplot(111)
     plt.pcolormesh(xx, yy, at_flux, cmap='cubehelix_r')
+    plt.gca().set_aspect('equal')
     plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
     plt.xlabel(r'r.a. [arcsec]')
