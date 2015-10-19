@@ -246,6 +246,12 @@ class D3DFitsCube(object):
     @property
     def popmu_cor(self):
         return self._getExtensionData(self._ext_popmu_cor)
+    
+    
+    @property
+    def at_flux(self):
+        popx = self.popx
+        return (popx * np.log10(self.popage_base)).sum(axis=2) / popx.sum(axis=2)
 
     
     @property
