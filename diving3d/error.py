@@ -49,7 +49,7 @@ def rms_box_spectra(ll, flux, width=100.0, threshold=0.5):
     assuming the mean value of the spectra is zero.
     '''
     dl = ll[1] - ll[0]
-    r = np.ceil(width / dl / 2.0) 
+    r = int(np.ceil(width / dl / 2.0)) 
     Nl = flux.shape[0]
     rms = np.ma.masked_all(flux.shape)
     for l in xrange(Nl):
