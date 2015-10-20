@@ -5,6 +5,7 @@ Created on 26/06/2015
 '''
 from .tables import write_starlight_input
 from .cube import D3DFitsCube
+from .error import estimate_error
 from . import flags
 
 from astropy import log
@@ -156,7 +157,7 @@ class SynthesisAdapter(object):
         makedirs(log_dir)
         
         
-    def _getGrid(self, y, x1, x2):
+    def _getGrid(self, y, x1, x2, use_errors_flags):
         grid = self._gridTemplate.copy()
         if x1 != x2:
             grid.name = 'grid_%s_%04d_%04d-%04d' % (self.galaxyId, y, x1, x2)
@@ -167,7 +168,7 @@ class SynthesisAdapter(object):
         
         for x in xrange(x1, x2):
             log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
-            run = self._createRun(x, y)
+            run = self._createRun(x, y, use_errors_flags)
             if run is not None:
                 grid.runs.append(run)
             else:
@@ -175,7 +176,7 @@ class SynthesisAdapter(object):
         return grid
 
 
-    def _createRun(self, x, y):
+    def _createRun(self, x, y, use_errors_flags):
         if self.spatialMask[y, x]:
             self.f_flag[:, y, x] |= flags.starlight_masked_pix
             return None
@@ -185,7 +186,7 @@ class SynthesisAdapter(object):
         new_run.outFile = '%s_%04d_%04d.out' % (self.galaxyId, y, x)
         new_run.x = x
         new_run.y = y
-        if self.f_flag is not None and self.f_err is not None:
+        if use_errors_flags:
             write_starlight_input(self.l_obs, self.f_obs[:, y, x], self.f_err[:, y, x],
                                       self.f_flag[:, y, x], path.join(self.obsDir, new_run.inFile))
         else:
@@ -194,14 +195,14 @@ class SynthesisAdapter(object):
         return new_run
 
 
-    def gridIterator(self, chunk_size):
+    def gridIterator(self, chunk_size, use_errors_flags=True):
         Nx = self.f_obs.shape[2]
         Ny = self.f_obs.shape[1]
         for y in xrange(0, Ny, 1):
             for x in xrange(0, Nx, chunk_size):
                 x2 = x + chunk_size
                 if x2 > Nx: x2 = Nx
-                yield self._getGrid(y, x, x2)
+                yield self._getGrid(y, x, x2, use_errors_flags)
 
 
     def createSynthesisCubes(self, pop_len):
@@ -237,6 +238,13 @@ class SynthesisAdapter(object):
             for k in self._d3d._ext_keyword_list:
                 keyword_data[k][y, x] = ts.keywords[k]
     
+    
+    def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):    
+        f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_flag > 0)
+        spatial_mask = self.spatialMask
+        self.f_err[...] = estimate_error(self.l_obs, f_res, spatial_mask, smooth_fwhm, box_width)
+            
+            
     def writeCube(self, filename, overwrite=False):
         self._d3d.write(filename, overwrite=overwrite)
         

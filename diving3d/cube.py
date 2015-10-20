@@ -25,6 +25,7 @@ class D3DFitsCube(object):
     _masterlist_prefix = 'MASTERLIST'
 
     _ext_f_obs = 'PRIMARY'
+    _ext_f_err = 'F_ERR'
     _ext_f_syn = 'F_SYN'
     _ext_f_wei = 'F_WEI'
     _ext_f_flag = 'F_FLAG'
@@ -132,6 +133,7 @@ class D3DFitsCube(object):
     
     def createSynthesisCubes(self, pop_len):
         self._pop_len = pop_len
+        self._addExtension(self._ext_f_err, overwrite=True)
         self._addExtension(self._ext_f_syn, overwrite=True)
         self._addExtension(self._ext_f_wei, overwrite=True)
         self._addExtension(self._ext_popage_base, kind='population', overwrite=True)
@@ -206,6 +208,11 @@ class D3DFitsCube(object):
     @property
     def f_obs(self):
         return self._getExtensionData(self._ext_f_obs)
+    
+
+    @property
+    def f_err(self):
+        return self._getExtensionData(self._ext_f_err)
     
 
     @property

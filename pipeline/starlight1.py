@@ -30,6 +30,14 @@ def parse_args():
                         help='Timeout of starlight processes, in minutes.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
+    parser.add_argument('--use-error-flags', dest='useErrorsFlags', action='store_true',
+                        help='Use errors and flags in this run.')
+    parser.add_argument('--update-errors', dest='updateErrors', action='store_true',
+                        help='Calculate errors from residual and update f_err extension.')
+    parser.add_argument('--error-smooth-fwhm', dest='errorSmoothFwhm', type=float, default=15.0,
+                        help='FWHM (in Angstroms) of the gaussian used to smooth and rectify the residual before estimating the error.')
+    parser.add_argument('--error-box-width', dest='errorBoxWidth', type=float, default=100.0,
+                        help='Running box width (in Angstroms) used to calculate the RMS of the residual, to estimate the error.')
     parser.add_argument('--debug', dest='debug', action='store_true',
                         help='Debug mode. Fake starlight run.')
 
@@ -62,13 +70,12 @@ temp_cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
 starlight_dir = cfg.get('starlight', 'starlight_dir')
 grid_template = cfg.get('starlight', 'grid_template')
 
-
 print 'Loading cube.'
 sa = SynthesisAdapter(cube, starlight_dir, grid_template)
 
 print 'Starting starlight runner.'
 runner = sr.StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
-for grid in sa.gridIterator(chunk_size=args.chunkSize):
+for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorsFlags):
     print 'Dispatching grid.'
     runner.addGrid(grid)
 
@@ -83,6 +90,10 @@ sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
 for grid in output_grids:
     print 'Reading results of grid %s.' % grid.name
     sa.updateSynthesis(grid)
+    
+if args.updateErrors:
+    print 'Estimating errors from the starlight residual.'
+    sa.updateErrorsFromResidual(args.errorSmoothFwhm, args.errorBoxWidth)
     
 print 'Saving cube to %s' % temp_cube
 sa.writeCube(temp_cube, args.overwrite)
