@@ -9,7 +9,6 @@ from diving3d.tables import get_galaxy_id, get_wavelength_mask
 from diving3d.wcs import find_nearest_index
 
 import numpy as np
-from diving3d.error import estimate_error
 
 def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, center):
     import matplotlib.pyplot as plt
@@ -136,14 +135,13 @@ center = d3d.center
 
 is_eline = get_wavelength_mask(maskfile, ll)
 flagged = d3d.f_flag > 0
-flagged[is_eline] = True
 spatial_mask = d3d.getSpatialMask()
 
 f_obs = np.ma.array(d3d.f_obs * d3d.flux_unit, mask=flagged)
 f_syn = np.ma.array(d3d.f_syn * d3d.flux_unit, mask=flagged)
+f_err = d3d.f_err * d3d.flux_unit
 f_res = f_obs - f_syn
-f_err = estimate_error(ll, f_res, spatial_mask, smooth_fwhm=15.0, box_width=100.0)
 
 at_flux = np.ma.array(d3d.at_flux, mask=spatial_mask)
 
-plot_spectra(f_obs, f_syn, f_res, f_err.data, at_flux, ll, yy, xx, galaxy_id, center)
+plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, center)

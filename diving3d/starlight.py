@@ -240,7 +240,7 @@ class SynthesisAdapter(object):
     
     
     def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):    
-        f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_flag > 0)
+        f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_wei <= 0)
         spatial_mask = self.spatialMask
         self.f_err[...] = estimate_error(self.l_obs, f_res, spatial_mask, smooth_fwhm, box_width)
             
