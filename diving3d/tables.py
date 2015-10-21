@@ -104,7 +104,7 @@ def get_wavelength_mask(maskfile, wl, z=0.0, dest='rest'):
         l_low, l_upp, line_w, _ = t[i]
         if line_w > 0.0: continue
         if z > 0.0:
-            l_low, l_upp = apply_redshift([l_low, l_upp], z, dest)
+            l_low, l_upp = apply_redshift(np.array([l_low, l_upp]), z, dest)
         masked_wl |= (wl > l_low) & (wl < l_upp)
     return masked_wl
 

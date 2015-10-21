@@ -114,9 +114,9 @@ def apply_redshift(l, z, dest='rest'):
         ``l_red`` will have the shape ``l.shape + z.shape``.
     '''
     if dest == 'rest':
-        op = lambda x, y: x * y
-    elif dest == 'observed':
         op = lambda x, y: x / y
+    elif dest == 'observed':
+        op = lambda x, y: x * y
         
     if np.array(z).shape == ():
         return op(l, 1. + z)
@@ -125,7 +125,7 @@ def apply_redshift(l, z, dest='rest'):
 
 
 def velocity2redshift(v):
-    c = 299792458.0 # km/s
+    c = 299792.458 # km/s
     return v / c
 
 

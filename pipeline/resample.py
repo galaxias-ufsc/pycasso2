@@ -60,8 +60,8 @@ kwargs = dict(l_ini=cfg.getfloat('dimensions', 'l_ini'),
 print 'Loading cubes %s and %s.' % (cube, cube_obs)
 d3d = D3DFitsCube.from_reduced(cube, cube_obs, **kwargs)
 
-print 'Applying gap and telluric lines masks.'
 z = velocity2redshift(ml['V_hel'])
+print 'Applying gap and telluric lines masks (v = %.1f km/s, z = %f)' % (ml['V_hel'], z)
 gap_mask_file = gap_mask_template % ml['grating']
 gap_mask = get_wavelength_mask(gap_mask_file, d3d.l_obs, z, dest='rest')
 telluric_mask = get_wavelength_mask(telluric_mask_file, d3d.l_obs, z, dest='rest')
