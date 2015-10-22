@@ -125,7 +125,14 @@ class SynthesisAdapter(object):
     def _readData(self):
         self.l_obs = self._d3d.l_obs
         self.f_obs = self._d3d.f_obs
-        self.f_err = None
+        try:
+            # FIXME: remove this hack used for old cubes.
+            self.f_err = self._d3d.f_err
+        except:
+            log.warn('Creating f_err for old cube.')
+            self._d3d._addExtension(self._d3d._ext_f_err, overwrite=True)
+            self.f_err = self._d3d.f_err
+
         self.f_flag = self._d3d.f_flag
         self.spatialMask = self._d3d.getSpatialMask(0.5)
     
