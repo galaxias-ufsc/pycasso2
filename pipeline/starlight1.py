@@ -30,6 +30,8 @@ def parse_args():
                         help='Timeout of starlight processes, in minutes.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
+    parser.add_argument('--use-custom-masks', dest='useCustomMasks', action='store_true',
+                        help='Use Custom per-spaxel emission line masks.')
     parser.add_argument('--use-error-flags', dest='useErrorsFlags', action='store_true',
                         help='Use errors and flags in this run.')
     parser.add_argument('--update-errors', dest='updateErrors', action='store_true',
@@ -67,15 +69,14 @@ cube_out_dir = cfg.get('path', 'cubes_out')
 masterlist = cfg.get('tables', 'masterlist')
 cube = path.join(cube_out_dir, '%s_resampled.fits' % galaxy_id)
 temp_cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
-starlight_dir = cfg.get('starlight', 'starlight_dir')
-grid_template = cfg.get('starlight', 'grid_template')
 
 print 'Loading cube.'
-sa = SynthesisAdapter(cube, starlight_dir, grid_template)
+sa = SynthesisAdapter(cube, cfg)
 
 print 'Starting starlight runner.'
 runner = sr.StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
-for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorsFlags):
+for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorsFlags,
+                            use_custom_masks=args.useCustomMasks):
     print 'Dispatching grid.'
     runner.addGrid(grid)
 

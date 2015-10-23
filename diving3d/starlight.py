@@ -113,12 +113,15 @@ def makedirs(the_path):
 
 class SynthesisAdapter(object):
     
-    def __init__(self, cube, starlight_dir, grid_template_path):
-        self.starlightDir = starlight_dir
+    def __init__(self, cube, cfg):
+        self.starlightDir = cfg.get('starlight', 'starlight_dir')
+        self._arqMaskFormat = cfg.get('starlight', 'arq_mask_format')
+        self._inFileFormat = cfg.get('starlight', 'arq_obs_format')
+        self._outFileFormat = cfg.get('starlight', 'arq_out_format')
         self._d3d = D3DFitsCube(cube)
         self.galaxyId = self._d3d.id
         self._readData()
-        self._gridTemplate, self._runTemplate = self._getTemplates(grid_template_path)
+        self._gridTemplate, self._runTemplate = self._getTemplates(cfg)
         self._createDirs()
         
     
@@ -137,19 +140,40 @@ class SynthesisAdapter(object):
         self.spatialMask = self._d3d.getSpatialMask(0.5)
     
         
-    def _getTemplates(self, template_path=None):
-        if template_path is None:
-            template_path = path.join(self.starlightDir, 'grid.template.in')
-        grid = D3DGridFile.fromFile(self.starlightDir, template_path)
-        grid.setObsDir(path.join(grid.obsDir, self.galaxyId))
-        grid.setOutDir(path.join(grid.outDir, self.galaxyId))
+    def _getTemplates(self, cfg):
+        grid = D3DGridFile(self.starlightDir)
+        grid.fluxUnit = float(cfg.get('general', 'flux_unit'))
+
+        grid.setBasesDir(cfg.get('starlight', 'base_dir'))
+        obs_dir = path.join(cfg.get('starlight', 'obs_dir'), self.galaxyId)
+        grid.setObsDir(obs_dir)
+        out_dir = path.join(cfg.get('starlight', 'out_dir'), self.galaxyId)
+        grid.setOutDir(out_dir)
         grid.setLogDir(path.join(grid.logDir, self.galaxyId))
-        grid.fluxUnit = self._d3d.flux_unit
-        grid.lLow_Syn = self.l_obs.min()
-        grid.lUpp_Syn = self.l_obs.max()
-        run = D3DGridRun.from_run(grid.runs.pop())
-        run.lumDistanceMpc = self._d3d.masterlist['DL']
-        grid.clearRuns()
+        
+        grid.setMaskDir(cfg.get('starlight', 'mask_dir'))
+        grid.setEtcDir(cfg.get('starlight', 'etc_dir'))
+        grid.randPhone = int(cfg.get('starlight', 'rand_seed'))
+        grid.lLow_SN = float(cfg.get('starlight', 'llow_SN'))
+        grid.lUpp_SN = float(cfg.get('starlight', 'lupp_SN'))
+        grid.lLow_Syn = float(cfg.get('starlight', 'Olsyn_ini'))
+        grid.lUpp_Syn = float(cfg.get('starlight', 'Olsyn_fin'))
+        grid.dLambda = float(cfg.get('starlight', 'Odlsyn'))
+        grid.fScale_Chi2 = float(cfg.get('starlight', 'fscale_chi2'))
+        grid.fitFix = cfg.get('starlight', 'fit_fix')
+        grid.isPhoEnabled = int(cfg.get('starlight', 'IsPHOcOn'))
+        grid.isQHREnabled = int(cfg.get('starlight', 'IsQHRcOn'))
+        grid.isFIREnabled = int(cfg.get('starlight', 'IsFIRcOn'))
+        
+        run = D3DGridRun()
+        run.configFile = cfg.get('starlight', 'arq_config')
+        run.baseFile = cfg.get('starlight', 'arq_base')
+        run.maskFile = cfg.get('starlight', 'arq_mask')
+        run.reddening = cfg.get('starlight', 'red_law')
+        run.etcInfoFile = cfg.get('starlight', 'arq_etc')
+        run.v0_Ini = float(cfg.get('starlight', 'v0_ini'))
+        run.vd_Ini = float(cfg.get('starlight', 'vd_ini'))
+
         return grid, run
 
     
@@ -164,7 +188,7 @@ class SynthesisAdapter(object):
         makedirs(log_dir)
         
         
-    def _getGrid(self, y, x1, x2, use_errors_flags):
+    def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks):
         grid = self._gridTemplate.copy()
         if x1 != x2:
             grid.name = 'grid_%s_%04d_%04d-%04d' % (self.galaxyId, y, x1, x2)
@@ -172,10 +196,16 @@ class SynthesisAdapter(object):
             grid.name = 'grid_%04d_%04d' % (self.galaxyId, y, x1)
         grid.randPhone = -958089828
         # grid.seed()
+        if use_errors_flags:
+            grid.errSpecAvail = 1
+            grid.flagSpecAvail = 1
+        else:
+            grid.errSpecAvail = 0
+            grid.flagSpecAvail = 0
         
         for x in xrange(x1, x2):
             log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
-            run = self._createRun(x, y, use_errors_flags)
+            run = self._createRun(x, y, use_errors_flags, use_custom_masks)
             if run is not None:
                 grid.runs.append(run)
             else:
@@ -183,14 +213,16 @@ class SynthesisAdapter(object):
         return grid
 
 
-    def _createRun(self, x, y, use_errors_flags):
+    def _createRun(self, x, y, use_errors_flags, use_custom_masks):
         if self.spatialMask[y, x]:
             self.f_flag[:, y, x] |= flags.starlight_masked_pix
             return None
         
         new_run = self._runTemplate.copy()
-        new_run.inFile = '%s_%04d_%04d.in' % (self.galaxyId, y, x)
-        new_run.outFile = '%s_%04d_%04d.out' % (self.galaxyId, y, x)
+        new_run.inFile = self._inFileFormat % (self.galaxyId, y, x)
+        new_run.outFile = self._outFileFormat % (self.galaxyId, y, x)
+        if use_custom_masks:
+            new_run.maskFile = self._arqMaskFormat % (self.galaxyId, y, x)
         new_run.x = x
         new_run.y = y
         if use_errors_flags:
@@ -202,14 +234,14 @@ class SynthesisAdapter(object):
         return new_run
 
 
-    def gridIterator(self, chunk_size, use_errors_flags=True):
+    def gridIterator(self, chunk_size, use_errors_flags=True, use_custom_masks=False):
         Nx = self.f_obs.shape[2]
         Ny = self.f_obs.shape[1]
         for y in xrange(0, Ny, 1):
-            for x in xrange(0, Nx, chunk_size):
-                x2 = x + chunk_size
+            for x1 in xrange(0, Nx, chunk_size):
+                x2 = x1 + chunk_size
                 if x2 > Nx: x2 = Nx
-                yield self._getGrid(y, x, x2, use_errors_flags)
+                yield self._getGrid(y, x1, x2, use_errors_flags, use_custom_masks)
 
 
     def createSynthesisCubes(self, pop_len):

@@ -122,10 +122,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     plt.show()
     
 
-
 cube = 'data/cubes_out/T001_resam_synth1.fits'
-maskfile = 'data/starlight/masks/Masks.EmLines.SDSS.gm'
-
 galaxy_id = get_galaxy_id(cube)
 d3d = D3DFitsCube(cube)
 xx = d3d.x_coords
@@ -133,7 +130,6 @@ yy = d3d.y_coords
 ll = d3d.l_obs
 center = d3d.center
 
-is_eline = get_wavelength_mask(maskfile, ll)
 flagged = d3d.f_flag > 0
 spatial_mask = d3d.getSpatialMask()
 
