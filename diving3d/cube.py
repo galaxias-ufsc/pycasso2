@@ -93,6 +93,7 @@ class D3DFitsCube(object):
         d3dcube = cls()
         d3dcube._initFits(f_obs, header)
         d3dcube._addExtension(cls._ext_f_flag, data=f_flag, kind='spectra')
+        d3dcube._addExtension(cls._ext_f_err, data=np.zeros_like(f_obs), overwrite=True)
         
         d3dcube._saveMasterList(ml)
         d3dcube._populateMasterList()
@@ -133,7 +134,6 @@ class D3DFitsCube(object):
     
     def createSynthesisCubes(self, pop_len):
         self._pop_len = pop_len
-        self._addExtension(self._ext_f_err, overwrite=True)
         self._addExtension(self._ext_f_syn, overwrite=True)
         self._addExtension(self._ext_f_wei, overwrite=True)
         self._addExtension(self._ext_popage_base, kind='population', overwrite=True)
@@ -159,12 +159,10 @@ class D3DFitsCube(object):
             data = np.zeros(shape, dtype=dtype)
         if self._hasExtension(name):
             if not overwrite:
-                log.warn('Tried to create extension %s but it already exists.' % name)
+                raise Exception('Tried to create extension %s but it already exists.' % name)
             else:
-                log.warn('Overwriting existing extension %s.' % name)
-                ext_data = self._getExtensionData(name)
-                ext_data[...] = data
-            return
+                log.warn('Deleting existing extension %s.' % name)
+                self._delExtension(name)
         imhdu = fits.ImageHDU(data, name=name)
         self._setExtensionWCS(imhdu, kind)
         self._HDUList.append(imhdu)
@@ -197,6 +195,12 @@ class D3DFitsCube(object):
     
     def _getExtensionData(self, name):
         return self._HDUList[name].data
+    
+    
+    def _delExtension(self, name):
+        if not self._hasExtension(name):
+            raise Exception('Extension %s not found.' % name)
+        del self._HDUList[name]
     
     
     def getSynthExtension(self, name):

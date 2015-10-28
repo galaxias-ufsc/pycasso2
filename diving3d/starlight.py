@@ -113,15 +113,15 @@ def makedirs(the_path):
 
 class SynthesisAdapter(object):
     
-    def __init__(self, cube, cfg):
-        self.starlightDir = cfg.get('starlight', 'starlight_dir')
-        self._arqMaskFormat = cfg.get('starlight', 'arq_mask_format')
-        self._inFileFormat = cfg.get('starlight', 'arq_obs_format')
-        self._outFileFormat = cfg.get('starlight', 'arq_out_format')
+    def __init__(self, cube, cfg, key='starlight'):
+        self.starlightDir = cfg.get(key, 'starlight_dir')
+        self._arqMaskFormat = cfg.get(key, 'arq_mask_format')
+        self._inFileFormat = cfg.get(key, 'arq_obs_format')
+        self._outFileFormat = cfg.get(key, 'arq_out_format')
         self._d3d = D3DFitsCube(cube)
         self.galaxyId = self._d3d.id
         self._readData()
-        self._gridTemplate, self._runTemplate = self._getTemplates(cfg)
+        self._gridTemplate, self._runTemplate = self._getTemplates(cfg, key)
         self._createDirs()
         
     
@@ -140,39 +140,39 @@ class SynthesisAdapter(object):
         self.spatialMask = self._d3d.getSpatialMask(0.5)
     
         
-    def _getTemplates(self, cfg):
+    def _getTemplates(self, cfg, key):
         grid = D3DGridFile(self.starlightDir)
         grid.fluxUnit = float(cfg.get('general', 'flux_unit'))
 
-        grid.setBasesDir(cfg.get('starlight', 'base_dir'))
-        obs_dir = path.join(cfg.get('starlight', 'obs_dir'), self.galaxyId)
+        grid.setBasesDir(cfg.get(key, 'base_dir'))
+        obs_dir = path.join(cfg.get(key, 'obs_dir'), self.galaxyId)
         grid.setObsDir(obs_dir)
-        out_dir = path.join(cfg.get('starlight', 'out_dir'), self.galaxyId)
+        out_dir = path.join(cfg.get(key, 'out_dir'), self.galaxyId)
         grid.setOutDir(out_dir)
         grid.setLogDir(path.join(grid.logDir, self.galaxyId))
         
-        grid.setMaskDir(cfg.get('starlight', 'mask_dir'))
-        grid.setEtcDir(cfg.get('starlight', 'etc_dir'))
-        grid.randPhone = int(cfg.get('starlight', 'rand_seed'))
-        grid.lLow_SN = float(cfg.get('starlight', 'llow_SN'))
-        grid.lUpp_SN = float(cfg.get('starlight', 'lupp_SN'))
-        grid.lLow_Syn = float(cfg.get('starlight', 'Olsyn_ini'))
-        grid.lUpp_Syn = float(cfg.get('starlight', 'Olsyn_fin'))
-        grid.dLambda = float(cfg.get('starlight', 'Odlsyn'))
-        grid.fScale_Chi2 = float(cfg.get('starlight', 'fscale_chi2'))
-        grid.fitFix = cfg.get('starlight', 'fit_fix')
-        grid.isPhoEnabled = int(cfg.get('starlight', 'IsPHOcOn'))
-        grid.isQHREnabled = int(cfg.get('starlight', 'IsQHRcOn'))
-        grid.isFIREnabled = int(cfg.get('starlight', 'IsFIRcOn'))
+        grid.setMaskDir(cfg.get(key, 'mask_dir'))
+        grid.setEtcDir(cfg.get(key, 'etc_dir'))
+        grid.randPhone = int(cfg.get(key, 'rand_seed'))
+        grid.lLow_SN = float(cfg.get(key, 'llow_SN'))
+        grid.lUpp_SN = float(cfg.get(key, 'lupp_SN'))
+        grid.lLow_Syn = float(cfg.get(key, 'Olsyn_ini'))
+        grid.lUpp_Syn = float(cfg.get(key, 'Olsyn_fin'))
+        grid.dLambda = float(cfg.get(key, 'Odlsyn'))
+        grid.fScale_Chi2 = float(cfg.get(key, 'fscale_chi2'))
+        grid.fitFix = cfg.get(key, 'fit_fix')
+        grid.isPhoEnabled = int(cfg.get(key, 'IsPHOcOn'))
+        grid.isQHREnabled = int(cfg.get(key, 'IsQHRcOn'))
+        grid.isFIREnabled = int(cfg.get(key, 'IsFIRcOn'))
         
         run = D3DGridRun()
-        run.configFile = cfg.get('starlight', 'arq_config')
-        run.baseFile = cfg.get('starlight', 'arq_base')
-        run.maskFile = cfg.get('starlight', 'arq_mask')
-        run.reddening = cfg.get('starlight', 'red_law')
-        run.etcInfoFile = cfg.get('starlight', 'arq_etc')
-        run.v0_Ini = float(cfg.get('starlight', 'v0_ini'))
-        run.vd_Ini = float(cfg.get('starlight', 'vd_ini'))
+        run.configFile = cfg.get(key, 'arq_config')
+        run.baseFile = cfg.get(key, 'arq_base')
+        run.maskFile = cfg.get(key, 'arq_mask')
+        run.reddening = cfg.get(key, 'red_law')
+        run.etcInfoFile = cfg.get(key, 'arq_etc')
+        run.v0_Ini = float(cfg.get(key, 'v0_ini'))
+        run.vd_Ini = float(cfg.get(key, 'vd_ini'))
 
         return grid, run
 

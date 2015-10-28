@@ -32,9 +32,7 @@ def parse_args():
                         help='Overwrite output.')
     parser.add_argument('--use-custom-masks', dest='useCustomMasks', action='store_true',
                         help='Use Custom per-spaxel emission line masks.')
-    parser.add_argument('--use-error-flags', dest='useErrorsFlags', action='store_true',
-                        help='Use errors and flags in this run.')
-    parser.add_argument('--update-errors', dest='updateErrors', action='store_true',
+    parser.add_argument('--estimate-error', dest='estimateError', action='store_true',
                         help='Calculate errors from residual and update f_err extension.')
     parser.add_argument('--error-smooth-fwhm', dest='errorSmoothFwhm', type=float, default=15.0,
                         help='FWHM (in Angstroms) of the gaussian used to smooth and rectify the residual before estimating the error.')
@@ -67,34 +65,42 @@ else:
 
 cube_out_dir = cfg.get('path', 'cubes_out')
 masterlist = cfg.get('tables', 'masterlist')
-cube = path.join(cube_out_dir, '%s_resampled.fits' % galaxy_id)
-temp_cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
 
-print 'Loading cube.'
-sa = SynthesisAdapter(cube, cfg)
+if args.estimateError:
+    key = 'starlight_estimate_error'
+    cube = path.join(cube_out_dir, '%s_resampled.fits' % galaxy_id)
+    out_cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
+    use_errors_flags = False
+else:
+    key = 'starlight'
+    cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
+    out_cube = path.join(cube_out_dir, '%s_resam_synth2.fits' % galaxy_id)
+    use_errors_flags = True
+
+print 'Loading cube from %s.' % cube
+sa = SynthesisAdapter(cube, cfg, key)
 
 print 'Starting starlight runner.'
 runner = sr.StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
-for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorsFlags,
+for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=use_errors_flags,
                             use_custom_masks=args.useCustomMasks):
     print 'Dispatching grid.'
     runner.addGrid(grid)
 
 print 'Waiting jobs completion.'
 runner.wait()
-
-print 'Creating synthesis cubes.'
 output_grids = runner.getOutputGrids()
 
+print 'Creating synthesis cubes.'
 sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
 
 for grid in output_grids:
     print 'Reading results of grid %s.' % grid.name
     sa.updateSynthesis(grid)
     
-if args.updateErrors:
+if args.estimateError:
     print 'Estimating errors from the starlight residual.'
     sa.updateErrorsFromResidual(args.errorSmoothFwhm, args.errorBoxWidth)
     
-print 'Saving cube to %s' % temp_cube
-sa.writeCube(temp_cube, args.overwrite)
+print 'Saving cube to %s.' % out_cube
+sa.writeCube(out_cube, args.overwrite)

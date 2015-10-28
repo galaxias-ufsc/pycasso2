@@ -5,12 +5,13 @@ Created on 23/06/2015
 '''
 
 from diving3d.cube import D3DFitsCube
-from diving3d.tables import get_galaxy_id, get_wavelength_mask
 from diving3d.wcs import find_nearest_index
 
 import numpy as np
+import sys
+from matplotlib.ticker import MultipleLocator
 
-def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, center):
+def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy_id, suffix):
     import matplotlib.pyplot as plt
         
     plotpars = {'legend.fontsize': 8,
@@ -43,7 +44,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     plt.ylim(yy.min(), yy.max())
     plt.gca().xaxis.set_ticklabels([])
     plt.xlim(ll.min(), ll.max())
-    plt.title(r'%s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (galaxy_id, xx[x_slice]))
+    plt.title(r'%s %s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (galaxy_id, suffix, xx[x_slice]))
     plt.colorbar(ticks=[0.0, 0.5e-16, 1.0e-16, 1.5e-16, 2.0e-16])
     
     plt.subplot(312)
@@ -64,7 +65,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     plt.title('residual [%]')
     plt.colorbar(ticks=[-5, -2.5, 0, 2.5, 5])
     plt.gcf().set_tight_layout(True)
-    #plt.savefig('posdoc/T001_slice.png', dpi=300)
+    plt.savefig('data/plots/%s_%s_slice.png' % (galaxy_id, suffix), dpi=300)
     
     plt.figure(2, figsize=(5, 5))
     plt.subplot(211)
@@ -78,7 +79,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     plt.xlim(ll.min(), ll.max())
     plt.gca().xaxis.set_ticklabels([])
     plt.legend(loc='center right')
-    plt.title('%s - center spaxel' % galaxy_id)
+    plt.title('%s %s - center spaxel' % (galaxy_id, suffix))
 
     plt.subplot(212)
     r = f_res[:, center[1], center[2]]
@@ -92,7 +93,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     plt.xlim(ll.min(), ll.max())
     plt.legend(loc='lower right')
     plt.gcf().set_tight_layout(True)
-    #plt.savefig('posdoc/T001_center.pdf')
+    plt.savefig('data/plots/%s_%s_center.pdf' % (galaxy_id, suffix))
     
     plt.figure(3, figsize=(4, 5))
     l_norm = 5635.0 #AA
@@ -100,14 +101,14 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
     noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
     plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
-    plt.colorbar(ticks=[30, 40, 50, 60, 70, 80, 90, 100])
+    plt.colorbar(ticks=MultipleLocator(10))
     plt.gca().set_aspect('equal')
     plt.xlim(-1.5, 1.5)
     plt.ylim(-2.5, 2.5)
     plt.xlabel(r'R. A. [arcsec]')
     plt.ylabel(r'dec. [arcsec]')
-    plt.title(r'%s - S/N at $5635\,\AA$' % galaxy_id)
-    #plt.savefig('posdoc/T001_sn.pdf')
+    plt.title(r'%s %s - S/N at $5635\,\AA$' % (galaxy_id, suffix))
+    plt.savefig('data/plots/%s_%s_sn.pdf' % (galaxy_id, suffix))
 
     plt.figure(5, figsize=(4, 5))
     plt.pcolormesh(xx, yy, at_flux, cmap='cubehelix_r')
@@ -117,13 +118,13 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, cen
     plt.ylim(-2.5, 2.5)
     plt.xlabel(r'R. A. [arcsec]')
     plt.ylabel(r'dec. [arcsec]')
-    plt.title(r'%s - $\langle \log t \rangle_\mathrm{flux}\ [\mathrm{Gyr}]$' % galaxy_id)
-    #plt.savefig('posdoc/T001_atflux.pdf')
-    plt.show()
+    plt.title(r'%s %s - $\langle \log t \rangle_\mathrm{flux}\ [\mathrm{Gyr}]$' % (galaxy_id, suffix))
+    plt.savefig('data/plots/%s_%s_atflux.pdf' % (galaxy_id, suffix))
+    #plt.show()
     
-
-cube = 'data/cubes_out/T001_resam_synth1.fits'
-galaxy_id = get_galaxy_id(cube)
+galaxy_id = sys.argv[1]
+suffix = sys.argv[2]
+cube = 'data/cubes_out/%s_%s.fits' % (galaxy_id, suffix)
 d3d = D3DFitsCube(cube)
 xx = d3d.x_coords
 yy = d3d.y_coords
@@ -140,4 +141,4 @@ f_res = f_obs - f_syn
 
 at_flux = np.ma.array(d3d.at_flux, mask=spatial_mask)
 
-plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, galaxy_id, center)
+plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy_id, suffix)
