@@ -173,6 +173,7 @@ class SynthesisAdapter(object):
         run.etcInfoFile = cfg.get(key, 'arq_etc')
         run.v0_Ini = float(cfg.get(key, 'v0_ini'))
         run.vd_Ini = float(cfg.get(key, 'vd_ini'))
+        run.lumDistanceMpc = self._d3d.masterlist['DL']
 
         return grid, run
 
