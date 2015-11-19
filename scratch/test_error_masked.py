@@ -125,21 +125,16 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     
 galaxy_id = sys.argv[1]
 suffix = sys.argv[2]
-cube = 'data/cubes_out/%s_%s.fits' % (galaxy_id, suffix)
+cube = '/Volumes/data/diving3d/cubes_out/%s_%s.fits' % (galaxy_id, suffix)
 d3d = D3DFitsCube(cube)
 xx = d3d.x_coords
 yy = d3d.y_coords
 ll = d3d.l_obs
 center = d3d.center
 
-flagged = d3d.f_flag > 0
-spatial_mask = d3d.getSpatialMask(flags.starlight_failed_run)
-
-f_obs = np.ma.array(d3d.f_obs * d3d.flux_unit, mask=flagged)
-f_syn = np.ma.array(d3d.f_syn * d3d.flux_unit, mask=flagged)
+f_obs = d3d.f_obs * d3d.flux_unit
+f_syn = d3d.f_syn * d3d.flux_unit
 f_err = d3d.f_err * d3d.flux_unit
 f_res = f_obs - f_syn
 
-at_flux = np.ma.array(d3d.at_flux, mask=spatial_mask)
-
-plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy_id, suffix)
+plot_spectra(f_obs, f_syn, f_res, f_err, d3d.at_flux, ll, yy, xx, center, galaxy_id, suffix)

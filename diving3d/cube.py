@@ -5,7 +5,9 @@ Created on 22/06/2015
 '''
 
 from .resampling import resample_spectra, reshape_spectra
-from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix
+from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix, \
+get_pixel_area_srad, get_pixel_length_rad
+from . import flags
 
 from astropy.io import fits
 from astropy import log
@@ -121,11 +123,17 @@ class D3DFitsCube(object):
             key = key.strip()
             self.masterlist[key] = self._header[hkey]
     
+
+    def _initMasks(self):
+        self.synthesisMask = self.getSpatialMask(flags.starlight_failed_run)
+        self.spectraMask = (self.f_flag & flags.no_obs) > 0
+    
     
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList[self._ext_f_obs].header
         self._populateMasterList()
+        self._initMasks()
         
         
     def write(self, filename, overwrite=False):
@@ -203,30 +211,41 @@ class D3DFitsCube(object):
         del self._HDUList[name]
     
     
-    def getSynthExtension(self, name):
-        if name not in self._ext_keyword_list:
-            raise Exception('%s is not a synthesis extension.' % name)
-        return self._getExtensionData(name)
+    def _getSynthExtension(self, name):
+        data = self._getExtensionData(name)
+        if data.ndim == 2:
+            data = np.ma.array(data, mask=self.synthesisMask)
+        if data.ndim == 3:
+            data = np.ma.array(data)
+            data[self.synthesisMask] = np.ma.masked
+        return data
     
     
     @property
     def f_obs(self):
-        return self._getExtensionData(self._ext_f_obs)
+        data = self._getExtensionData(self._ext_f_obs)
+        return np.ma.array(data, mask=self.spectraMask)
     
 
     @property
     def f_err(self):
-        return self._getExtensionData(self._ext_f_err)
+        data = self._getExtensionData(self._ext_f_err)
+        return np.ma.array(data, mask=self.spectraMask)
     
 
     @property
     def f_syn(self):
-        return self._getExtensionData(self._ext_f_syn)
+        data = self._getExtensionData(self._ext_f_syn)
+        data = np.ma.array(data)
+        data[:, self.synthesisMask] = np.ma.masked
+        return data
     
 
     @property
     def f_wei(self):
-        return self._getExtensionData(self._ext_f_wei)
+        data = self._getExtensionData(self._ext_f_wei)
+        data = np.ma.array(data)
+        data[:, self.synthesisMask] = np.ma.masked
     
 
     @property
@@ -236,28 +255,78 @@ class D3DFitsCube(object):
     
     @property
     def popage_base(self):
-        return self._getExtensionData(self._ext_popage_base)
+        return self._getSynthExtension(self._ext_popage_base)
 
     
     @property
     def popZ_base(self):
-        return self._getExtensionData(self._ext_popZ_base)
+        return self._getSynthExtension(self._ext_popZ_base)
 
     
     @property
     def popx(self):
-        return self._getExtensionData(self._ext_popx)
+        return self._getSynthExtension(self._ext_popx)
 
     
     @property
     def popmu_ini(self):
-        return self._getExtensionData(self._ext_popmu_ini)
+        return self._getSynthExtension(self._ext_popmu_ini)
 
     
     @property
     def popmu_cor(self):
-        return self._getExtensionData(self._ext_popmu_cor)
+        return self._getSynthExtension(self._ext_popmu_cor)
     
+    
+    @property
+    def pixelArea_pc2(self):
+        lum_dist_pc = self.masterlist['DL'] * 1e6
+        solid_angle = get_pixel_area_srad(self._header)
+        return solid_angle * lum_dist_pc * lum_dist_pc
+    
+    
+    @property
+    def pixelLength_pc(self):
+        lum_dist_pc = self.masterlist['DL'] * 1e6
+        angle = get_pixel_length_rad(self._header)
+        return angle * lum_dist_pc
+    
+    
+    @property
+    def Mcor_tot(self):
+        return self._getSynthExtension('MCOR_TOT')
+
+    
+    @property
+    def Mini_tot(self):
+        return self._getSynthExtension('MINI_TOT')
+
+    
+    @property
+    def Lobs_norm(self):
+        return self._getSynthExtension('LOBS_NORM')
+
+    
+    @property
+    def McorSD(self):
+        popmu_cor = self.popmu_cor.copy()
+        popmu_cor /= popmu_cor.sum(axis=2)[..., np.newaxis]
+        return popmu_cor * (self.Mcor_tot[..., np.newaxis] / self.pixelArea_pc2) 
+
+    
+    @property
+    def MiniSD(self):
+        popmu_ini = self.popmu_ini.copy()
+        popmu_ini /= popmu_ini.sum()
+        return popmu_ini * self.Mini_tot / self.pixelArea_pc2 
+
+    
+    @property
+    def LobnSD(self):
+        popx = self.popx.copy()
+        popx /= popx.sum()
+        return popx * self.Lobs_norm / self.pixelArea_pc2 
+
     
     @property
     def at_flux(self):
@@ -267,17 +336,17 @@ class D3DFitsCube(object):
     
     @property
     def A_V(self):
-        return self._getExtensionData('A_V')
+        return self._getSynthExtension('A_V')
 
     
     @property
     def v_0(self):
-        return self._getExtensionData('V_0')
+        return self._getSynthExtension('V_0')
     
     
     @property
     def v_d(self):
-        return self._getExtensionData('V_D')
+        return self._getSynthExtension('V_D')
     
     
     @property
@@ -315,13 +384,16 @@ class D3DFitsCube(object):
         return self.masterlist['NAME']
     
     
-    def getSpatialMask(self, threshold=0.5):
+    def getSpatialMask(self, flags, threshold=0.5):
         '''
         Return a spatial mask containing spaxels that have less than
         a given fraction of masked spectral pixels.
         
         Parameters
         ----------
+        flags : int
+            Flags to take into account when creating the mask
+            
         threshold : float, optional
             Fraction of spectral pixels that must be flagged
             in the spaxel for it to be masked.
@@ -333,5 +405,5 @@ class D3DFitsCube(object):
             A 2-d boolean image with the same x and y dimensions
             as the cube, where ``True`` means the pixel is masked.
         '''
-        flagged = (self.f_flag > 0).astype(int).sum(axis=0)
+        flagged = ((self.f_flag & flags) > 0).astype(int).sum(axis=0)
         return flagged > threshold * len(self.l_obs)

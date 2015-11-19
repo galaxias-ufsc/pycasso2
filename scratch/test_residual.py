@@ -8,6 +8,7 @@ from diving3d.cube import D3DFitsCube
 from diving3d.tables import get_galaxy_id, get_wavelength_mask
 from diving3d.resampling import gaussian1d_spectra, interp1d_spectra
 from diving3d.wcs import find_nearest_index
+from diving3d import flags
 
 import numpy as np
 
@@ -200,6 +201,6 @@ f_err = rms_box(100.0, ll, f_res_rect, threshold=0.5)
 
 center = d3d.center
 
-at_flux = np.ma.array(d3d.at_flux, mask=d3d.getSpatialMask())
+at_flux = np.ma.array(d3d.at_flux, mask=d3d.getSpatialMask(flags.starlight_failed_run))
 
 plot_spectra(f_obs, f_syn, f_res, f_res_rect, f_err, at_flux, ll, yy, xx, galaxy_id, center)

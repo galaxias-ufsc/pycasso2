@@ -262,7 +262,7 @@ class SynthesisAdapter(object):
 
         keyword_data = {}
         for k in self._d3d._ext_keyword_list:
-            keyword_data[k] = self._d3d.getSynthExtension(k)
+            keyword_data[k] = self._d3d._getSynthExtension(k)
             
         for x, y, ts in grid.getTables():
             log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))

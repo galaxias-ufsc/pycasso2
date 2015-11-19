@@ -12,4 +12,5 @@ screw = 0x0010
 starlight_masked_pix = 0x0020
 starlight_failed_run = 0x0040
 
-
+# Compound flags
+no_obs = no_data | ccd_gap | telluric | screw
