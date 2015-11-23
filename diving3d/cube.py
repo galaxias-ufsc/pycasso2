@@ -4,11 +4,12 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from .resampling import resample_spectra, reshape_spectra
+from .resampling import resample_spectra, reshape_spectra, gen_rebin
 from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix, \
 get_pixel_area_srad, get_pixel_length_rad
 from . import flags
 
+from pystarlight.util.StarlightUtils import bin_edges, hist_resample
 from astropy.io import fits
 from astropy import log
 import numpy as np
@@ -37,6 +38,8 @@ class D3DFitsCube(object):
     _ext_popx = 'POPX'
     _ext_popmu_ini = 'POPMU_INI'
     _ext_popmu_cor = 'POPMU_COR'
+    _ext_mstars = 'MSTARS'
+    _ext_fbase_norm = 'FBASE_NORM'
     
     _pop_len = None
     
@@ -142,13 +145,16 @@ class D3DFitsCube(object):
     
     def createSynthesisCubes(self, pop_len):
         self._pop_len = pop_len
-        self._addExtension(self._ext_f_syn, overwrite=True)
-        self._addExtension(self._ext_f_wei, overwrite=True)
-        self._addExtension(self._ext_popage_base, kind='population', overwrite=True)
-        self._addExtension(self._ext_popZ_base, kind='population', overwrite=True)
+        self._addExtension(self._ext_f_syn, kind='spectra', overwrite=True)
+        self._addExtension(self._ext_f_wei, kind='spectra', overwrite=True)
         self._addExtension(self._ext_popx, kind='population', overwrite=True)
         self._addExtension(self._ext_popmu_ini, kind='population', overwrite=True)
         self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
+        self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
+        self._addExtension(self._ext_popage_base, kind='base', overwrite=True)
+        self._addExtension(self._ext_popZ_base, kind='base', overwrite=True)
+        self._addExtension(self._ext_mstars, kind='base', overwrite=True)
+        self._addExtension(self._ext_fbase_norm, kind='base', overwrite=True)
 
         for ext in self._ext_keyword_list:
             self._addExtension(ext, kind='image', overwrite=True)
@@ -183,6 +189,8 @@ class D3DFitsCube(object):
             copy_WCS(self._header, hdu.header, axes=[1, 2])
         elif kind == 'population':
             copy_WCS(self._header, hdu.header, axes=[1, 2], dest_axes=[2, 3])
+        elif kind == 'base':
+            pass
         else:
             raise Exception('Unknown extension kind "%s".' % kind)
     
@@ -197,6 +205,10 @@ class D3DFitsCube(object):
             if self._pop_len is None:
                 raise Exception('Undefined population vector length.')
             return spectra_shape[1:] + (self._pop_len,)
+        elif kind == 'base':
+            if self._pop_len is None:
+                raise Exception('Undefined population vector length.')
+            return (self._pop_len,)
         else:
             raise Exception('Unknown extension kind "%s".' % kind)
     
@@ -246,6 +258,7 @@ class D3DFitsCube(object):
         data = self._getExtensionData(self._ext_f_wei)
         data = np.ma.array(data)
         data[:, self.synthesisMask] = np.ma.masked
+        return data
     
 
     @property
@@ -255,12 +268,22 @@ class D3DFitsCube(object):
     
     @property
     def popage_base(self):
-        return self._getSynthExtension(self._ext_popage_base)
+        return self._getExtensionData(self._ext_popage_base)
 
     
     @property
     def popZ_base(self):
-        return self._getSynthExtension(self._ext_popZ_base)
+        return self._getExtensionData(self._ext_popZ_base)
+
+    
+    @property
+    def Mstars(self):
+        return self._getExtensionData(self._ext_mstars)
+
+    
+    @property
+    def fbase_norm(self):
+        return self._getExtensionData(self._ext_fbase_norm)
 
     
     @property
@@ -318,14 +341,14 @@ class D3DFitsCube(object):
     def MiniSD(self):
         popmu_ini = self.popmu_ini.copy()
         popmu_ini /= popmu_ini.sum()
-        return popmu_ini * self.Mini_tot / self.pixelArea_pc2 
+        return popmu_ini * (self.Mini_tot[..., np.newaxis] / self.pixelArea_pc2) 
 
     
     @property
     def LobnSD(self):
         popx = self.popx.copy()
         popx /= popx.sum()
-        return popx * self.Lobs_norm / self.pixelArea_pc2 
+        return popx * (self.Lobs_norm[..., np.newaxis] / self.pixelArea_pc2) 
 
     
     @property
@@ -333,6 +356,43 @@ class D3DFitsCube(object):
         popx = self.popx
         return (popx * np.log10(self.popage_base)).sum(axis=2) / popx.sum(axis=2)
 
+    
+    @property
+    def at_mass(self):
+        mu = self.popmu_cor
+        return (mu * np.log10(self.popage_base)).sum(axis=2) / mu.sum(axis=2)
+
+    
+    @property
+    def alogZ_flux(self):
+        popx = self.popx
+        return (popx * np.log10(self.popZ_base)).sum(axis=2) / popx.sum(axis=2)
+
+    
+    @property
+    def alogZ_mass(self):
+        mu = self.popmu_cor
+        return (mu * np.log10(self.popZ_base)).sum(axis=2) / mu.sum(axis=2)
+
+    
+    def SFRSD(self, dt=0.5e9):
+        logtb = np.log10(self.popage_base)
+        logtb_bins = bin_edges(np.unique(logtb))
+        tb_bins = 10**logtb_bins
+        tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
+        tl_bins = bin_edges(tl)
+        Mini = self.MiniSD
+        sfr_shape = Mini.shape[:-1] + (len(tl) + 2,)
+        sfr = np.zeros(sfr_shape)
+        for j in xrange(sfr_shape[0]):
+            for i in xrange(sfr_shape[1]):
+                Mini_rebin = gen_rebin(Mini[j, i], logtb, logtb_bins, mean=False)
+                Mini_resam = hist_resample(tb_bins, tl_bins, Mini_rebin)
+                sfr[j, i, 1:-1] = Mini_resam / dt
+        
+        tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
+        return sfr, tl
+    
     
     @property
     def A_V(self):

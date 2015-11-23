@@ -200,3 +200,41 @@ def gaussian1d_spectra(fwhm, l, flux, flags=None):
     return np.convolve(flux_i,  gauss, 'same')
     
 
+def gen_rebin(a, e, bin_e, mean=True):
+    '''
+    Rebinning function. Given the value array `a`, with generic
+    positions `e` such that `e.shape == a.shape`, return the sum
+    or the mean values of `a` inside the bins defined by `bin_e`.
+    
+    Parameters
+    ----------
+    a : array like
+        The array values to be rebinned.
+    
+    e : array like
+        Generic positions of the values in `a`.
+    
+    bin_e : array like
+        Bins of `e` to be used in the rebinning.
+    
+    mean : boolean
+        Divide the sum by the number of points inside the bin.
+        Defaults to `True`.
+        
+    Returns
+    -------
+    a_e : array
+        An array of length `len(bin_e)-1`, containing the sum or
+        mean values of `a` inside each bin.
+        
+    Examples
+    --------
+    
+    TODO: Add examples for gen_rebin.
+    '''
+    a_e = np.histogram(e.ravel(), bin_e, weights=a.ravel())[0]
+    if mean:
+        N = np.histogram(e.ravel(), bin_e)[0]
+        mask = N > 0
+        a_e[mask] /= N[mask]
+    return a_e

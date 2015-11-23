@@ -123,6 +123,7 @@ class SynthesisAdapter(object):
         self._readData()
         self._gridTemplate, self._runTemplate = self._getTemplates(cfg, key)
         self._createDirs()
+        self._base_data_saved = False
         
     
     def _readData(self):
@@ -137,7 +138,7 @@ class SynthesisAdapter(object):
             self.f_err = self._d3d.f_err
 
         self.f_flag = self._d3d.f_flag
-        self.spatialMask = self._d3d.getSpatialMask(0.5)
+        self.spatialMask = self._d3d.getSpatialMask(flags.no_obs)
     
         
     def _getTemplates(self, cfg, key):
@@ -249,11 +250,13 @@ class SynthesisAdapter(object):
         self._d3d.createSynthesisCubes(pop_len)
         self.f_syn = self._d3d.f_syn
         self.f_wei = self._d3d.f_wei
-        self.popage_base = self._d3d.popage_base
-        self.popZ_base = self._d3d.popZ_base
         self.popx = self._d3d.popx
         self.popmu_ini = self._d3d.popmu_ini
         self.popmu_cor = self._d3d.popmu_cor
+        self.popage_base = self._d3d.popage_base
+        self.popZ_base = self._d3d.popZ_base
+        self.Mstars = self._d3d.Mstars
+        self.fbase_norm = self._d3d.fbase_norm
         
     
     def updateSynthesis(self, grid):
@@ -265,13 +268,18 @@ class SynthesisAdapter(object):
             keyword_data[k] = self._d3d._getSynthExtension(k)
             
         for x, y, ts in grid.getTables():
+            if not self._base_data_saved:
+                self.Mstars[:] = ts.population.popMstars
+                self.fbase_norm[:] = ts.population.popfbase_norm
+                self.popZ_base[:] = ts.population.popZ_base
+                self.popage_base[:] = ts.population.popage_base
+                self._base_data_saved = True
+                
             log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))
             f_obs_norm = ts.keywords['fobs_norm']
             self.f_syn[:, y, x] = ts.spectra.f_syn * f_obs_norm / grid.fluxUnit
             self.f_wei[:, y, x] = ts.spectra.f_wei
             # TODO: update flags with starlight clipped, etc.
-            self.popZ_base[y, x, :] = ts.population.popZ_base
-            self.popage_base[y, x, :] = ts.population.popage_base
             self.popx[y, x, :] = ts.population.popx
             self.popmu_ini[y, x, :] = ts.population.popmu_ini
             self.popmu_cor[y, x, :] = ts.population.popmu_cor

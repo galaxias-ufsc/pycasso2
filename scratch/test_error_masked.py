@@ -6,7 +6,6 @@ Created on 23/06/2015
 
 from diving3d.cube import D3DFitsCube
 from diving3d.wcs import find_nearest_index
-from diving3d import flags
 
 import numpy as np
 import sys
