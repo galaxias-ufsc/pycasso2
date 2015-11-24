@@ -52,7 +52,8 @@ yy = d3d.y_coords
 
 print 'pixel area: %f pc^2' % d3d.pixelArea_pc2
 print 'pixel length: %f pc' % d3d.pixelLength_pc
+print 'pixel length: %f arcsec' % np.abs(xx[0] - xx[1])
 
-plot_image(d3d.McorSD.sum(axis=2), yy, xx, galaxy_id)
+plot_image(d3d.McorSD.sum(axis=0), yy, xx, galaxy_id)
 
-assert np.allclose(d3d.McorSD.sum(axis=2), d3d.Mcor_tot / d3d.pixelArea_pc2)
+assert np.allclose(d3d.McorSD.sum(axis=0), d3d.Mcor_tot / d3d.pixelArea_pc2)

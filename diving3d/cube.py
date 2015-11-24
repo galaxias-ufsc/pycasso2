@@ -188,7 +188,7 @@ class D3DFitsCube(object):
         elif kind == 'image':
             copy_WCS(self._header, hdu.header, axes=[1, 2])
         elif kind == 'population':
-            copy_WCS(self._header, hdu.header, axes=[1, 2], dest_axes=[2, 3])
+            copy_WCS(self._header, hdu.header, axes=[1, 2])
         elif kind == 'base':
             pass
         else:
@@ -204,7 +204,7 @@ class D3DFitsCube(object):
         elif kind == 'population':
             if self._pop_len is None:
                 raise Exception('Undefined population vector length.')
-            return spectra_shape[1:] + (self._pop_len,)
+            return (self._pop_len,) + spectra_shape[1:]
         elif kind == 'base':
             if self._pop_len is None:
                 raise Exception('Undefined population vector length.')
@@ -333,46 +333,50 @@ class D3DFitsCube(object):
     @property
     def McorSD(self):
         popmu_cor = self.popmu_cor.copy()
-        popmu_cor /= popmu_cor.sum(axis=2)[..., np.newaxis]
-        return popmu_cor * (self.Mcor_tot[..., np.newaxis] / self.pixelArea_pc2) 
+        popmu_cor /= popmu_cor.sum(axis=0)[np.newaxis, ...]
+        return popmu_cor * (self.Mcor_tot[np.newaxis, ...] / self.pixelArea_pc2) 
 
     
     @property
     def MiniSD(self):
         popmu_ini = self.popmu_ini.copy()
-        popmu_ini /= popmu_ini.sum()
-        return popmu_ini * (self.Mini_tot[..., np.newaxis] / self.pixelArea_pc2) 
+        popmu_ini /= popmu_ini.sum(axis=0)[np.newaxis, ...]
+        return popmu_ini * (self.Mini_tot[np.newaxis, ...] / self.pixelArea_pc2) 
 
     
     @property
     def LobnSD(self):
         popx = self.popx.copy()
-        popx /= popx.sum()
-        return popx * (self.Lobs_norm[..., np.newaxis] / self.pixelArea_pc2) 
+        popx /= popx.sum(axis=0)[np.newaxis, ...]
+        return popx * (self.Lobs_norm[np.newaxis, ...] / self.pixelArea_pc2) 
 
     
     @property
     def at_flux(self):
         popx = self.popx
-        return (popx * np.log10(self.popage_base)).sum(axis=2) / popx.sum(axis=2)
+        popage_base = self.popage_base[:, np.newaxis, np.newaxis]
+        return (popx * np.log10(popage_base)).sum(axis=0) / popx.sum(axis=0)
 
     
     @property
     def at_mass(self):
         mu = self.popmu_cor
-        return (mu * np.log10(self.popage_base)).sum(axis=2) / mu.sum(axis=2)
+        popage_base = self.popage_base[:, np.newaxis, np.newaxis]
+        return (mu * np.log10(popage_base)).sum(axis=0) / mu.sum(axis=0)
 
     
     @property
     def alogZ_flux(self):
         popx = self.popx
-        return (popx * np.log10(self.popZ_base)).sum(axis=2) / popx.sum(axis=2)
+        popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
+        return (popx * np.log10(popZ_base)).sum(axis=0) / popx.sum(axis=0)
 
     
     @property
     def alogZ_mass(self):
         mu = self.popmu_cor
-        return (mu * np.log10(self.popZ_base)).sum(axis=2) / mu.sum(axis=2)
+        popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
+        return (mu * np.log10(popZ_base)).sum(axis=0) / mu.sum(axis=0)
 
     
     def SFRSD(self, dt=0.5e9):
@@ -382,13 +386,13 @@ class D3DFitsCube(object):
         tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
         tl_bins = bin_edges(tl)
         Mini = self.MiniSD
-        sfr_shape = Mini.shape[:-1] + (len(tl) + 2,)
+        sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
         sfr = np.zeros(sfr_shape)
-        for j in xrange(sfr_shape[0]):
-            for i in xrange(sfr_shape[1]):
-                Mini_rebin = gen_rebin(Mini[j, i], logtb, logtb_bins, mean=False)
+        for j in xrange(sfr_shape[1]):
+            for i in xrange(sfr_shape[2]):
+                Mini_rebin = gen_rebin(Mini[:, j, i], logtb, logtb_bins, mean=False)
                 Mini_resam = hist_resample(tb_bins, tl_bins, Mini_rebin)
-                sfr[j, i, 1:-1] = Mini_resam / dt
+                sfr[1:-1, j, i] = Mini_resam / dt
         
         tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
         return sfr, tl

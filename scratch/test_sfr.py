@@ -5,6 +5,7 @@ Created on 23/06/2015
 '''
 
 from diving3d.cube import D3DFitsCube
+import numpy as np
 import sys
 
 def plot_sfr(sfr, t, center, galaxy_id, suffix):
@@ -31,7 +32,7 @@ def plot_sfr(sfr, t, center, galaxy_id, suffix):
     plt.close('all')
     plt.figure(1, figsize=(5, 3))
     plt.subplot(111)
-    plt.plot(t, sfr[center[1], center[2]], 'k-', label='sfr')
+    plt.plot(t, sfr[:, center[1], center[2]], 'k-', label='sfr')
     plt.ylabel(r'SFR')
     plt.xlabel(r'Time [yr]')
     plt.xlim(0, 2e10)
@@ -46,4 +47,6 @@ d3d = D3DFitsCube(cube)
 center = d3d.center
 
 sfr, t = d3d.SFRSD(dt=0.1e9)
+assert np.allclose(np.trapz(sfr, t, axis=0), d3d.MiniSD.sum(axis=0))
+
 plot_sfr(sfr, t, center, galaxy_id, suffix)

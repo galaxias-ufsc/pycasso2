@@ -57,13 +57,9 @@ im_flagged = im_fl = flagged.sum(axis=0) > (0.5 * flagged.shape[0])
 
 # light fractions
 popx = np.ma.array(d3d.popx)
-popx[im_flagged] = np.ma.masked
+popx[:, im_flagged] = np.ma.masked
 
-# ages (constant)
-popage = np.ma.array(d3d.popage_base)
-popage[im_fl] = np.ma.masked
-
-at_flux = (popx * np.log10(popage)).sum(axis=2) / popx.sum(axis=2)
+at_flux = (popx * np.log10(d3d.popage_base)[:, np.newaxis, np.newaxis]).sum(axis=0) / popx.sum(axis=0)
 
 
 plot_age(at_flux, yy, xx, galaxy_id)

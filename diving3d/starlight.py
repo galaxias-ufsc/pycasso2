@@ -280,9 +280,9 @@ class SynthesisAdapter(object):
             self.f_syn[:, y, x] = ts.spectra.f_syn * f_obs_norm / grid.fluxUnit
             self.f_wei[:, y, x] = ts.spectra.f_wei
             # TODO: update flags with starlight clipped, etc.
-            self.popx[y, x, :] = ts.population.popx
-            self.popmu_ini[y, x, :] = ts.population.popmu_ini
-            self.popmu_cor[y, x, :] = ts.population.popmu_cor
+            self.popx[:, y, x] = ts.population.popx
+            self.popmu_ini[:, y, x] = ts.population.popmu_ini
+            self.popmu_cor[:, y, x] = ts.population.popmu_cor
             for k in self._d3d._ext_keyword_list:
                 keyword_data[k][y, x] = ts.keywords[k]
     
