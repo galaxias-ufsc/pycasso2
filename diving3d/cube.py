@@ -4,12 +4,13 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from .resampling import resample_spectra, reshape_spectra, gen_rebin
+from .resampling import resample_spectra, reshape_spectra
 from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix, \
 get_pixel_area_srad, get_pixel_length_rad
 from . import flags
 
-from pystarlight.util.StarlightUtils import bin_edges, hist_resample
+from pystarlight.util.StarlightUtils import bin_edges, hist_resample, smooth_Mini
+from pystarlight.util.base import base_mask
 from astropy.io import fits
 from astropy import log
 import numpy as np
@@ -44,7 +45,7 @@ class D3DFitsCube(object):
     _pop_len = None
     
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
-                         'A_V', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
+                         'A_V', 'q_norm', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2']
     
     def __init__(self, cubefile=None):
@@ -233,6 +234,20 @@ class D3DFitsCube(object):
         return data
     
     
+    def _reshapeBase(self, a, fill_value=0.0):
+        mask = base_mask(self.popZ_base, self.popage_base)
+        shape = (mask.shape) + a.shape[1:]
+        a__Zt = np.ma.masked_all(shape, dtype=a.dtype)
+        a__Zt.fill_value = fill_value
+        a__Zt[mask, ...] = a
+        if a__Zt.ndim == 2:
+            return a__Zt.T
+        elif a__Zt.ndim == 4:
+            return a__Zt.transpose(1, 0, 2, 3)
+        else:
+            raise Exception('Unsupported number of dimensions.')
+
+
     @property
     def f_obs(self):
         data = self._getExtensionData(self._ext_f_obs)
@@ -385,22 +400,61 @@ class D3DFitsCube(object):
         tb_bins = 10**logtb_bins
         tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
         tl_bins = bin_edges(tl)
-        Mini = self.MiniSD
+        Mini = self._reshapeBase(self.MiniSD).sum(axis=1)
         sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
         sfr = np.zeros(sfr_shape)
         for j in xrange(sfr_shape[1]):
             for i in xrange(sfr_shape[2]):
-                Mini_rebin = gen_rebin(Mini[:, j, i], logtb, logtb_bins, mean=False)
-                Mini_resam = hist_resample(tb_bins, tl_bins, Mini_rebin)
+                if Mini[:, j, i].mask.all():
+                    continue
+                Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, j, i])
                 sfr[1:-1, j, i] = Mini_resam / dt
         
         tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
         return sfr, tl
     
     
+    def SFRSD_smooth(self,  logtc_ini=None, logtc_fin=None, logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
+        logtb = np.unique(np.log10(self.popage_base))
+        if logtc_ini is None:
+            logtc_ini = logtb.min()
+        if logtc_fin is None:
+            logtc_fin = logtb.max()
+        logtc = np.arange(logtc_ini, logtc_fin + logtc_step, logtc_step)
+        popx = self._reshapeBase(self.popx)
+        fbase_norm = self._reshapeBase(self.fbase_norm)
+        Mini = smooth_Mini(popx, fbase_norm, self.Lobs_norm,
+                           self.q_norm, self.A_V,
+                           logtb, logtc, logtc_FWHM)
+        Mini /= self.pixelArea_pc2
+        logtc_bins = bin_edges(logtc)
+        tc_bins = 10**logtc_bins
+        tl = np.arange(tc_bins.min(), tc_bins.max()+dt, dt)
+        tl_bins = bin_edges(tl)
+        Mini = Mini.sum(axis=1)
+        sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
+        sfr = np.zeros(sfr_shape)
+        for j in xrange(sfr_shape[1]):
+            for i in xrange(sfr_shape[2]):
+                Mini_resam = hist_resample(tc_bins, tl_bins, Mini[:, j, i])
+                sfr[1:-1, j, i] = Mini_resam / dt
+        
+        tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
+        return sfr, tl
+
     @property
     def A_V(self):
         return self._getSynthExtension('A_V')
+
+    
+    @property
+    def q_norm(self):
+        return self._getSynthExtension('q_norm')
+
+    
+    @property
+    def tau_V(self):
+        return self.A_V / (2.5 * np.log10(np.exp(1.)))
 
     
     @property

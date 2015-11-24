@@ -8,7 +8,7 @@ from diving3d.cube import D3DFitsCube
 import numpy as np
 import sys
 
-def plot_sfr(sfr, t, center, galaxy_id, suffix):
+def plot_sfr(sfr, t, sfr_sm, t_sm, center, galaxy_id, suffix):
     import matplotlib.pyplot as plt
         
     plotpars = {'legend.fontsize': 8,
@@ -33,10 +33,11 @@ def plot_sfr(sfr, t, center, galaxy_id, suffix):
     plt.figure(1, figsize=(5, 3))
     plt.subplot(111)
     plt.plot(t, sfr[:, center[1], center[2]], 'k-', label='sfr')
+    plt.plot(t_sm, sfr_sm[:, center[1], center[2]], 'r:', label='sfr (smooth)')
     plt.ylabel(r'SFR')
     plt.xlabel(r'Time [yr]')
     plt.xlim(0, 2e10)
-    plt.legend(loc='center right')
+    plt.legend(loc='upper left')
     plt.title('%s %s - center spaxel' % (galaxy_id, suffix))
     plt.show()
     
@@ -46,7 +47,10 @@ cube = 'data/cubes_out/%s_%s.fits' % (galaxy_id, suffix)
 d3d = D3DFitsCube(cube)
 center = d3d.center
 
-sfr, t = d3d.SFRSD(dt=0.1e9)
-assert np.allclose(np.trapz(sfr, t, axis=0), d3d.MiniSD.sum(axis=0))
 
-plot_sfr(sfr, t, center, galaxy_id, suffix)
+sfr, t = d3d.SFRSD(dt=0.1e9)
+sfr_sm, t_sm = d3d.SFRSD_smooth(dt=0.1e9, logtc_FWHM=0.2)
+plot_sfr(sfr, t, sfr_sm, t_sm, center, galaxy_id, suffix)
+assert np.allclose(np.trapz(sfr, t, axis=0), np.trapz(sfr_sm, t_sm, axis=0))
+assert np.allclose(np.trapz(sfr_sm, t_sm, axis=0), d3d.MiniSD.sum(axis=0))
+
