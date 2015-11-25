@@ -289,8 +289,18 @@ class D3DFitsCube(object):
 
     
     @property
+    def age_base(self):
+        return np.unique(self.popage_base)
+
+    
+    @property
     def popZ_base(self):
         return self._getExtensionData(self._ext_popZ_base)
+
+    
+    @property
+    def Z_base(self):
+        return np.unique(self.popZ_base)
 
     
     @property
@@ -467,6 +477,11 @@ class D3DFitsCube(object):
     @property
     def v_d(self):
         return self._getSynthExtension('V_D')
+    
+    
+    @property
+    def chi2(self):
+        return self._getSynthExtension('CHI2')
     
     
     @property
