@@ -115,7 +115,7 @@ def write_starlight_input(wl, flux, err, flags, filename):
     
     flags = np.where(flags, 1.0, 0.0)
     if flags is not None and err is not None:
-        cols = [wl, flux, err, flags]
+        cols = [wl, flux.data, err.data, flags]
     else:
         cols = [wl, flux]
     ascii.write(cols, filename, Writer=ascii.NoHeader)
