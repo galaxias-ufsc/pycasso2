@@ -44,6 +44,8 @@ class D3DFitsCube(object):
     
     _pop_len = None
     
+    _Z_sun = 0.019
+    
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
                          'A_V', 'q_norm', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2']
@@ -384,14 +386,14 @@ class D3DFitsCube(object):
     def alogZ_flux(self):
         popx = self.popx
         popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
-        return (popx * np.log10(popZ_base)).sum(axis=0) / popx.sum(axis=0)
+        return (popx * np.log10(popZ_base / self._Z_sun)).sum(axis=0) / popx.sum(axis=0)
 
     
     @property
     def alogZ_mass(self):
         mu = self.popmu_cor
         popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
-        return (mu * np.log10(popZ_base)).sum(axis=0) / mu.sum(axis=0)
+        return (mu * np.log10(popZ_base / self._Z_sun)).sum(axis=0) / mu.sum(axis=0)
 
     
     def SFRSD(self, dt=0.5e9):
