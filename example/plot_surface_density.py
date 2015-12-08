@@ -4,13 +4,12 @@ Created on 23/06/2015
 @author: andre
 '''
 
-from diving3d.cube import D3DFitsCube
-from diving3d.tables import get_galaxy_id
-from diving3d import flags
+from pycasso2 import FitsCube
 
 import numpy as np
+import sys
 
-def plot_age(at_flux, yy, xx, galaxy_id):
+def plot_image(im, yy, xx, galaxy_id):
     import matplotlib.pyplot as plt
         
     plotpars = {'legend.fontsize': 8,
@@ -30,36 +29,29 @@ def plot_age(at_flux, yy, xx, galaxy_id):
                 }
     plt.rcParams.update(plotpars)
     plt.ioff()
+    plt.figure()
     
     plt.subplot(111)
-    plt.pcolormesh(xx, yy, at_flux, cmap='cubehelix_r')
+    plt.pcolormesh(xx, yy, im, cmap='cubehelix_r')
     plt.gca().set_aspect('equal')
     plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
     plt.xlabel(r'r.a. [arcsec]')
     plt.xlim(xx.min(), xx.max())
-    #plt.title(r'%s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (galaxy_id, xx[x_slice]))
     plt.colorbar()
     plt.show()
 
 
-cube = 'data/cubes_out/T001_resam_synth1.fits'
+cube = sys.argv[0]
 
-galaxy_id = get_galaxy_id(cube)
-d3d = D3DFitsCube(cube)
-xx = d3d.x_coords
-yy = d3d.y_coords
+c = FitsCube(cube)
+xx = c.x_coords
+yy = c.y_coords
 
-# Get flagged x,y where there's no good starlight data.
-no_starlight_flags = flags.no_data | flags.starlight_masked_pix | flags.starlight_failed_run
-flagged = (d3d.f_flag & no_starlight_flags) > 0
-im_flagged = im_fl = flagged.sum(axis=0) > (0.5 * flagged.shape[0])
+print 'pixel area: %f pc^2' % c.pixelArea_pc2
+print 'pixel length: %f pc' % c.pixelLength_pc
+print 'pixel length: %f arcsec' % np.abs(xx[0] - xx[1])
 
-# light fractions
-popx = np.ma.array(d3d.popx)
-popx[:, im_flagged] = np.ma.masked
+plot_image(c.McorSD.sum(axis=0), yy, xx, c.objectName)
 
-at_flux = (popx * np.log10(d3d.popage_base)[:, np.newaxis, np.newaxis]).sum(axis=0) / popx.sum(axis=0)
-
-
-plot_age(at_flux, yy, xx, galaxy_id)
+assert np.allclose(c.McorSD.sum(axis=0), c.Mcor_tot / c.pixelArea_pc2)

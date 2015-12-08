@@ -65,7 +65,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, cube):
     plt.title('residual [%]')
     plt.colorbar(ticks=[-5, -2.5, 0, 2.5, 5])
     plt.gcf().set_tight_layout(True)
-    plt.savefig('plots/%s_slice.png' % cube, dpi=300)
+    #plt.savefig('plots/%s_slice.png' % cube, dpi=300)
     
     plt.figure(2, figsize=(5, 5))
     plt.subplot(211)
@@ -93,7 +93,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, cube):
     plt.xlim(ll.min(), ll.max())
     plt.legend(loc='lower right')
     plt.gcf().set_tight_layout(True)
-    plt.savefig('plots/%s_center.pdf' % cube)
+    #plt.savefig('plots/%s_center.pdf' % cube)
     
     plt.figure(3, figsize=(4, 5))
     l_norm = 5635.0 #AA
@@ -108,7 +108,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, cube):
     plt.xlabel(r'R. A. [arcsec]')
     plt.ylabel(r'dec. [arcsec]')
     plt.title(r'%s - S/N at $5635\,\AA$' % cube)
-    plt.savefig('plots/%s_sn.pdf' % cube)
+    #plt.savefig('plots/%s_sn.pdf' % cube)
 
     plt.figure(5, figsize=(4, 5))
     plt.pcolormesh(xx, yy, at_flux, cmap='cubehelix_r')
@@ -119,7 +119,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, cube):
     plt.xlabel(r'R. A. [arcsec]')
     plt.ylabel(r'dec. [arcsec]')
     plt.title(r'%s - $\langle \log t \rangle_\mathrm{flux}\ [\mathrm{Gyr}]$' % cube)
-    plt.savefig('plots/%s_atflux.pdf' % cube)
+    #plt.savefig('data/plots/%s_atflux.pdf' % cube)
     plt.show()
     
 cube = sys.argv[1]

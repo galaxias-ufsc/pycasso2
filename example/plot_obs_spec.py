@@ -35,7 +35,7 @@ def plot_example(c, cube_name, x_slice):
     plt.show()
 
 
-cube = 'test.fits'
+cube = sys.argv[0]
 c = FitsCube(cube)
 
 plot_example(c, cube, x_slice=10)

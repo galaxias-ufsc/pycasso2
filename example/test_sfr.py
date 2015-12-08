@@ -4,11 +4,11 @@ Created on 23/06/2015
 @author: andre
 '''
 
-from diving3d.cube import D3DFitsCube
+from pycasso2 import FitsCube
 import numpy as np
 import sys
 
-def plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, galaxy_id, suffix):
+def plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, object_name):
     import matplotlib.pyplot as plt
         
     plotpars = {'legend.fontsize': 8,
@@ -38,7 +38,7 @@ def plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, galaxy_id, suffix):
     plt.xlabel(r'Time [Gyr]')
     plt.xlim(0, 20)
     plt.legend(loc='upper left')
-    plt.title('%s %s - center spaxel' % (galaxy_id, suffix))
+    plt.title('%s - center spaxel' % object_name)
     fig.tight_layout()
 
     x_slice = center[2]    
@@ -49,27 +49,25 @@ def plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, galaxy_id, suffix):
     plt.ylim(yy.min(), yy.max())
     plt.xlabel(r'time [Gyr]')
     plt.xlim(t_sm.min() / 1e9, t_sm.max() / 1e9)
-    plt.title(r'%s %s - $\log SFR\ [\mathrm{M}_\odot\ \mathrm{yr}^{-1} \mathrm{pc}^{-2}]$ @ R.A. = %.02f' % (galaxy_id, suffix, xx[x_slice]))
+    plt.title(r'%s - $\log SFR\ [\mathrm{M}_\odot\ \mathrm{yr}^{-1} \mathrm{pc}^{-2}]$ @ R.A. = %.02f' % (object_name, xx[x_slice]))
     plt.colorbar()
     fig.tight_layout()
 
     plt.show()
     
-galaxy_id = sys.argv[1]
-suffix = sys.argv[2]
-cube = 'data/cubes_out/%s_%s.fits' % (galaxy_id, suffix)
-d3d = D3DFitsCube(cube)
-center = d3d.center
-xx = d3d.x_coords
-yy = d3d.y_coords
+cube = sys.argv[1]
+c = FitsCube(cube)
+center = c.center
+xx = c.x_coords
+yy = c.y_coords
 
-sfr, t = d3d.SFRSD(dt=0.1e9)
-sfr_sm, t_sm = d3d.SFRSD_smooth(dt=0.1e9, logtc_FWHM=0.25)
+sfr, t = c.SFRSD(dt=0.1e9)
+sfr_sm, t_sm = c.SFRSD_smooth(dt=0.1e9, logtc_FWHM=0.25)
 
-print 'total mass density: %.2e M_\odot / pc^2' % d3d.MiniSD.sum()
+print 'total mass density: %.2e M_\odot / pc^2' % c.MiniSD.sum()
 print 'total mass density (integral of SFR): %.2e M_\odot / pc^2' % np.trapz(sfr, t, axis=0).sum()
 print 'total mass density (integral of smooth SFR): %.2e M_\odot / pc^2' % np.trapz(sfr_sm, t_sm, axis=0).sum()
 
-plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, galaxy_id, suffix)
+plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, c.objectName)
 
 

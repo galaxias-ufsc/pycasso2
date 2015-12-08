@@ -298,7 +298,7 @@ def plot_metal_poor(c, pdf):
 cube = sys.argv[1]
 c = FitsCube(cube)
 
-pdf = PdfPages('plots/%s.pdf' % c.objectName)
+pdf = PdfPages('data/plots/%s.pdf' % c.objectName)
 
 plot_setup()
 plot_spectra(c, pdf)
