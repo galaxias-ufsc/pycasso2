@@ -3,17 +3,17 @@ Created on 26/06/2015
 
 @author: andre
 '''
-from .tables import write_starlight_input
-from .cube import D3DFitsCube
-from .error import estimate_error
-from . import flags
+from .tables import write_input
+from .gridfile import GridRun, GridFile
+from ..error import estimate_error
+from .. import flags
 
 from astropy import log
-from pystarlight.util.gridfile import GridRun, GridFile
 from os import path, makedirs as os_makedirs
 import numpy as np
+from pycasso2.starlight.tables import read_output_tables
 
-__all__ = ['SynthesisAdapter', 'D3DGridFile', 'D3DGridRun']
+__all__ = ['SynthesisAdapter', 'PGridFile', 'PGridRun']
 
 
 def get_base_grid(popage_base, popZ_base):
@@ -67,23 +67,21 @@ def get_base_grid(popage_base, popZ_base):
     return base_mask, Z_base, age_base
 
 
-class D3DGridFile(GridFile):
+class PGridFile(GridFile):
     def __init__(self, *args):
         GridFile.__init__(self, *args)
     
     
     def getTables(self):
         tables = []
-        import atpy
-        from pystarlight import io  # @UnusedImport
         for run in self.completed:
             outfile = path.join(self.outDirAbs, run.outFileCompressed)
-            ts = atpy.TableSet(outfile, type='starlight')
+            ts = read_output_tables(outfile)
             tables.append((run.x, run.y, ts))
         return tables
             
 
-class D3DGridRun(GridRun):
+class PGridRun(GridRun):
     def __init__(self, x=None, y=None, *args):
         GridRun.__init__(self, *args)
         self.x = x
@@ -92,18 +90,18 @@ class D3DGridRun(GridRun):
     
     @classmethod
     def from_run(cls, run):
-        d3drun = cls()
-        d3drun.inFile = run.inFile
-        d3drun.outFile = run.outFile
-        d3drun.configFile = run.configFile
-        d3drun.baseFile = run.baseFile
-        d3drun.maskFile = run.maskFile
-        d3drun.reddening = run.reddening
-        d3drun.etcInfoFile = run.etcInfoFile
-        d3drun.lumDistanceMpc = run.lumDistanceMpc
-        d3drun.v0_Ini = run.v0_Ini
-        d3drun.vd_Ini = run.vd_Ini
-        return d3drun
+        prun = cls()
+        prun.inFile = run.inFile
+        prun.outFile = run.outFile
+        prun.configFile = run.configFile
+        prun.baseFile = run.baseFile
+        prun.maskFile = run.maskFile
+        prun.reddening = run.reddening
+        prun.etcInfoFile = run.etcInfoFile
+        prun.lumDistanceMpc = run.lumDistanceMpc
+        prun.v0_Ini = run.v0_Ini
+        prun.vd_Ini = run.vd_Ini
+        return prun
 
 
 def makedirs(the_path):
@@ -114,12 +112,13 @@ def makedirs(the_path):
 class SynthesisAdapter(object):
     
     def __init__(self, cube, cfg, key='starlight'):
+        from ..cube import FitsCube
         self.starlightDir = cfg.get(key, 'starlight_dir')
         self._arqMaskFormat = cfg.get(key, 'arq_mask_format')
         self._inFileFormat = cfg.get(key, 'arq_obs_format')
         self._outFileFormat = cfg.get(key, 'arq_out_format')
-        self._d3d = D3DFitsCube(cube)
-        self.galaxyId = self._d3d.id
+        self._cube = FitsCube(cube)
+        self.objectName = self._cube.objectName
         self._readData()
         self._gridTemplate, self._runTemplate = self._getTemplates(cfg, key)
         self._createDirs()
@@ -127,30 +126,23 @@ class SynthesisAdapter(object):
         
     
     def _readData(self):
-        self.l_obs = self._d3d.l_obs
-        self.f_obs = self._d3d.f_obs
-        try:
-            # FIXME: remove this hack used for old cubes.
-            self.f_err = self._d3d.f_err
-        except:
-            log.warn('Creating f_err for old cube.')
-            self._d3d._addExtension(self._d3d._ext_f_err, overwrite=True)
-            self.f_err = self._d3d.f_err
-
-        self.f_flag = self._d3d.f_flag
-        self.spatialMask = self._d3d.getSpatialMask(flags.no_obs)
+        self.l_obs = self._cube.l_obs
+        self.f_obs = self._cube.f_obs
+        self.f_err = self._cube.f_err
+        self.f_flag = self._cube.f_flag
+        self.spatialMask = self._cube.getSpatialMask(flags.no_obs)
     
         
     def _getTemplates(self, cfg, key):
-        grid = D3DGridFile(self.starlightDir)
+        grid = PGridFile(self.starlightDir)
         grid.fluxUnit = float(cfg.get('general', 'flux_unit'))
 
         grid.setBasesDir(cfg.get(key, 'base_dir'))
-        obs_dir = path.join(cfg.get(key, 'obs_dir'), self.galaxyId)
+        obs_dir = path.join(cfg.get(key, 'obs_dir'), self.objectName)
         grid.setObsDir(obs_dir)
-        out_dir = path.join(cfg.get(key, 'out_dir'), self.galaxyId)
+        out_dir = path.join(cfg.get(key, 'out_dir'), self.objectName)
         grid.setOutDir(out_dir)
-        grid.setLogDir(path.join(grid.logDir, self.galaxyId))
+        grid.setLogDir(path.join(grid.logDir, self.objectName))
         
         grid.setMaskDir(cfg.get(key, 'mask_dir'))
         grid.setEtcDir(cfg.get(key, 'etc_dir'))
@@ -166,7 +158,7 @@ class SynthesisAdapter(object):
         grid.isQHREnabled = int(cfg.get(key, 'IsQHRcOn'))
         grid.isFIREnabled = int(cfg.get(key, 'IsFIRcOn'))
         
-        run = D3DGridRun()
+        run = PGridRun()
         run.configFile = cfg.get(key, 'arq_config')
         run.baseFile = cfg.get(key, 'arq_base')
         run.maskFile = cfg.get(key, 'arq_mask')
@@ -174,7 +166,7 @@ class SynthesisAdapter(object):
         run.etcInfoFile = cfg.get(key, 'arq_etc')
         run.v0_Ini = float(cfg.get(key, 'v0_ini'))
         run.vd_Ini = float(cfg.get(key, 'vd_ini'))
-        run.lumDistanceMpc = self._d3d.masterlist['DL']
+        run.lumDistanceMpc = self._cube.lumDistMpc
 
         return grid, run
 
@@ -193,9 +185,9 @@ class SynthesisAdapter(object):
     def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks):
         grid = self._gridTemplate.copy()
         if x1 != x2:
-            grid.name = 'grid_%s_%04d_%04d-%04d' % (self.galaxyId, y, x1, x2)
+            grid.name = 'grid_%s_%04d_%04d-%04d' % (self.objectName, y, x1, x2)
         else:
-            grid.name = 'grid_%04d_%04d' % (self.galaxyId, y, x1)
+            grid.name = 'grid_%04d_%04d' % (self.objectName, y, x1)
         grid.randPhone = -958089828
         # grid.seed()
         if use_errors_flags:
@@ -221,18 +213,18 @@ class SynthesisAdapter(object):
             return None
         
         new_run = self._runTemplate.copy()
-        new_run.inFile = self._inFileFormat % (self.galaxyId, y, x)
-        new_run.outFile = self._outFileFormat % (self.galaxyId, y, x)
+        new_run.inFile = self._inFileFormat % (self.objectName, y, x)
+        new_run.outFile = self._outFileFormat % (self.objectName, y, x)
         if use_custom_masks:
-            new_run.maskFile = self._arqMaskFormat % (self.galaxyId, y, x)
+            new_run.maskFile = self._arqMaskFormat % (self.objectName, y, x)
         new_run.x = x
         new_run.y = y
         if use_errors_flags:
-            write_starlight_input(self.l_obs, self.f_obs[:, y, x], self.f_err[:, y, x],
-                                      self.f_flag[:, y, x], path.join(self.obsDir, new_run.inFile))
+            write_input(self.l_obs, self.f_obs[:, y, x], self.f_err[:, y, x],
+                        self.f_flag[:, y, x], path.join(self.obsDir, new_run.inFile))
         else:
-            write_starlight_input(self.l_obs, self.f_obs[:, y, x], None, None,
-                                  path.join(self.obsDir, new_run.inFile))
+            write_input(self.l_obs, self.f_obs[:, y, x], None, None,
+                        path.join(self.obsDir, new_run.inFile))
         return new_run
 
 
@@ -247,16 +239,16 @@ class SynthesisAdapter(object):
 
 
     def createSynthesisCubes(self, pop_len):
-        self._d3d.createSynthesisCubes(pop_len)
-        self.f_syn = self._d3d.f_syn
-        self.f_wei = self._d3d.f_wei
-        self.popx = self._d3d.popx
-        self.popmu_ini = self._d3d.popmu_ini
-        self.popmu_cor = self._d3d.popmu_cor
-        self.popage_base = self._d3d.popage_base
-        self.popZ_base = self._d3d.popZ_base
-        self.Mstars = self._d3d.Mstars
-        self.fbase_norm = self._d3d.fbase_norm
+        self._cube.createSynthesisCubes(pop_len)
+        self.f_syn = self._cube.f_syn
+        self.f_wei = self._cube.f_wei
+        self.popx = self._cube.popx
+        self.popmu_ini = self._cube.popmu_ini
+        self.popmu_cor = self._cube.popmu_cor
+        self.popage_base = self._cube.popage_base
+        self.popZ_base = self._cube.popZ_base
+        self.Mstars = self._cube.Mstars
+        self.fbase_norm = self._cube.fbase_norm
         
     
     def updateSynthesis(self, grid):
@@ -264,8 +256,8 @@ class SynthesisAdapter(object):
             self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run            
 
         keyword_data = {}
-        for k in self._d3d._ext_keyword_list:
-            keyword_data[k] = self._d3d._getSynthExtension(k)
+        for k in self._cube._ext_keyword_list:
+            keyword_data[k] = self._cube._getSynthExtension(k)
             
         for x, y, ts in grid.getTables():
             if not self._base_data_saved:
@@ -283,16 +275,29 @@ class SynthesisAdapter(object):
             self.popx[:, y, x] = ts.population.popx
             self.popmu_ini[:, y, x] = ts.population.popmu_ini
             self.popmu_cor[:, y, x] = ts.population.popmu_cor
-            for k in self._d3d._ext_keyword_list:
+            for k in self._cube._ext_keyword_list:
                 keyword_data[k][y, x] = ts.keywords[k]
     
     
     def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):    
-        f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_wei <= 0)
-        spatial_mask = self.spatialMask
-        self.f_err[...] = estimate_error(self.l_obs, f_res, spatial_mask, smooth_fwhm, box_width)
+        f_res = self.f_obs - self.f_syn
+        self.f_err[...] = estimate_error(self.l_obs, f_res, self.spatialMask, smooth_fwhm, box_width)
+            
+            
+    def updateErrorsFromResidual2(self, smooth_fwhm=15.0, box_width=100.0):    
+        f_res = self.f_obs - self.f_syn
+        f_err = estimate_error(self.l_obs, f_res, self.spatialMask, smooth_fwhm, box_width)
+        X = f_err.shape[2]
+        Y = f_err.shape[1]
+        for j in xrange(Y):
+            for i in xrange(X):
+                if f_err[:, j, i].mask.all(): continue
+                print j, i
+                print f_err[:, j, i].mean()
+                self.f_err[:, j, i] = f_err[:, j, i]
+                print self.f_err[:, j, i].mean()
             
             
     def writeCube(self, filename, overwrite=False):
-        self._d3d.write(filename, overwrite=overwrite)
+        self._cube.write(filename, overwrite=overwrite)
         

@@ -4,18 +4,17 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from .resampling import resample_spectra, reshape_spectra
-from .wcs import get_axis_coordinates, set_axis_WCS, copy_WCS, get_reference_pixel, get_shape, d3d_fix_crpix, \
-get_pixel_area_srad, get_pixel_length_rad
+from .resampling import bin_edges, hist_resample
+from .wcs import get_axis_coordinates, copy_WCS, get_reference_pixel, get_shape, get_pixel_area_srad, get_pixel_length_rad
+from .starlight.synthesis import get_base_grid
+from .starlight.analysis import smooth_Mini
 from . import flags
 
-from pystarlight.util.StarlightUtils import bin_edges, hist_resample, smooth_Mini
-from pystarlight.util.base import base_mask
 from astropy.io import fits
 from astropy import log
 import numpy as np
 
-__all__ = ['D3DFitsCube']
+__all__ = ['FitsCube']
 
 
 def safe_getheader(f, ext=0):
@@ -25,9 +24,7 @@ def safe_getheader(f, ext=0):
         return hdu.header
         
 
-class D3DFitsCube(object):
-    _masterlist_prefix = 'MASTERLIST'
-
+class FitsCube(object):
     _ext_f_obs = 'PRIMARY'
     _ext_f_err = 'F_ERR'
     _ext_f_syn = 'F_SYN'
@@ -42,6 +39,10 @@ class D3DFitsCube(object):
     _ext_mstars = 'MSTARS'
     _ext_fbase_norm = 'FBASE_NORM'
     
+    _h_lum_dist_Mpc = 'PIPE LUM_DIST_MPC'
+    _h_flux_unit = 'PIPE FLUX_UNIT'
+    _h_object_name = 'PIPE OBJECT_NAME'
+    
     _pop_len = None
     
     _Z_sun = 0.019
@@ -51,94 +52,27 @@ class D3DFitsCube(object):
                          'Nglobal_steps', 'chi2']
     
     def __init__(self, cubefile=None):
-        self.masterlist = {}
         if cubefile is None:
             return
         self._load(cubefile)
         
         
-    @classmethod
-    def from_reduced(cls, redcube, obscube, **kwargs):
-        '''
-        FIXME: doc me! 
-        '''
-        # FIXME: sanitize kwargs
-        l_ini = kwargs['l_ini']
-        l_fin = kwargs['l_fin']
-        dl = kwargs['dl']
-        Nx = kwargs['width']
-        Ny = kwargs['height']
-        ml = kwargs['ml']
-        flux_unit = kwargs['flux_unit']
-
-        # FIXME: sanitize file I/O
-        header = safe_getheader(redcube)
-        d3d_fix_crpix(header, 1)
-        d3d_fix_crpix(header, 2)
-        obs_header = safe_getheader(obscube)
-        for k in obs_header.keys():
-            if k in header or k == 'COMMENT' or k == '': continue
-            header[k] = obs_header[k]
-        header['HIERARCH PIPE FLUX_UNIT'] = flux_unit
-        
-        f_obs_orig = fits.getdata(redcube)
-        
-        # TODO: how to handle redshift?
-        l_obs_orig = get_axis_coordinates(header, 3, dtype='float64')
-        l_obs = np.arange(l_ini, l_fin + dl, dl)
-        f_obs, f_flag = resample_spectra(f_obs_orig, l_obs_orig, l_obs)
-        # FIXME: read gap and other flags
-        
-        new_shape = (len(l_obs), Ny, Nx)
-        center = get_reference_pixel(header)
-        f_obs, f_flag, new_center = reshape_spectra(f_obs, f_flag, center, new_shape)
-
-        # Update WCS
-        set_axis_WCS(header, ax=1, crpix=new_center[2], naxis=new_shape[2])
-        set_axis_WCS(header, ax=2, crpix=new_center[1], naxis=new_shape[1])
-        set_axis_WCS(header, ax=3, crpix=0, crval=l_obs[0], cdelt=dl, naxis=new_shape[0])
-
-        d3dcube = cls()
-        d3dcube._initFits(f_obs, header)
-        d3dcube._addExtension(cls._ext_f_flag, data=f_flag, kind='spectra')
-        d3dcube._addExtension(cls._ext_f_err, data=np.zeros_like(f_obs), overwrite=True)
-        
-        d3dcube._saveMasterList(ml)
-        d3dcube._populateMasterList()
-        return d3dcube
-    
-    
-    def _initFits(self, data, header):
-        phdu = fits.PrimaryHDU(data, header)
+    def _initFits(self, f_obs, f_err, f_flag, header):
+        phdu = fits.PrimaryHDU(f_obs, header)
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
+        self._addExtension(FitsCube._ext_f_err, data=f_err, kind='spectra')
+        self._addExtension(FitsCube._ext_f_flag, data=f_flag, kind='spectra')
 
     
-    def _saveMasterList(self, ml):
-        header_ignored = ['cube', 'cube_obs']
-        for key in ml.dtype.names:
-            if key in header_ignored: continue
-            hkey = 'HIERARCH %s %s' % (self._masterlist_prefix, key.upper())
-            self._header[hkey] = ml[key]
-    
-    
-    def _populateMasterList(self):
-        for hkey in self._header.keys():
-            if not hkey.startswith(self._masterlist_prefix): continue
-            key = hkey.replace(self._masterlist_prefix, '')
-            key = key.strip()
-            self.masterlist[key] = self._header[hkey]
-    
-
     def _initMasks(self):
-        self.synthesisMask = self.getSpatialMask(flags.starlight_failed_run)
+        self.synthesisMask = self.getSpatialMask(flags.no_obs | flags.starlight_failed_run | flags.starlight_masked_pix)
         self.spectraMask = (self.f_flag & flags.no_obs) > 0
     
     
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList[self._ext_f_obs].header
-        self._populateMasterList()
         self._initMasks()
         
         
@@ -229,15 +163,15 @@ class D3DFitsCube(object):
     def _getSynthExtension(self, name):
         data = self._getExtensionData(name)
         if data.ndim == 2:
-            data = np.ma.array(data, mask=self.synthesisMask)
+            data = np.ma.array(data, mask=self.synthesisMask, copy=False)
         if data.ndim == 3:
-            data = np.ma.array(data)
-            data[self.synthesisMask] = np.ma.masked
+            data = np.ma.array(data, copy=False)
+            data[:, self.synthesisMask] = np.ma.masked
         return data
     
     
     def _reshapeBase(self, a, fill_value=0.0):
-        mask = base_mask(self.popZ_base, self.popage_base)
+        mask, _, _ = get_base_grid(self.popage_base, self.popZ_base)
         shape = (mask.shape) + a.shape[1:]
         a__Zt = np.ma.masked_all(shape, dtype=a.dtype)
         a__Zt.fill_value = fill_value
@@ -253,19 +187,19 @@ class D3DFitsCube(object):
     @property
     def f_obs(self):
         data = self._getExtensionData(self._ext_f_obs)
-        return np.ma.array(data, mask=self.spectraMask)
+        return np.ma.array(data, mask=self.spectraMask, copy=False)
     
 
     @property
     def f_err(self):
         data = self._getExtensionData(self._ext_f_err)
-        return np.ma.array(data, mask=self.spectraMask)
+        return np.ma.array(data, mask=self.spectraMask, copy=False)
     
 
     @property
     def f_syn(self):
         data = self._getExtensionData(self._ext_f_syn)
-        data = np.ma.array(data)
+        data = np.ma.array(data, copy=False)
         data[:, self.synthesisMask] = np.ma.masked
         return data
     
@@ -273,7 +207,7 @@ class D3DFitsCube(object):
     @property
     def f_wei(self):
         data = self._getExtensionData(self._ext_f_wei)
-        data = np.ma.array(data)
+        data = np.ma.array(data, copy=False)
         data[:, self.synthesisMask] = np.ma.masked
         return data
     
@@ -330,14 +264,14 @@ class D3DFitsCube(object):
     
     @property
     def pixelArea_pc2(self):
-        lum_dist_pc = self.masterlist['DL'] * 1e6
+        lum_dist_pc = self.lumDistMpc * 1e6
         solid_angle = get_pixel_area_srad(self._header)
         return solid_angle * lum_dist_pc * lum_dist_pc
     
     
     @property
     def pixelLength_pc(self):
-        lum_dist_pc = self.masterlist['DL'] * 1e6
+        lum_dist_pc = self.lumDistMpc * 1e6
         angle = get_pixel_length_rad(self._header)
         return angle * lum_dist_pc
     
@@ -482,6 +416,11 @@ class D3DFitsCube(object):
     @property
     def chi2(self):
         return self._getSynthExtension('CHI2')
+
+
+    @property
+    def adev(self):
+        return self._getSynthExtension('ADEV')
     
     
     @property
@@ -506,17 +445,43 @@ class D3DFitsCube(object):
 
     @property
     def flux_unit(self):
-        return self._header['PIPE FLUX_UNIT']
+        key = self._h_flux_unit
+        if not key in self._header:
+            raise Exception('Flux unit not set. Header key: %s' % key)
+        return self._header[key]
+
+    @flux_unit.setter
+    def flux_unit(self, value):
+        key = 'HIERARCH %s' % self._h_flux_unit
+        self._header[key] = value
     
     
     @property
-    def id(self):
-        return self.masterlist['ID']
+    def lumDistMpc(self):
+        key = self._h_lum_dist_Mpc
+        if not key in self._header:
+            raise Exception('Luminosity distance not set. Header key: %s' % key)
+        return self._header[key]
+
+
+    @lumDistMpc.setter
+    def lumDistMpc(self, value):
+        key = 'HIERARCH %s' % self._h_lum_dist_Mpc
+        self._header[key] = value
     
     
     @property
-    def object_name(self):
-        return self.masterlist['NAME']
+    def objectName(self):
+        key = self._h_object_name
+        if not key in self._header:
+            raise Exception('Object name not set. Header key: %s' % key)
+        return self._header[key]
+    
+    
+    @objectName.setter
+    def objectName(self, value):
+        key = 'HIERARCH %s' % self._h_object_name
+        self._header[key] = value
     
     
     def getSpatialMask(self, flags, threshold=0.5):

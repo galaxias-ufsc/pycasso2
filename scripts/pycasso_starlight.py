@@ -4,22 +4,23 @@ Created on 24/06/2015
 @author: andre
 '''
 
-from diving3d.starlight import SynthesisAdapter
-from diving3d.config import default_config_path, get_config
-from pystarlight.util import starlight_runner as sr
+from pycasso2.starlight import SynthesisAdapter
+from pycasso2.starlight import StarlightRunner
+from pycasso2.config import default_config_path, get_config
 
 import argparse
-from os import path
 from multiprocessing import cpu_count
 from astropy import log
 
 
 ###############################################################################
 def parse_args():
-    parser = argparse.ArgumentParser(description='Run starlight for a Diving3D cube.')
+    parser = argparse.ArgumentParser(description='Run starlight for a pycasso cube.')
     
-    parser.add_argument('galaxyId', type=str, nargs=1,
-                        help='Cube. Ex.: T001')
+    parser.add_argument('cubeIn', type=str, nargs=1,
+                        help='Cube. Ex.: T001.fits')
+    parser.add_argument('--out', dest='cubeOut',
+                        help='Output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count()-1,
@@ -38,8 +39,6 @@ def parse_args():
                         help='FWHM (in Angstroms) of the gaussian used to smooth and rectify the residual before estimating the error.')
     parser.add_argument('--error-box-width', dest='errorBoxWidth', type=float, default=100.0,
                         help='Running box width (in Angstroms) used to calculate the RMS of the residual, to estimate the error.')
-    parser.add_argument('--debug', dest='debug', action='store_true',
-                        help='Debug mode. Fake starlight run.')
 
     return parser.parse_args()
 ###############################################################################
@@ -54,34 +53,24 @@ def get_pop_len(grids):
 log.setLevel('DEBUG')
 args = parse_args()
 cfg = get_config(args.configFile)
-galaxy_id = args.galaxyId[0]
 nproc = args.nproc if args.nproc > 1 else 1
-
-if args.debug:
-    from pystarlight import mock
-    sr.starlight_exec_path = path.join(path.dirname(mock.__file__), 'mock_starlight.py')
-else:
-    sr.starlight_exec_path = cfg.get('starlight', 'exec_path')
-
-cube_out_dir = cfg.get('path', 'cubes_out')
-masterlist = cfg.get('tables', 'masterlist')
 
 if args.estimateError:
     key = 'starlight_estimate_error'
-    cube = path.join(cube_out_dir, '%s_resampled.fits' % galaxy_id)
-    out_cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
     use_errors_flags = False
 else:
     key = 'starlight'
-    cube = path.join(cube_out_dir, '%s_resam_synth1.fits' % galaxy_id)
-    out_cube = path.join(cube_out_dir, '%s_resam_synth2.fits' % galaxy_id)
     use_errors_flags = True
 
-print 'Loading cube from %s.' % cube
-sa = SynthesisAdapter(cube, cfg, key)
+print 'Loading cube from %s.' % args.cubeIn[0]
+sa = SynthesisAdapter(args.cubeIn[0], cfg, key)
+
+l0, y0, x0 = sa._cube.center
+sa.spatialMask[...] = True
+sa.spatialMask[y0-1:y0+1, x0-1:x0+1] = False
 
 print 'Starting starlight runner.'
-runner = sr.StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
+runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=use_errors_flags,
                             use_custom_masks=args.useCustomMasks):
     print 'Dispatching grid.'
@@ -102,5 +91,5 @@ if args.estimateError:
     print 'Estimating errors from the starlight residual.'
     sa.updateErrorsFromResidual(args.errorSmoothFwhm, args.errorBoxWidth)
     
-print 'Saving cube to %s.' % out_cube
-sa.writeCube(out_cube, args.overwrite)
+print 'Saving cube to %s.' % args.cubeOut
+sa.writeCube(args.cubeOut, args.overwrite)

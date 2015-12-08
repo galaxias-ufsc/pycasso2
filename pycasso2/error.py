@@ -4,6 +4,7 @@ Created on 02/10/2015
 @author: andre
 '''
 
+from .resampling import gaussian1d_spectra, interp1d_spectra
 import numpy as np
 
 __all__ = ['estimate_error']
@@ -13,7 +14,6 @@ def smooth_spectra(ll, flux, spatial_mask, fwhm):
     '''
     Apply a gaussian filter to all spectra.
     '''
-    from diving3d.resampling import gaussian1d_spectra
 
     flux_filt = np.zeros_like(flux)
     _, Ny, Nx = flux.shape
@@ -30,7 +30,6 @@ def interp_spectra(ll, flux, spatial_mask):
     '''
     Linearly interpolate the spectra, filling the masked wavelengths.
     '''
-    from diving3d.resampling import interp1d_spectra
 
     flux_filt = np.zeros_like(flux)
     _, Ny, Nx = flux.shape

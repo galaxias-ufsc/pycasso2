@@ -4,14 +4,14 @@ Created on 23/06/2015
 @author: andre
 '''
 
-from diving3d.cube import D3DFitsCube
-from diving3d.wcs import find_nearest_index
+from pycasso2 import FitsCube
+from pycasso2.wcs import find_nearest_index
 
 import numpy as np
 import sys
 from matplotlib.ticker import MultipleLocator
 
-def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy_id, suffix):
+def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, cube):
     import matplotlib.pyplot as plt
         
     plotpars = {'legend.fontsize': 8,
@@ -44,7 +44,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     plt.ylim(yy.min(), yy.max())
     plt.gca().xaxis.set_ticklabels([])
     plt.xlim(ll.min(), ll.max())
-    plt.title(r'%s %s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (galaxy_id, suffix, xx[x_slice]))
+    plt.title(r'%s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (cube, xx[x_slice]))
     plt.colorbar(ticks=[0.0, 0.5e-16, 1.0e-16, 1.5e-16, 2.0e-16])
     
     plt.subplot(312)
@@ -65,7 +65,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     plt.title('residual [%]')
     plt.colorbar(ticks=[-5, -2.5, 0, 2.5, 5])
     plt.gcf().set_tight_layout(True)
-    plt.savefig('data/plots/%s_%s_slice.png' % (galaxy_id, suffix), dpi=300)
+    plt.savefig('plots/%s_slice.png' % cube, dpi=300)
     
     plt.figure(2, figsize=(5, 5))
     plt.subplot(211)
@@ -79,7 +79,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     plt.xlim(ll.min(), ll.max())
     plt.gca().xaxis.set_ticklabels([])
     plt.legend(loc='center right')
-    plt.title('%s %s - center spaxel' % (galaxy_id, suffix))
+    plt.title('%s - center spaxel' % cube)
 
     plt.subplot(212)
     r = f_res[:, center[1], center[2]]
@@ -93,7 +93,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     plt.xlim(ll.min(), ll.max())
     plt.legend(loc='lower right')
     plt.gcf().set_tight_layout(True)
-    plt.savefig('data/plots/%s_%s_center.pdf' % (galaxy_id, suffix))
+    plt.savefig('plots/%s_center.pdf' % cube)
     
     plt.figure(3, figsize=(4, 5))
     l_norm = 5635.0 #AA
@@ -107,8 +107,8 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     plt.ylim(-2.5, 2.5)
     plt.xlabel(r'R. A. [arcsec]')
     plt.ylabel(r'dec. [arcsec]')
-    plt.title(r'%s %s - S/N at $5635\,\AA$' % (galaxy_id, suffix))
-    plt.savefig('data/plots/%s_%s_sn.pdf' % (galaxy_id, suffix))
+    plt.title(r'%s - S/N at $5635\,\AA$' % cube)
+    plt.savefig('plots/%s_sn.pdf' % cube)
 
     plt.figure(5, figsize=(4, 5))
     plt.pcolormesh(xx, yy, at_flux, cmap='cubehelix_r')
@@ -118,22 +118,20 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, at_flux, ll, yy, xx, center, galaxy
     plt.ylim(-2.5, 2.5)
     plt.xlabel(r'R. A. [arcsec]')
     plt.ylabel(r'dec. [arcsec]')
-    plt.title(r'%s %s - $\langle \log t \rangle_\mathrm{flux}\ [\mathrm{Gyr}]$' % (galaxy_id, suffix))
-    plt.savefig('data/plots/%s_%s_atflux.pdf' % (galaxy_id, suffix))
-    #plt.show()
+    plt.title(r'%s - $\langle \log t \rangle_\mathrm{flux}\ [\mathrm{Gyr}]$' % cube)
+    plt.savefig('plots/%s_atflux.pdf' % cube)
+    plt.show()
     
-galaxy_id = sys.argv[1]
-suffix = sys.argv[2]
-cube = '/Volumes/data/diving3d/cubes_out/%s_%s.fits' % (galaxy_id, suffix)
-d3d = D3DFitsCube(cube)
-xx = d3d.x_coords
-yy = d3d.y_coords
-ll = d3d.l_obs
-center = d3d.center
+cube = sys.argv[1]
+c = FitsCube(cube)
+xx = c.x_coords
+yy = c.y_coords
+ll = c.l_obs
+center = c.center
 
-f_obs = d3d.f_obs * d3d.flux_unit
-f_syn = d3d.f_syn * d3d.flux_unit
-f_err = d3d.f_err * d3d.flux_unit
+f_obs = c.f_obs * c.flux_unit
+f_syn = c.f_syn * c.flux_unit
+f_err = c.f_err * c.flux_unit
 f_res = f_obs - f_syn
 
-plot_spectra(f_obs, f_syn, f_res, f_err, d3d.at_flux, ll, yy, xx, center, galaxy_id, suffix)
+plot_spectra(f_obs, f_syn, f_res, f_err, c.at_flux, ll, yy, xx, center, cube)
