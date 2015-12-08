@@ -65,10 +65,6 @@ else:
 print 'Loading cube from %s.' % args.cubeIn[0]
 sa = SynthesisAdapter(args.cubeIn[0], cfg, key)
 
-l0, y0, x0 = sa._cube.center
-sa.spatialMask[...] = True
-sa.spatialMask[y0-1:y0+1, x0-1:x0+1] = False
-
 print 'Starting starlight runner.'
 runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=use_errors_flags,
