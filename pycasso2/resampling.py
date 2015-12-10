@@ -8,7 +8,7 @@ from . import flags
 import numpy as np
 
 
-__all__ = ['resample_spectra', 'reshape_spectra', 'apply_redshift', 'velocity2redshift',
+__all__ = ['resample_spectra', 'reshape_spectra',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
            'age_smoothing_kernel', 'light2mass_ini', 'interp_age']
 
@@ -178,20 +178,26 @@ def extrap_ResampMat(ResampMat__ro, lo_low, lo_upp, lr_low, lr_upp):
         ResampMat__ro[bins_extrapr, io_extrapr] = 1.
 
     
-def resample_spectra(spectra, l_orig, l_resam):
+def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
     '''
     Resample IFS wavelength-wise.
     
     Parameters
     ----------
-    spectra : array
-        Spectra to be resampled.
-    
     l_orig : array
         Original wavelength base of ``spectra``.
     
     l_resam : array
         Destination wavelength base.
+    
+    f_obs : array
+        Observed spectra to be resampled.
+    
+    f_err : array
+        Error spectra to be resampled.
+    
+    badpix : array(dtype=bool)
+        bad pixel spectra to be resampled.
     
     Returns
     -------
@@ -199,14 +205,17 @@ def resample_spectra(spectra, l_orig, l_resam):
         Spectra resampled to ``l_resam``.
     '''
     R = ReSamplingMatrixNonUniform(l_orig, l_resam)
-    spectra = np.tensordot(R, spectra, (1,0))
-    flagged = np.zeros_like(spectra, dtype='int32') + flags.no_data
-    good = (l_resam >= l_orig[0]) & (l_resam <= l_orig[-1])
-    flagged[good] = 0
-    return spectra, flagged
+    f_obs = np.tensordot(R, f_obs, (1,0))
+    f_err = np.tensordot(R, f_err, (1,0))
+    badpix = np.tensordot(R, badpix.astype('float64'), (1,0)) > 0.0
+    f_flag = np.zeros_like(f_obs, dtype='int32')
+    out_of_range = (l_resam < l_orig[0]) | (l_resam > l_orig[-1])
+    f_flag[out_of_range] |= flags.no_data
+    f_flag[badpix] |= flags.bad_pix
+    return f_obs, f_err, f_flag
 
 
-def reshape_spectra(f_obs, f_flag, center, new_shape):
+def reshape_spectra(f_obs, f_err, f_flag, center, new_shape):
     '''
     Reshape IFS into a new spatial shape, putting the given
     photometric center at the center of the new IFS.
@@ -215,6 +224,9 @@ def reshape_spectra(f_obs, f_flag, center, new_shape):
     Parameters
     ----------
     f_obs : array
+        Flux, will remain unchanged.
+    
+    f_err : array
         Flux, will remain unchanged.
     
     f_flag : array
@@ -247,51 +259,15 @@ def reshape_spectra(f_obs, f_flag, center, new_shape):
     
     res_f_obs = np.zeros((new_shape))
     res_f_obs[:, y0:yf, x0:xf] = f_obs
+    res_f_err = np.zeros((new_shape))
+    res_f_err[:, y0:yf, x0:xf] = f_err
     res_f_flag = np.zeros_like(res_f_obs, dtype='int32') + flags.no_data
     res_f_flag[:, y0:yf, x0:xf] = f_flag
     
     res_center = (center[0], new_shape[1] / 2, new_shape[2] / 2)
     
-    return res_f_obs, res_f_flag, res_center
+    return res_f_obs, res_f_err, res_f_flag, res_center
     
-
-def apply_redshift(l, z, dest='rest'):
-    '''
-    Apply redshift correction to wavelength from to rest or observed frames.
-    
-    Parameters
-    ----------
-    l : array
-        Wavelength array.
-        
-    z : array or float.
-        Redshift.
-        
-    dest : string, optional
-        Destination frame. Either ``'rest'`` or ``'observed'``.
-        Default: ``'rest'``.
-    
-    Returns
-    -------
-    l_red : array
-        Redshifted wavelength array. If ``z`` is an array,
-        ``l_red`` will have the shape ``l.shape + z.shape``.
-    '''
-    if dest == 'rest':
-        op = lambda x, y: x / y
-    elif dest == 'observed':
-        op = lambda x, y: x * y
-        
-    if np.array(z).shape == ():
-        return op(l, 1. + z)
-    else:
-        return op(l[:, np.newaxis], 1. + z[np.newaxis, :])
-
-
-def velocity2redshift(v):
-    c = 299792.458 # km/s
-    return v / c
-
 
 def fwhm2sigma(fwhm):
     return fwhm / (2 * np.sqrt(2 * np.log(2)))

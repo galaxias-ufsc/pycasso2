@@ -7,9 +7,8 @@ Resample spectra in 1 \AA bins and change wavelength interval.
 
 '''
 
-from pycasso2.importer import read_diving3d, d3d_read_masterlist, d3d_get_galaxy_id
+from pycasso2.importer import read_califa, read_diving3d
 from pycasso2.starlight.tables import read_wavelength_mask
-from pycasso2.resampling import velocity2redshift
 from pycasso2 import flags
 from pycasso2.config import get_config, default_config_path
 
@@ -29,7 +28,7 @@ def parse_args():
     parser.add_argument('--name', dest='name',
                         help='Object name. Ex.: NGC0123')
     parser.add_argument('--cube-type', dest='cubeType', default='diving3d',
-                        help='Cube type. Ex.: diving3d, gmos')
+                        help='Cube type. Ex.: diving3d, califa')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
@@ -56,27 +55,17 @@ kwargs = dict(l_ini=cfg.getfloat('dimensions', 'l_ini'),
               name=name)
 
 if args.cubeType == 'diving3d':
-    masterlist = cfg.get('diving3d', 'masterlist')
-    galaxy_id = d3d_get_galaxy_id(args.cubeIn[0])    
-    print 'Loading masterlist for %s: %s.' % (galaxy_id, masterlist)
-    ml = d3d_read_masterlist(masterlist, galaxy_id)
+    g = read_diving3d(args.cubeIn[0], args.cubeIn[1], cfg, **kwargs)
 
-    print 'Loading cube %s and %s.' % (args.cubeIn[0], args.cubeIn[1])
-    g = read_diving3d(args.cubeIn[0], args.cubeIn[1], ml, **kwargs)
-    gap_mask_template = cfg.get('diving3d', 'gap_mask_template')
-    
-    z = velocity2redshift(ml['V_hel'])
-    print 'Applying CCD gap mask (z = %f)' % z
-    gap_mask_file = gap_mask_template % ml['grating']
-    gap_mask = read_wavelength_mask(gap_mask_file, g.l_obs, z, dest='rest')
-    g.f_flag[gap_mask] |= flags.ccd_gap
+elif args.cubeType == 'califa':
+    read_califa(args.cubeIn[0], cfg, **kwargs)
 else:
     log.error('Unknown cube type %s' % args.cubeType)
     sys.exit()
 
-print 'Applying telluric lines masks (z = %f)' % z
+print 'Applying telluric lines masks (z = %f)' % g.redshift
 telluric_mask_file = cfg.get('tables', 'telluric_mask')
-telluric_mask = read_wavelength_mask(telluric_mask_file, g.l_obs, z, dest='rest')
+telluric_mask = read_wavelength_mask(telluric_mask_file, g.l_obs, g.redshift, dest='rest')
 g.f_flag[telluric_mask] |= flags.telluric
 
 print 'Saving cube %s.' % args.cubeOut

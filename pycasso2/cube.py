@@ -13,6 +13,7 @@ from . import flags
 from astropy.io import fits
 from astropy import log
 import numpy as np
+from pycasso2.wcs import get_axis_WCS
 
 __all__ = ['FitsCube']
 
@@ -40,6 +41,7 @@ class FitsCube(object):
     _ext_fbase_norm = 'FBASE_NORM'
     
     _h_lum_dist_Mpc = 'PIPE LUM_DIST_MPC'
+    _h_redshift = 'PIPE REDSHIFT'
     _h_flux_unit = 'PIPE FLUX_UNIT'
     _h_object_name = 'PIPE OBJECT_NAME'
     
@@ -66,7 +68,7 @@ class FitsCube(object):
 
     
     def _initMasks(self):
-        self.synthesisMask = self.getSpatialMask(flags.no_obs | flags.starlight_failed_run | flags.starlight_masked_pix)
+        self.synthesisMask = self.getSpatialMask(flags.no_obs | flags.no_starlight)
         self.spectraMask = (self.f_flag & flags.no_obs) > 0
     
     
@@ -86,7 +88,6 @@ class FitsCube(object):
         self._addExtension(self._ext_f_wei, kind='spectra', overwrite=True)
         self._addExtension(self._ext_popx, kind='population', overwrite=True)
         self._addExtension(self._ext_popmu_ini, kind='population', overwrite=True)
-        self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
         self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
         self._addExtension(self._ext_popage_base, kind='base', overwrite=True)
         self._addExtension(self._ext_popZ_base, kind='base', overwrite=True)
@@ -429,6 +430,12 @@ class FitsCube(object):
 
 
     @property
+    def dl(self):
+        _, _, cdelt, _ = get_axis_WCS(self._header, 3)
+        return cdelt
+
+
+    @property
     def y_coords(self):
         return get_axis_coordinates(self._header, 2)
 
@@ -467,6 +474,20 @@ class FitsCube(object):
     @lumDistMpc.setter
     def lumDistMpc(self, value):
         key = 'HIERARCH %s' % self._h_lum_dist_Mpc
+        self._header[key] = value
+    
+    
+    @property
+    def redshift(self):
+        key = self._h_redshift
+        if not key in self._header:
+            raise Exception('Redshift not set. Header key: %s' % key)
+        return self._header[key]
+
+
+    @redshift.setter
+    def redshift(self, value):
+        key = 'HIERARCH %s' % self._h_redshift
         self._header[key] = value
     
     
