@@ -3,6 +3,8 @@ Created on Jun 17, 2013
 
 @author: andre
 '''
+
+from astropy import log
 from os import path
 import subprocess
 from Queue import Queue
@@ -48,7 +50,7 @@ def run_starlight(starlight_dir, grid_data, timeout, logfile=None):
         if res is not None:
             return res
         time.sleep(1.0)
-    print 'STARLIGHT took too long (%d seconds), sending SIGKILL.' % timeout
+    log.warn('STARLIGHT took too long (%d seconds), sending SIGKILL.' % timeout)
     slProc.kill()
     return -999
 ###############################################################################
@@ -73,7 +75,7 @@ def run_starlight_and_check(grid, timeout, compress=True):
     # First check, maybe some files were already run.
     grid.checkOutput(compress)
     if len(grid.completed) > 0:
-        print 'Skipped %d runs.' % len(grid.completed)
+        log.warn('Skipped %d completed runs from %s.' % (len(grid.completed), grid.name))
     
     t0 = time.time()
     while len(grid.runs) > 0 and its < max_iterations:
@@ -82,22 +84,22 @@ def run_starlight_and_check(grid, timeout, compress=True):
         grid.write(grid_fname)
         result = -1
         with open(log_fname, 'w') as logfile:
-            print 'Starting starlight process, %d to go...' % len(grid.runs)
+            log.debug('Starting starlight process for %s, %d to go...' % (grid.name, len(grid.runs)))
             result = run_starlight(grid.starlightDir, str(grid), timeout, logfile)
         grid.checkOutput(compress)
         if result == -999 and len(grid.runs) > 0:
-            print 'Whoops, starlight hung last time, removing top run.'
+            log.error('%s hung last time, removing top run.' % grid.name)
             grid.failRun(0)
         elif result <> 0:
-            print 'Whoops, starlight failed with result %d, check your parameters!' % result
+            log.error('%s failed with result %d, check your parameters!' % (grid.name, result))
         its += 1
     
     if its >= max_iterations:
-        print 'Bailed without finishing the job, %d spectra left behind.' % len(grid.runs)
+        log.error('%s bailed without finishing the job, %d spectra left behind.' % (grid.name, len(grid.runs)))
         grid.failRuns()
         
     if len(grid.completed) > 0:
-        print 'Took %.1f to starlight %d spectra.' % (time.time() - t0, len(grid.completed))
+        log.debug('Took %.1f s to run %s (%d spectra).' % (time.time() - t0, grid.name, len(grid.completed)))
     return grid
 ###############################################################################
 
@@ -140,7 +142,7 @@ class StarlightThread(Thread):
                 _output_grid = run_starlight_and_check(grid, self._timeout, compress=self._compress)
                 self._outputGrids.append(_output_grid)
             except Exception as e:
-                print e
+                log.error(str(e))
                 import traceback
                 traceback.print_exc()
             self._inputGrids.task_done()

@@ -3,7 +3,7 @@ Created on 26/06/2015
 
 @author: andre
 '''
-from .tables import write_input
+from .tables import write_input, read_output_tables
 from .gridfile import GridRun, GridFile
 from ..error import estimate_error
 from .. import flags
@@ -11,7 +11,6 @@ from .. import flags
 from astropy import log
 from os import path, makedirs as os_makedirs
 import numpy as np
-from pycasso2.starlight.tables import read_output_tables
 
 __all__ = ['SynthesisAdapter', 'PGridFile', 'PGridRun']
 
@@ -198,7 +197,6 @@ class SynthesisAdapter(object):
             grid.flagSpecAvail = 0
         
         for x in xrange(x1, x2):
-            log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
             run = self._createRun(x, y, use_errors_flags, use_custom_masks)
             if run is not None:
                 grid.runs.append(run)
@@ -212,6 +210,7 @@ class SynthesisAdapter(object):
             self.f_flag[:, y, x] |= flags.starlight_masked_pix
             return None
         
+        log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
         new_run = self._runTemplate.copy()
         new_run.inFile = self._inFileFormat % (self.objectName, y, x)
         new_run.outFile = self._outFileFormat % (self.objectName, y, x)
@@ -253,6 +252,7 @@ class SynthesisAdapter(object):
     
     def updateSynthesis(self, grid):
         for fr in grid.failed:
+            log.warn('Failed run for pixel (%d, %d)' % (fr.y, fr.x))
             self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run            
 
         keyword_data = {}

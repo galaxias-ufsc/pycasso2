@@ -69,8 +69,9 @@ print 'Starting starlight runner.'
 runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=use_errors_flags,
                             use_custom_masks=args.useCustomMasks):
-    print 'Dispatching grid.'
-    runner.addGrid(grid)
+    if len(grid.runs) != 0:
+        log.info('Dispatching grid %s.' % grid.name)
+        runner.addGrid(grid)
 
 print 'Waiting jobs completion.'
 runner.wait()
@@ -80,11 +81,11 @@ print 'Creating synthesis cubes.'
 sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
 
 for grid in output_grids:
-    print 'Reading results of grid %s.' % grid.name
+    log.debug('Reading results of grid %s.' % grid.name)
     sa.updateSynthesis(grid)
     
 if args.estimateError:
-    print 'Estimating errors from the starlight residual.'
+    print 'Estimating errors from the starlight residual. Will overwrite the previous error values.'
     sa.updateErrorsFromResidual(args.errorSmoothFwhm, args.errorBoxWidth)
     
 print 'Saving cube to %s.' % args.cubeOut

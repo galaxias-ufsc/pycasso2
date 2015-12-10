@@ -42,7 +42,7 @@ def plot_image(im, yy, xx, galaxy_id):
     plt.show()
 
 
-cube = sys.argv[0]
+cube = sys.argv[1]
 
 c = FitsCube(cube)
 xx = c.x_coords

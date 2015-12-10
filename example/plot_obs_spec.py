@@ -5,6 +5,7 @@ Created on 23/06/2015
 '''
 
 from pycasso2 import FitsCube
+import sys
 
 def plot_example(c, cube_name, x_slice):
     import matplotlib.pyplot as plt
@@ -35,7 +36,7 @@ def plot_example(c, cube_name, x_slice):
     plt.show()
 
 
-cube = sys.argv[0]
+cube = sys.argv[1]
 c = FitsCube(cube)
 
 plot_example(c, cube, x_slice=10)
