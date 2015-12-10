@@ -46,11 +46,11 @@ if args.name is None:
 else:
     name = args.name
 
-kwargs = dict(l_ini=cfg.getfloat('dimensions', 'l_ini'),
-              l_fin=cfg.getfloat('dimensions', 'l_fin'),
-              dl=cfg.getfloat('dimensions', 'dl'),
-              width=cfg.getint('dimensions', 'Nx'),
-              height=cfg.getint('dimensions', 'Ny'),
+kwargs = dict(l_ini=cfg.getfloat('import', 'l_ini'),
+              l_fin=cfg.getfloat('import', 'l_fin'),
+              dl=cfg.getfloat('import', 'dl'),
+              width=cfg.getint('import', 'Nx'),
+              height=cfg.getint('import', 'Ny'),
               flux_unit=cfg.getfloat('general', 'flux_unit'),
               name=name)
 
