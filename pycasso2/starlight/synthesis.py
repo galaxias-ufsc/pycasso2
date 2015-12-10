@@ -148,9 +148,9 @@ class SynthesisAdapter(object):
         grid.randPhone = int(cfg.get(key, 'rand_seed'))
         grid.lLow_SN = float(cfg.get(key, 'llow_SN'))
         grid.lUpp_SN = float(cfg.get(key, 'lupp_SN'))
-        grid.lLow_Syn = float(cfg.get(key, 'Olsyn_ini'))
-        grid.lUpp_Syn = float(cfg.get(key, 'Olsyn_fin'))
-        grid.dLambda = float(cfg.get(key, 'Odlsyn'))
+        grid.lLow_Syn = self.l_obs.min()
+        grid.lUpp_Syn = self.l_obs.max()
+        grid.dLambda = self._cube.dl
         grid.fScale_Chi2 = float(cfg.get(key, 'fscale_chi2'))
         grid.fitFix = cfg.get(key, 'fit_fix')
         grid.isPhoEnabled = int(cfg.get(key, 'IsPHOcOn'))
