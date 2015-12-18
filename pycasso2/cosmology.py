@@ -5,6 +5,7 @@ Created on 09/12/2015
 '''
 
 from astropy.cosmology import FlatLambdaCDM
+import astropy.units as u
 import numpy as np
 
 __all__ = ['redshift2lum_distance', 'velocity2redshift']
@@ -21,7 +22,8 @@ def redshift2lum_distance(z, simple=False):
         return z * c / H0
     
     cosmo = FlatLambdaCDM(H0, omega0)
-    return cosmo.luminosity_distance(z)
+    dl = cosmo.luminosity_distance(z) / (1e6 * u.pc)
+    return float(dl)
 
 
 def velocity2redshift(v):
