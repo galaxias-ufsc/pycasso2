@@ -12,6 +12,7 @@ import random
 from string import Template
 from bz2 import BZ2File
 from shutil import copyfileobj
+from astropy import log
 
 __all__ = ['GridRun', 'GridFile']
 
@@ -24,6 +25,7 @@ def output_ok(filename):
         read_output_tables(filename)
         return True
     except:
+        log.warn('Error reading output file %s' % filename)
         return False
 ###############################################################################
 
@@ -55,7 +57,7 @@ def bz2_file(filename):
                 copyfileobj(fd, bzfd)
         unlink(filename)
     except:
-        print 'Could not compress file %s' % filename
+        log.error('Could not compress file %s' % filename)
         if path.exists(filename_bz2):
                 unlink(filename_bz2)
 ###############################################################################
@@ -455,10 +457,10 @@ class GridFile(object):
             
         '''
         if not path.exists(self.outDirAbs):
-            print 'Output dir does not exist! Skipping check.'
+            log.warn('Output dir does not exist! Skipping check.')
             return
         if len (self.runs) == 0:
-            print 'Nothing to check.'
+            log.warn('Nothing to check.')
             return
         done = []
         not_done = []

@@ -57,7 +57,7 @@ def wavelength_apply_redshift(wl, z, dest='rest'):
     elif dest == 'observed':
         op = lambda x, y: x * y
         
-    if np.array(z).shape == ():
+    if np.isscalar(z):
         return op(wl, 1. + z)
     else:
         return op(wl[:, np.newaxis], 1. + z[np.newaxis, :])

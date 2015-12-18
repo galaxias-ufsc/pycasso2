@@ -85,22 +85,6 @@ class PGridRun(GridRun):
         GridRun.__init__(self, *args)
         self.x = x
         self.y = y
-    
-    
-    @classmethod
-    def from_run(cls, run):
-        prun = cls()
-        prun.inFile = run.inFile
-        prun.outFile = run.outFile
-        prun.configFile = run.configFile
-        prun.baseFile = run.baseFile
-        prun.maskFile = run.maskFile
-        prun.reddening = run.reddening
-        prun.etcInfoFile = run.etcInfoFile
-        prun.lumDistanceMpc = run.lumDistanceMpc
-        prun.v0_Ini = run.v0_Ini
-        prun.vd_Ini = run.vd_Ini
-        return prun
 
 
 def makedirs(the_path):

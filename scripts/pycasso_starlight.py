@@ -67,7 +67,7 @@ runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorFlag,
                             use_custom_masks=args.useCustomMasks):
     if len(grid.runs) != 0:
-        log.info('Dispatching grid %s.' % grid.name)
+        log.info('Dispatching %s.' % grid.name)
         runner.addGrid(grid)
 
 print 'Waiting jobs completion.'
@@ -78,7 +78,7 @@ print 'Creating synthesis cubes.'
 sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
 
 for grid in output_grids:
-    log.debug('Reading results of grid %s.' % grid.name)
+    log.debug('Reading results of %s.' % grid.name)
     sa.updateSynthesis(grid)
     
 if args.estimateError:
