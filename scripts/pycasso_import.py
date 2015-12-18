@@ -58,7 +58,7 @@ if args.cubeType == 'diving3d':
     g = read_diving3d(args.cubeIn[0], args.cubeIn[1], cfg, **kwargs)
 
 elif args.cubeType == 'califa':
-    read_califa(args.cubeIn[0], cfg, **kwargs)
+    g = read_califa(args.cubeIn[0], cfg, **kwargs)
 else:
     log.error('Unknown cube type %s' % args.cubeType)
     sys.exit()
