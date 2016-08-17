@@ -5,7 +5,7 @@ Created on 15/06/2015
 
 '''
 
-from pycasso2.importer import read_califa, read_diving3d
+from pycasso2.importer import read_califa, read_diving3d, read_manga
 from pycasso2.starlight.tables import read_wavelength_mask
 from pycasso2 import flags
 from pycasso2.config import get_config, default_config_path
@@ -57,6 +57,10 @@ if args.cubeType == 'diving3d':
 
 elif args.cubeType == 'califa':
     g = read_califa(args.cubeIn[0], cfg, **kwargs)
+
+elif args.cubeType == 'manga':
+    g = read_manga(args.cubeIn[0], cfg, **kwargs)
+
 else:
     log.error('Unknown cube type %s' % args.cubeType)
     sys.exit()
