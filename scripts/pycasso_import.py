@@ -3,8 +3,6 @@ Created on 15/06/2015
 
 @author: andre
 
-Resample spectra in 1 \AA bins and change wavelength interval. 
-
 '''
 
 from pycasso2.importer import read_califa, read_diving3d

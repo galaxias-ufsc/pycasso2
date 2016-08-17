@@ -45,8 +45,6 @@ class FitsCube(object):
     _h_flux_unit = 'PIPE FLUX_UNIT'
     _h_object_name = 'PIPE OBJECT_NAME'
     
-    _pop_len = None
-    
     _Z_sun = 0.019
     
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
@@ -54,6 +52,7 @@ class FitsCube(object):
                          'Nglobal_steps', 'chi2']
     
     def __init__(self, cubefile=None):
+        self._pop_len = None
         if cubefile is None:
             return
         self._load(cubefile)

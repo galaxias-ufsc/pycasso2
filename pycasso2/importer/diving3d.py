@@ -5,7 +5,7 @@ Created on 08/12/2015
 '''
 from ..cube import safe_getheader, FitsCube
 from ..wcs import get_axis_coordinates, get_reference_pixel, set_axis_WCS
-from ..resampling import resample_spectra, reshape_spectra
+from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import velocity2redshift
 from ..starlight.tables import read_wavelength_mask
 from .. import flags
@@ -54,7 +54,7 @@ def read_diving3d(redcube, obscube, cfg, **kwargs):
     log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
     new_shape = (len(l_obs), Ny, Nx)
     center = get_reference_pixel(header)
-    f_obs, f_err, f_flag, new_center = reshape_spectra(f_obs, f_err, f_flag, center, new_shape)
+    f_obs, f_err, f_flag, new_center = reshape_cube(f_obs, f_err, f_flag, center, new_shape)
 
     log.debug('Updating WCS.')
     set_axis_WCS(header, ax=1, crpix=new_center[2], naxis=new_shape[2])

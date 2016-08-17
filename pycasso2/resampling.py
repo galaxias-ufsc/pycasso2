@@ -8,7 +8,7 @@ from . import flags
 import numpy as np
 
 
-__all__ = ['resample_spectra', 'reshape_spectra',
+__all__ = ['resample_spectra', 'reshape_cube',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
            'age_smoothing_kernel', 'light2mass_ini', 'interp_age']
 
@@ -215,7 +215,7 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
     return f_obs, f_err, f_flag
 
 
-def reshape_spectra(f_obs, f_err, f_flag, center, new_shape):
+def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
     '''
     Reshape IFS into a new spatial shape, putting the given
     photometric center at the center of the new IFS.
