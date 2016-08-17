@@ -32,7 +32,7 @@ def set_axis_WCS(header, ax, crpix=None, crval=None, cdelt=None, naxis=None):
     if crval is not None:
         header['CRVAL%d' % ax] = crval
     if cdelt is not None:
-        header['CDELT%d' % ax] = cdelt
+        header['CD%d_%d' % (ax, ax)] = cdelt
     if naxis is not None:
         header['NAXIS%d' % ax] = naxis
 
@@ -43,7 +43,7 @@ def get_axis_WCS(header, ax):
         raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
     crpix = float(header['CRPIX%d' % ax]) - 1
     crval = header['CRVAL%d' % ax]
-    cdelt = header['CDELT%d' % ax]
+    cdelt = header['CD%d_%d' % (ax, ax)]
     N = header['NAXIS%d' % ax]
     return crpix, crval, cdelt, N 
 
@@ -71,13 +71,13 @@ def get_shape(header):
 
 
 def get_pixel_area_srad(header):
-    delta_x = np.abs(header['CDELT1']) * AU_per_pc
-    delta_y = np.abs(header['CDELT2']) * AU_per_pc
+    delta_x = np.abs(header['CD1_1']) * AU_per_pc
+    delta_y = np.abs(header['CD2_2']) * AU_per_pc
     return delta_x * delta_y
 
     
 def get_pixel_length_rad(header):
-    return np.abs(header['CDELT1']) * AU_per_pc
+    return np.abs(header['CD1_1']) * AU_per_pc
 
     
 def copy_WCS(orig_header, dest_header, axes, dest_axes=None):
