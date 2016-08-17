@@ -43,11 +43,11 @@ def read_manga(cube, cfg, **kwargs):
     log.debug('Loading data from %s.' % cube)
     with fits.open(cube) as f:
         f_obs_orig = f['FLUX'].data
-        # FIXME: make sense of IVAR extension.
-        #f_err_orig = f['IVAR'].data**-0.5
-        f_err_orig = np.zeros_like(f_obs_orig)
         # FIXME: Check mask bits.
         badpix = f['MASK'].data > 0
+        goodpix = ~badpix
+        f_err_orig = np.zeros_like(f_obs_orig)
+        f_err_orig[goodpix] = f['IVAR'].data[goodpix]**-0.5
         l_obs = f['WAVE'].data
 
     log.debug('Putting spectra in rest frame (z=%.2f).' % z)
