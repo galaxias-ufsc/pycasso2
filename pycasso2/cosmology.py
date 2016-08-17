@@ -22,7 +22,7 @@ def redshift2lum_distance(z, simple=False):
         return z * c / H0
     
     cosmo = FlatLambdaCDM(H0, omega0)
-    dl = cosmo.luminosity_distance(z) / (1e6 * u.pc)
+    dl = cosmo.luminosity_distance(z) / u.Mpc
     return float(dl)
 
 
