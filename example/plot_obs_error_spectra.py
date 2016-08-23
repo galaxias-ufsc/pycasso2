@@ -104,7 +104,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, ll, yy, xx, center, cube):
     i_norm = find_nearest_index(ll, l_norm)
     signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
     noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
-    plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
+    plt.pcolormesh(-xx, yy, signal_image / noise_image, cmap='cubehelix_r')
     plt.colorbar(ticks=MultipleLocator(10))
     plt.gca().set_aspect('equal')
     plt.xlabel(r'R. A. [arcsec]')
@@ -116,8 +116,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, ll, yy, xx, center, cube):
     
 cube = sys.argv[1]
 c = FitsCube(cube)
-xx = c.x_coords
-yy = c.y_coords
+xx, yy = c.celestial_coords
 ll = c.l_obs
 center = c.center
 

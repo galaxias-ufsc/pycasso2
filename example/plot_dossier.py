@@ -33,9 +33,8 @@ def plot_setup():
     
 
 def plot_maps(c, pdf):
-    xx = c.x_coords
-    yy = c.y_coords
-    
+    xx, yy = c.celestial_coords
+   
     fig = plt.figure(figsize=(8, 10))
     
     plt.subplot(331)
@@ -179,8 +178,7 @@ def plot_spectra(c, pdf):
     plt.rcParams.update(plotpars)
     plt.ioff()
     
-    xx = c.x_coords
-    yy = c.y_coords
+    xx, yy = c.celestial_coords
     ll = c.l_obs
     center = c.center
 

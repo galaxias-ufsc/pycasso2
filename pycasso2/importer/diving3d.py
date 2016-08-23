@@ -4,7 +4,7 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_axis_coordinates, get_reference_pixel, set_axis_WCS
+from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS
 from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import velocity2redshift
 from ..starlight.tables import read_wavelength_mask
@@ -47,7 +47,7 @@ def read_diving3d(redcube, obscube, cfg, **kwargs):
     
     # TODO: how to handle redshift?
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
-    l_obs_orig = get_axis_coordinates(header, 3, dtype='float64')
+    l_obs_orig = get_wavelength_coordinates(header)
     l_obs = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(l_obs_orig, l_obs, f_obs_orig, f_err_orig, badpix)
     
@@ -57,9 +57,7 @@ def read_diving3d(redcube, obscube, cfg, **kwargs):
     f_obs, f_err, f_flag, new_center = reshape_cube(f_obs, f_err, f_flag, center, new_shape)
 
     log.debug('Updating WCS.')
-    set_axis_WCS(header, ax=1, crpix=new_center[2], naxis=new_shape[2])
-    set_axis_WCS(header, ax=2, crpix=new_center[1], naxis=new_shape[1])
-    set_axis_WCS(header, ax=3, crpix=0, crval=l_obs[0], cdelt=dl, naxis=new_shape[0])
+    update_WCS(header, crpix=new_center, crval_wave=l_obs[0], cdelt_wave=dl)
 
     masterlist = cfg.get('diving3d', 'masterlist')
     galaxy_id = d3d_get_galaxy_id(redcube)    
@@ -138,12 +136,16 @@ def d3d_fix_crpix(header, ax):
     naxes = header['NAXIS']
     if ax < 1 or ax > naxes:
         raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
-    crpix = float(header['CRPIX%d' % ax])
+    crpix = header['CRPIX%d' % ax]
+    if type(crpix) == str:
+        log.warn('Converting CRPIX to float for axis %d.' % ax)
+        crpix = float(crpix)
     if crpix <= 0.0:
-        log.warn('Fixing CRPIX for axis %d.' % ax)
+        log.warn('Fixing negative CRPIX for axis %d.' % ax)
         naxis = header['NAXIS%d' % ax]
-        header['CRPIX%d' % ax] = naxis / 2.0 + 0.5
-    
+        crpix = naxis / 2.0 + 0.5
+    header['CRPIX%d' % ax] = crpix
+
     
 def d3d_save_masterlist(header, ml):
     header_ignored = ['cube', 'cube_obs']

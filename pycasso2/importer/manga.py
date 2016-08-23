@@ -4,7 +4,7 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_axis_coordinates, get_reference_pixel, set_axis_WCS
+from ..wcs import update_WCS, get_reference_pixel
 from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import redshift2lum_distance, spectra2restframe
 from astropy import log
@@ -64,10 +64,7 @@ def read_manga(cube, cfg, **kwargs):
     f_obs, f_err, f_flag, new_center = reshape_cube(f_obs, f_err, f_flag, center, new_shape)
 
     log.debug('Updating WCS.')
-    set_axis_WCS(header, ax=1, crpix=new_center[2], naxis=new_shape[2])
-    set_axis_WCS(header, ax=2, crpix=new_center[1], naxis=new_shape[1])
-    set_axis_WCS(header, ax=3, crpix=0, crval=l_resam[0], cdelt=dl, naxis=new_shape[0])
-    
+    update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
     
     log.debug('Creating pycasso cube.')
     K = FitsCube()

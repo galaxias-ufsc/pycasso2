@@ -5,7 +5,8 @@ Created on 22/06/2015
 '''
 
 from .resampling import bin_edges, hist_resample
-from .wcs import get_axis_coordinates, copy_WCS, get_reference_pixel, get_shape, get_pixel_area_srad, get_pixel_length_rad
+from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
+from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini
 from . import flags
@@ -13,7 +14,6 @@ from . import flags
 from astropy.io import fits
 from astropy import log
 import numpy as np
-from pycasso2.wcs import get_axis_WCS
 
 __all__ = ['FitsCube']
 
@@ -270,9 +270,9 @@ class FitsCube(object):
     
     
     @property
-    def pixelLength_pc(self):
+    def pixelScale_pc(self):
         lum_dist_pc = self.lumDistMpc * 1e6
-        angle = get_pixel_length_rad(self._header)
+        angle = get_pixel_scale_rad(self._header)
         return angle * lum_dist_pc
     
     
@@ -425,23 +425,17 @@ class FitsCube(object):
     
     @property
     def l_obs(self):
-        return get_axis_coordinates(self._header, 3)
+        return get_wavelength_coordinates(self._header)
 
 
     @property
     def dl(self):
-        _, _, cdelt, _ = get_axis_WCS(self._header, 3)
-        return cdelt
+        return get_wavelength_sampling(self._header)
 
 
     @property
-    def y_coords(self):
-        return get_axis_coordinates(self._header, 2)
-
-
-    @property
-    def x_coords(self):
-        return get_axis_coordinates(self._header, 1)
+    def celestial_coords(self):
+        return get_celestial_coordinates(self._header, relative=True)
 
 
     @property

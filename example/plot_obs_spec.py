@@ -11,8 +11,7 @@ def plot_example(c, cube_name, x_slice):
     import matplotlib.pyplot as plt
     plt.ioff()
     plt.figure()
-    xx = c.x_coords
-    yy = c.y_coords
+    xx, yy = c.celestial_coords
     ll = c.l_obs
     
     plt.subplot(211)

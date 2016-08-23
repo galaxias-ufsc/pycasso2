@@ -5,62 +5,57 @@ Created on 26/06/2015
 '''
 
 from astropy.io import fits
+from astropy import wcs
 import numpy as np
 
-__all__ = ['get_axis_coordinates', 'set_axis_WCS', 'copy_WCS', 'get_cube_limits',
-           'get_shape', 'get_pixel_area_srad', 'get_pixel_length_rad']
+__all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'copy_WCS', 'update_WCS',
+           'get_cube_limits', 'get_shape', 'get_reference_pixel',
+           'get_pixel_area', 'get_pixel_area_srad',
+           'get_pixel_scale', 'get_pixel_scale_rad']
 
 
-AU_per_pc = 4.84813681e-6 # angle in radians for 1 arcsec
-
-def get_axis_coordinates(header, ax, dtype='float64'):
-    naxes = header['NAXIS']
-    if ax < 1 or ax > naxes:
-        raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
-    crpix, crval, cdelt, naxis = get_axis_WCS(header, ax)
-    c_ini = crval - crpix * cdelt
-    c_fin = c_ini + cdelt * (naxis - 1)
-    return np.linspace(c_ini, c_fin, naxis, dtype=dtype)
+rad_per_deg = np.pi / 180.0
+one_angstrom = 1e-10
 
 
-def set_axis_WCS(header, ax, crpix=None, crval=None, cdelt=None, naxis=None):
-    naxes = header['NAXIS']
-    if ax < 1 or ax > naxes:
-        raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
-    if crpix is not None:
-        header['CRPIX%d' % ax] = crpix + 1
-    if crval is not None:
-        header['CRVAL%d' % ax] = crval
-    if cdelt is not None:
-        header['CD%d_%d' % (ax, ax)] = cdelt
-    if naxis is not None:
-        header['NAXIS%d' % ax] = naxis
+def get_wavelength_coordinates(header):
+    w = wcs.WCS(header, naxis=[3])
+    pix_coords = np.arange(header['NAXIS3'])
+    wave_coords = w.wcs_pix2world(pix_coords[:, np.newaxis], 0)
+    if w.wcs.cunit == 'm':
+        wave_coords /= one_angstrom
+    return np.squeeze(wave_coords)
 
 
-def get_axis_WCS(header, ax):
-    naxes = header['NAXIS']
-    if ax < 1 or ax > naxes:
-        raise Exception('Axis %d not in range (1, %d)' % (ax, naxes))
-    crpix = float(header['CRPIX%d' % ax]) - 1
-    crval = header['CRVAL%d' % ax]
-    cdelt = header['CD%d_%d' % (ax, ax)]
-    N = header['NAXIS%d' % ax]
-    return crpix, crval, cdelt, N 
+def get_celestial_coordinates(header, relative=True):
+    # FIXME: Not sure how to make the coordinates relative.
+    w = wcs.WCS(header, naxis=2)
+    if relative:
+        w.wcs.crval = (180.0, 0.0)
+    xx_pix = np.arange(header['NAXIS1']) + 1
+    yy_pix = np.arange(header['NAXIS2']) + 1
+    x0_pix, y0_pix = np.rint(w.wcs.crpix).astype('int')
+    xx_world, _ = w.wcs_pix2world(xx_pix, np.zeros_like(xx_pix) + y0_pix, 1)
+    _, yy_world = w.wcs_pix2world(np.zeros_like(yy_pix) + x0_pix, yy_pix, 1)
+    if relative:
+        xx_world -= 180.0
+    xx_world *= 3600.0
+    yy_world *= 3600.0
+    return xx_world, yy_world
 
 
 def get_reference_pixel(header):
-    crpix_x = float(header['CRPIX1']) - 1
-    crpix_y = float(header['CRPIX2']) - 1
-    crpix_l = float(header['CRPIX3']) - 1
-    return (crpix_l, crpix_y, crpix_x)
+    w = wcs.WCS(header)
+    crpix = np.rint(w.wcs.crpix).astype('int') - 1
+    return (crpix[2], crpix[1], crpix[0])
 
 
 def get_cube_limits(cube, ext):
     header = fits.getheader(cube, ext)
-    l_obs = get_axis_coordinates(header, ax=3)
-    yy = get_axis_coordinates(header, ax=2)
-    xx = get_axis_coordinates(header, ax=1)
-    return l_obs.min(), l_obs.max(), len(yy), len(xx) 
+    l_obs = get_wavelength_coordinates(header)
+    Ny = header['NAXIS2']
+    Nx = header['NAXIS1']
+    return l_obs.min(), l_obs.max(), Ny, Nx 
 
 
 def get_shape(header):
@@ -70,29 +65,58 @@ def get_shape(header):
     return (Nl, Ny, Nx)
 
 
+def get_wavelength_sampling(header):
+    w = wcs.WCS(header, naxis=[3])
+    s = wcs.utils.proj_plane_pixel_scales(w)
+    if w.wcs.cunit == 'm':
+        s /= one_angstrom
+    return np.asscalar(s)
+
+    
+def get_pixel_area(header):
+    w = wcs.WCS(header, naxis=2)
+    a = wcs.utils.proj_plane_pixel_area(w)
+    return a 
+
+    
 def get_pixel_area_srad(header):
-    delta_x = np.abs(header['CD1_1']) * AU_per_pc
-    delta_y = np.abs(header['CD2_2']) * AU_per_pc
-    return delta_x * delta_y
+    a = get_pixel_area(header)
+    return a * (rad_per_deg * rad_per_deg)
 
     
-def get_pixel_length_rad(header):
-    return np.abs(header['CD1_1']) * AU_per_pc
+def get_pixel_scale(header):
+    w = wcs.WCS(header, naxis=2)
+    s = wcs.utils.proj_plane_pixel_scales(w)
+    return s.mean()
 
     
-def copy_WCS(orig_header, dest_header, axes, dest_axes=None):
+def get_pixel_scale_rad(header):
+    s = get_pixel_scale(header)
+    return s * rad_per_deg
+
+    
+def copy_WCS(header, dest_header, axes):
     if np.isscalar(axes):
         axes = [axes]
-    if dest_axes is None:
-        dest_axes = axes
-    elif np.isscalar(dest_axes):
-        dest_axes = [dest_axes]
-    if not len(axes) == len(dest_axes):
-        raise ValueError('number of axes do not match.')
     
-    for orig_ax, dest_ax in zip(axes, dest_axes):
-        crpix, crval, cdelt, naxis = get_axis_WCS(orig_header, orig_ax)
-        set_axis_WCS(dest_header, dest_ax, crpix, crval, cdelt, naxis)
+    w = wcs.WCS(header, naxis=axes)
+    dest_header.extend(w.to_header(), update=True)
+
+
+def update_WCS(header, crpix, crval_wave, cdelt_wave):
+    w = wcs.WCS(header)
+    if w.wcs.cunit == 'm':
+        crval_wave *= one_angstrom
+        cdelt_wave *= one_angstrom
+    crpix = np.array([crpix[2], crpix[1], crpix[0]]) + 1
+    w.wcs.crpix = crpix
+    crval_orig = w.wcs.crval
+    w.wcs.crval = crval_orig[0], crval_orig[1], crval_wave
+    if w.wcs.has_cd():
+        w.wcs.cd[2, 2] = cdelt_wave
+    else:
+        w.wcs.cdelt[2] = cdelt_wave
+    header.extend(w.to_header(), update=True)
 
 
 def find_nearest_index(array, value):
