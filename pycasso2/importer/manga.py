@@ -11,13 +11,16 @@ from astropy import log
 from astropy.io import fits
 import numpy as np
 
-__all__ = ['read_manga']
+__all__ = ['read_manga', 'read_drpall']
 
-def read_drpall(mangaid, filename):
+
+def read_drpall(filename, mangaid=None):
     with fits.open(filename) as f:
         t = f[1].data
-    i = np.where(t['mangaid'] == mangaid)[0]
-    return t[i]
+    if mangaid is not None:
+        i = np.where(t['mangaid'] == mangaid)[0]
+        t = t[i]
+    return t
 
 
 def read_manga(cube, cfg, **kwargs):
@@ -36,8 +39,7 @@ def read_manga(cube, cfg, **kwargs):
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
-
-    drp = read_drpall(header['MANGAID'], cfg.get('manga', 'drpall'))
+    drp = read_drpall(cfg.get('manga', 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
     
     log.debug('Loading data from %s.' % cube)
