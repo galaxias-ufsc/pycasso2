@@ -19,7 +19,7 @@ def parse_args():
     
     parser.add_argument('cubeIn', type=str, nargs=1,
                         help='Cube. Ex.: T001.fits')
-    parser.add_argument('--out', dest='cubeOut',
+    parser.add_argument('--out', dest='cubeOut', required=True,
                         help='Output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
