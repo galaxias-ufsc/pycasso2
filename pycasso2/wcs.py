@@ -22,7 +22,7 @@ def get_wavelength_coordinates(header):
     w = wcs.WCS(header, naxis=[3])
     pix_coords = np.arange(header['NAXIS3'])
     wave_coords = w.wcs_pix2world(pix_coords[:, np.newaxis], 0)
-    if w.wcs.cunit == 'm':
+    if w.wcs.cunit[0] == 'm':
         wave_coords /= one_angstrom
     return np.squeeze(wave_coords)
 
@@ -68,7 +68,7 @@ def get_shape(header):
 def get_wavelength_sampling(header):
     w = wcs.WCS(header, naxis=[3])
     s = wcs.utils.proj_plane_pixel_scales(w)
-    if w.wcs.cunit == 'm':
+    if w.wcs.cunit[0] == 'm':
         s /= one_angstrom
     return np.asscalar(s)
 
@@ -105,7 +105,7 @@ def copy_WCS(header, dest_header, axes):
 
 def update_WCS(header, crpix, crval_wave, cdelt_wave):
     w = wcs.WCS(header)
-    if w.wcs.cunit == 'm':
+    if w.wcs.cunit[2] == 'm':
         crval_wave *= one_angstrom
         cdelt_wave *= one_angstrom
     crpix = np.array([crpix[2], crpix[1], crpix[0]]) + 1
