@@ -16,18 +16,20 @@ import numpy as np
 
 __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
 
-def read_diving3d(redcube, obscube, cfg, **kwargs):
+d3d_cfg_sec = 'diving3d'
+
+
+def read_diving3d(redcube, obscube, name, cfg):
     '''
     FIXME: doc me! 
     '''
     # FIXME: sanitize kwargs
-    l_ini = kwargs['l_ini']
-    l_fin = kwargs['l_fin']
-    dl = kwargs['dl']
-    Nx = kwargs['width']
-    Ny = kwargs['height']
-    flux_unit = kwargs['flux_unit']
-    name = kwargs['name']
+    l_ini = cfg.getfloat(d3d_cfg_sec, 'import_l_ini')
+    l_fin = cfg.getfloat(d3d_cfg_sec, 'import_l_fin')
+    dl = cfg.getfloat(d3d_cfg_sec, 'import_dl')
+    Nx = cfg.getfloat(d3d_cfg_sec, 'import_Nx')
+    Ny = cfg.getfloat(d3d_cfg_sec, 'import_Ny')
+    flux_unit = cfg.getfloat(d3d_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from reduced cube %s.' % redcube)
@@ -59,7 +61,7 @@ def read_diving3d(redcube, obscube, cfg, **kwargs):
     log.debug('Updating WCS.')
     update_WCS(header, crpix=new_center, crval_wave=l_obs[0], cdelt_wave=dl)
 
-    masterlist = cfg.get('diving3d', 'masterlist')
+    masterlist = cfg.get(d3d_cfg_sec, 'masterlist')
     galaxy_id = d3d_get_galaxy_id(redcube)    
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = d3d_read_masterlist(masterlist, galaxy_id)
@@ -67,7 +69,7 @@ def read_diving3d(redcube, obscube, cfg, **kwargs):
     z = velocity2redshift(ml['V_hel'])
 
     print 'Applying CCD gap mask (z = %f)' % z
-    gap_mask_template = cfg.get('diving3d', 'gap_mask_template')
+    gap_mask_template = cfg.get(d3d_cfg_sec, 'gap_mask_template')
     gap_mask_file = gap_mask_template % ml['grating']
     gap_mask = read_wavelength_mask(gap_mask_file, l_obs, z, dest='rest')
     f_flag[gap_mask] |= flags.ccd_gap

@@ -44,22 +44,14 @@ if args.name is None:
 else:
     name = args.name
 
-kwargs = dict(l_ini=cfg.getfloat('import', 'l_ini'),
-              l_fin=cfg.getfloat('import', 'l_fin'),
-              dl=cfg.getfloat('import', 'dl'),
-              width=cfg.getint('import', 'Nx'),
-              height=cfg.getint('import', 'Ny'),
-              flux_unit=cfg.getfloat('general', 'flux_unit'),
-              name=name)
-
 if args.cubeType == 'diving3d':
-    g = read_diving3d(args.cubeIn[0], args.cubeIn[1], cfg, **kwargs)
+    g = read_diving3d(args.cubeIn[0], args.cubeIn[1], name, cfg)
 
 elif args.cubeType == 'califa':
-    g = read_califa(args.cubeIn[0], cfg, **kwargs)
+    g = read_califa(args.cubeIn[0], name, cfg)
 
 elif args.cubeType == 'manga':
-    g = read_manga(args.cubeIn[0], cfg, **kwargs)
+    g = read_manga(args.cubeIn[0], name, cfg)
 
 else:
     log.error('Unknown cube type %s' % args.cubeType)
