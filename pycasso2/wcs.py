@@ -6,6 +6,7 @@ Created on 26/06/2015
 
 from astropy.io import fits
 from astropy import wcs
+from astropy.coordinates import SkyCoord as sc
 import numpy as np
 
 __all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'copy_WCS', 'update_WCS',
@@ -42,6 +43,26 @@ def get_celestial_coordinates(header, relative=True):
     xx_world *= 3600.0
     yy_world *= 3600.0
     return xx_world, yy_world
+
+
+def get_galactic_coordinates(ra, dec):
+    '''
+    
+    Input: RA, Dec in degrees (J2000)
+    Returns: Galactic coordinates l and b in radians to compare to HEALPix 
+    maps.
+    
+    Note: l is consistent with HEALPix's phi, while HEALPix's theta will be 
+    given by theta = pi/2 - b.
+    
+    '''
+    
+    coords    = sc(ra,dec,unit='deg',frame='fk5',equinox='j200')
+    galcoords = coords.transform_to('galactic')
+
+    l, b =  galcoords.l.radian, galcoords.b.radian
+    
+    return l, b
 
 
 def get_reference_pixel(header):
