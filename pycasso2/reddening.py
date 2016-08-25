@@ -70,7 +70,7 @@ def CCM(lamb, Rv= 3.1):
     return A_lambda_Av
 
 
-def calc_extinction(ra,dec,lamb,EBVmap,Rv=3.1):
+def calc_extinction(ra,dec,lamb,EBV_map,Rv=3.1):
     '''
 
     Gets the galactic extinction in a given wavelenght through a given line of
@@ -95,18 +95,18 @@ def calc_extinction(ra,dec,lamb,EBVmap,Rv=3.1):
     return A_lambda, EBV
 
 
-def extinction_corr(spectra,lambdas,ra,dec):
+def extinction_corr(lambdas,spectra,ra,dec,EBV_map):
     '''
 
     Corrects spectra for the effects of galactic extinction.
 
-    Input: Wavelenghts, Fluxes, RA, Dec
+    Input: Wavelenghts, Fluxes, RA, Dec, E(B-V) map
     Returns: Fluxes corrected for the effects of Milky Way dust.
 
     '''
 
     #Get the extinction in each wavelenght:
-    A_lambdas, EBV = calc_extinction(ra,dec,lambdas,EBVmap=EBV_map)
+    A_lambdas, EBV = calc_extinction(ra,dec,lambdas,EBV_map=EBV_map)
 
     #Calculate corrected spectra:
     corr_spectra = spectra * np.exp(A_lambdas/np.log(10))
