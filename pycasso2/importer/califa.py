@@ -13,22 +13,20 @@ import numpy as np
 
 __all__ = ['read_califa']
 
+califa_cfg_sec = 'califa'
 
-DR2_flux_unit = 1e-16
 
-
-def read_califa(cube, cfg, **kwargs):
+def read_califa(cube, name, cfg):
     '''
     FIXME: doc me! 
     '''
     # FIXME: sanitize kwargs
-    l_ini = kwargs['l_ini']
-    l_fin = kwargs['l_fin']
-    dl = kwargs['dl']
-    Nx = kwargs['width']
-    Ny = kwargs['height']
-    flux_unit = kwargs['flux_unit']
-    name = kwargs['name']
+    l_ini = cfg.getfloat(califa_cfg_sec, 'import_l_ini')
+    l_fin = cfg.getfloat(califa_cfg_sec, 'import_l_fin')
+    dl = cfg.getfloat(califa_cfg_sec, 'import_dl')
+    Nx = cfg.getfloat(califa_cfg_sec, 'import_Nx')
+    Ny = cfg.getfloat(califa_cfg_sec, 'import_Ny')
+    flux_unit = cfg.getfloat(califa_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
@@ -59,9 +57,8 @@ def read_califa(cube, cfg, **kwargs):
     update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)    
     
     log.debug('Creating pycasso cube.')
-    fix_flux_units = DR2_flux_unit / flux_unit
     K = FitsCube()
-    K._initFits(f_obs * fix_flux_units, f_err * fix_flux_units, f_flag, header)
+    K._initFits(f_obs, f_err, f_flag, header)
     K.flux_unit = flux_unit
     K.lumDistMpc = redshift2lum_distance(z)
     K.redshift = z    

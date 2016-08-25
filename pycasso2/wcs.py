@@ -23,25 +23,30 @@ def get_wavelength_coordinates(header):
     w = wcs.WCS(header, naxis=[3])
     pix_coords = np.arange(header['NAXIS3'])
     wave_coords = w.wcs_pix2world(pix_coords[:, np.newaxis], 0)
-    if w.wcs.cunit == 'm':
+    if w.wcs.cunit[0] == 'm':
         wave_coords /= one_angstrom
     return np.squeeze(wave_coords)
 
 
 def get_celestial_coordinates(header, relative=True):
-    # FIXME: Not sure how to make the coordinates relative.
+    # FIXME: Not sure how to make the coordinates relative for all cases. Nor how to return arcsec always.
     w = wcs.WCS(header, naxis=2)
-    if relative:
+    x0_world, y0_world = w.wcs.crval
+    make_relative = (x0_world != 0.0 and y0_world != 0.0 and relative)
+
+    if make_relative:
         w.wcs.crval = (180.0, 0.0)
     xx_pix = np.arange(header['NAXIS1']) + 1
     yy_pix = np.arange(header['NAXIS2']) + 1
     x0_pix, y0_pix = np.rint(w.wcs.crpix).astype('int')
     xx_world, _ = w.wcs_pix2world(xx_pix, np.zeros_like(xx_pix) + y0_pix, 1)
     _, yy_world = w.wcs_pix2world(np.zeros_like(yy_pix) + x0_pix, yy_pix, 1)
-    if relative:
+    if make_relative:
         xx_world -= 180.0
-    xx_world *= 3600.0
-    yy_world *= 3600.0
+        x_unit, y_unit = w.wcs.cunit
+        if x_unit == 'deg' or y_unit == 'deg':
+            xx_world *= 3600.0
+            yy_world *= 3600.0
     return xx_world, yy_world
 
 
@@ -89,7 +94,7 @@ def get_shape(header):
 def get_wavelength_sampling(header):
     w = wcs.WCS(header, naxis=[3])
     s = wcs.utils.proj_plane_pixel_scales(w)
-    if w.wcs.cunit == 'm':
+    if w.wcs.cunit[0] == 'm':
         s /= one_angstrom
     return np.asscalar(s)
 
@@ -126,7 +131,7 @@ def copy_WCS(header, dest_header, axes):
 
 def update_WCS(header, crpix, crval_wave, cdelt_wave):
     w = wcs.WCS(header)
-    if w.wcs.cunit == 'm':
+    if w.wcs.cunit[2] == 'm':
         crval_wave *= one_angstrom
         cdelt_wave *= one_angstrom
     crpix = np.array([crpix[2], crpix[1], crpix[0]]) + 1

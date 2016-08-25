@@ -13,6 +13,8 @@ import numpy as np
 
 __all__ = ['read_manga', 'read_drpall']
 
+manga_cfg_sec = 'manga'
+
 
 def read_drpall(filename, mangaid=None):
     with fits.open(filename) as f:
@@ -23,23 +25,22 @@ def read_drpall(filename, mangaid=None):
     return t
 
 
-def read_manga(cube, cfg, **kwargs):
+def read_manga(cube, name, cfg):
     '''
     FIXME: doc me! 
     '''
     # FIXME: sanitize kwargs
-    l_ini = kwargs['l_ini']
-    l_fin = kwargs['l_fin']
-    dl = kwargs['dl']
-    Nx = kwargs['width']
-    Ny = kwargs['height']
-    flux_unit = kwargs['flux_unit']
-    name = kwargs['name']
+    l_ini = cfg.getfloat(manga_cfg_sec, 'import_l_ini')
+    l_fin = cfg.getfloat(manga_cfg_sec, 'import_l_fin')
+    dl = cfg.getfloat(manga_cfg_sec, 'import_dl')
+    Nx = cfg.getfloat(manga_cfg_sec, 'import_Nx')
+    Ny = cfg.getfloat(manga_cfg_sec, 'import_Ny')
+    flux_unit = cfg.getfloat(manga_cfg_sec, 'flux_unit')
     
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
-    drp = read_drpall(cfg.get('manga', 'drpall'), header['MANGAID'])
+    drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
     
     log.debug('Loading data from %s.' % cube)
