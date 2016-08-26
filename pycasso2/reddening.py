@@ -86,7 +86,7 @@ def calc_extinction(ra,dec,lamb,EBV_map,Rv=3.1):
 
     #Get the corresponting HEALPix index and the E(B-V) value:
     index = hp.ang2pix(nside=2048,theta=(np.pi/2) - b,phi=l)
-    EBV = EBVmap[index]
+    EBV = EBV_map[index]
 
     #Calculate Av and A_lambda:
     Av = Rv * EBV
