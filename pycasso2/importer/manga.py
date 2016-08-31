@@ -34,8 +34,8 @@ def read_manga(cube, name, cfg):
     l_ini = cfg.getfloat(manga_cfg_sec, 'import_l_ini')
     l_fin = cfg.getfloat(manga_cfg_sec, 'import_l_fin')
     dl = cfg.getfloat(manga_cfg_sec, 'import_dl')
-    Nx = cfg.getfloat(manga_cfg_sec, 'import_Nx')
-    Ny = cfg.getfloat(manga_cfg_sec, 'import_Ny')
+    Nx = cfg.getint(manga_cfg_sec, 'import_Nx')
+    Ny = cfg.getint(manga_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(manga_cfg_sec, 'flux_unit')
     
     # FIXME: sanitize file I/O
@@ -67,15 +67,15 @@ def read_manga(cube, name, cfg):
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
+    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
+    new_shape = (len(l_rest), Ny, Nx)
+    center = get_reference_pixel(header)
+    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(f_obs_rest, f_err_rest, badpix, center, new_shape)
+
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
     
-    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    new_shape = (len(l_resam), Ny, Nx)
-    center = get_reference_pixel(header)
-    f_obs, f_err, f_flag, new_center = reshape_cube(f_obs, f_err, f_flag, center, new_shape)
-
     log.debug('Updating WCS.')
     update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
     

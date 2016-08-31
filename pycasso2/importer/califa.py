@@ -24,8 +24,8 @@ def read_califa(cube, name, cfg):
     l_ini = cfg.getfloat(califa_cfg_sec, 'import_l_ini')
     l_fin = cfg.getfloat(califa_cfg_sec, 'import_l_fin')
     dl = cfg.getfloat(califa_cfg_sec, 'import_dl')
-    Nx = cfg.getfloat(califa_cfg_sec, 'import_Nx')
-    Ny = cfg.getfloat(califa_cfg_sec, 'import_Ny')
+    Nx = cfg.getint(califa_cfg_sec, 'import_Nx')
+    Ny = cfg.getint(califa_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(califa_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O

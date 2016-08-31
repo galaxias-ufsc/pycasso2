@@ -252,19 +252,52 @@ def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
     shape = f_obs.shape
     y_axis = 1
     x_axis = 2
-    y0 = new_shape[y_axis] / 2 - center[y_axis]
-    yf = y0 + shape[y_axis]
-    x0 = new_shape[x_axis] / 2 - center[x_axis]
-    xf = x0 + shape[x_axis]
     
+    xc = center[x_axis]
+    yc = center[y_axis]
+    Nx = shape[x_axis]
+    Ny = shape[y_axis]
+    xc_r = int(np.rint(new_shape[x_axis] / 2))
+    yc_r = int(np.rint(new_shape[y_axis] / 2))
+    Nx_r = new_shape[x_axis]
+    Ny_r = new_shape[y_axis]
+
+    xi_r = xc_r - xc
+    if xi_r < 0:
+        xi = -xi_r
+        xi_r = 0
+    else:
+        xi = 0
+
+    yi_r = yc_r - yc
+    if yi_r < 0:
+        yi = -yi_r
+        yi_r = 0
+    else:
+        yi = 0
+
+    xf_r = xi_r + Ny
+    if xf_r >= Nx_r:
+        xf = Nx - (xi + xi_r)
+        xf_r = Nx_r
+    else:
+        xf = Nx
+
+    yf_r = yi_r + Ny
+    if yf_r >= Ny_r:
+        yf = Ny - (yi + yi_r)
+        yf_r = Ny_r
+    else:
+        yf = Ny
+
     res_f_obs = np.zeros((new_shape))
-    res_f_obs[:, y0:yf, x0:xf] = f_obs
     res_f_err = np.zeros((new_shape))
-    res_f_err[:, y0:yf, x0:xf] = f_err
     res_f_flag = np.zeros_like(res_f_obs, dtype='int32') + flags.no_data
-    res_f_flag[:, y0:yf, x0:xf] = f_flag
+    res_f_obs[:, yi_r:yf_r, xi_r:xf_r] = f_obs[:, yi:yf, xi:xf]
+    res_f_err[:, yi_r:yf_r, xi_r:xf_r] = f_err[:, yi:yf, xi:xf]
+    res_f_flag[:, yi_r:yf_r, xi_r:xf_r] = f_flag[:, yi:yf, xi:xf]
     
-    res_center = (center[0], new_shape[1] / 2, new_shape[2] / 2)
+    res_center = (center[0], yc_r, xc_r)
     
     return res_f_obs, res_f_err, res_f_flag, res_center
     
