@@ -7,12 +7,14 @@ Provides functions to correct spectra for galactic extinction
 '''
 
 import numpy as np
-from os import listdir
+from os import path
 import urllib
 import healpy as hp
-from . import wcs
+from .wcs import get_galactic_coordinates_rad
 
-def get_EBV_map(file_name, data_dir):
+__all__ =['extinction_corr', 'calc_extincion', 'get_EBV_map']
+
+def get_EBV_map(file_name):
     '''
 
     Reads E(B-V) HEALPix map from Planck's dust map using healpy, if the map
@@ -21,23 +23,20 @@ def get_EBV_map(file_name, data_dir):
 
 
     '''
-
-    data_dir += '/'
-
-    if file_name not in listdir(data_dir):
+    if not path.exists(file_name):
         print 'Downloading dust map (1.5GB), this is probably a good time to check XKCD.'
 
         url = 'http://pla.esac.esa.int/pla/aio/product-action?MAP.MAP_ID=HFI_CompMap_ThermalDustModel_2048_R1.20.fits'
 
-        urllib.urlretrieve(url, data_dir + file_name)
+        urllib.urlretrieve(url, file_name)
 
-    print 'Reading E(B-V) map from ' + data_dir + file_name
-    EBV_map = hp.read_map(data_dir + file_name, field = 2)
+    print 'Reading E(B-V) map from ' + file_name
+    EBV_map = hp.read_map(file_name, field = 2)
 
     return EBV_map
 
 
-def CCM(lamb, Rv= 3.1):
+def CCM(wave, Rv= 3.1):
     '''
 
     Calculates the Cardelli, Clayton & Mathis (CCM) extinction curve in the
@@ -49,12 +48,10 @@ def CCM(lamb, Rv= 3.1):
     Reference: http://adsabs.harvard.edu/abs/1989ApJ...345..245C
 
     '''
-
     #Turn lambda from angstrons to microns:
-    lamb = lamb / 10000.
+    wave = wave / 10000.
 
-    #Calculate A_lambda/Av:
-    x =  1./lamb
+    x =  1./wave
     y =  (x-1.82)
 
     a =  1.+(0.17699 * y) - ( 0.50447 * (y **2) ) - ( 0.02427 * (y **3) )
@@ -65,12 +62,10 @@ def CCM(lamb, Rv= 3.1):
     b += -( 5.38434 * (y **4) ) - (0.62251 * (y **5) ) + ( 5.30260 * (y **6) )
     b += -(2.09002 * (y **7) )
 
-    A_lambda_Av = a + (b/Rv)
-
-    return A_lambda_Av
+    return a + (b/Rv)
 
 
-def calc_extinction(ra,dec,lamb,EBV_map,Rv=3.1):
+def calc_extinction(wave, header, EBV_map, Rv=3.1):
     '''
 
     Gets the galactic extinction in a given wavelenght through a given line of
@@ -80,22 +75,19 @@ def calc_extinction(ra,dec,lamb,EBV_map,Rv=3.1):
     Returns: A_lambda, E(B-V)
 
     '''
+    l, b = get_galactic_coordinates_rad(header)
 
-    #Turn RA, Dec into galactic coordinates:
-    l, b = wcs.get_galactic_coordinates(ra,dec)
-
-    #Get the corresponting HEALPix index and the E(B-V) value:
-    index = hp.ang2pix(nside=2048,theta=(np.pi/2) - b,phi=l)
+    # Get the corresponting HEALPix index and the E(B-V) value:
+    index = hp.ang2pix(nside=2048, theta=(np.pi / 2) - b, phi=l)
     EBV = EBV_map[index]
 
-    #Calculate Av and A_lambda:
     Av = Rv * EBV
-    A_lambda = Av * CCM(lamb)
+    A_lambda = Av * CCM(wave)
 
     return A_lambda, EBV
 
 
-def extinction_corr(lambdas,spectra,ra,dec,EBV_map):
+def extinction_corr(wave, flux, header, EBV_map):
     '''
 
     Corrects spectra for the effects of galactic extinction.
@@ -104,11 +96,10 @@ def extinction_corr(lambdas,spectra,ra,dec,EBV_map):
     Returns: Fluxes corrected for the effects of Milky Way dust.
 
     '''
+    A_lambda, _ = calc_extinction(wave, header, EBV_map)
+    tau_lambda = A_lambda / (2.5 * np.log10(np.exp(1.)))
+    if flux.ndim == 3:
+        tau_lambda = tau_lambda[:, np.newaxis, np.newaxis]
 
-    #Get the extinction in each wavelenght:
-    A_lambdas, EBV = calc_extinction(ra,dec,lambdas,EBV_map=EBV_map)
+    return flux * np.exp(tau_lambda)
 
-    #Calculate corrected spectra:
-    corr_spectra = spectra * np.exp(A_lambdas/np.log(10))
-
-    return corr_spectra
