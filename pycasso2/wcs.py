@@ -6,11 +6,10 @@ Created on 26/06/2015
 
 from astropy.io import fits
 from astropy import wcs
-from astropy.coordinates import SkyCoord as sc
 import numpy as np
 
 __all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'copy_WCS', 'update_WCS',
-           'get_cube_limits', 'get_shape', 'get_reference_pixel',
+           'get_cube_limits', 'get_shape', 'get_reference_pixel', 'get_galactic_coordinates_rad',
            'get_pixel_area', 'get_pixel_area_srad',
            'get_pixel_scale', 'get_pixel_scale_rad']
 
@@ -50,23 +49,25 @@ def get_celestial_coordinates(header, relative=True):
     return xx_world, yy_world
 
 
-def get_galactic_coordinates(ra, dec):
+def get_galactic_coordinates_rad(header):
     '''
-    
-    Input: RA, Dec in degrees (J2000)
+
+    Input: header with WCS information.
     Returns: Galactic coordinates l and b in radians to compare to HEALPix 
     maps.
-    
+
     Note: l is consistent with HEALPix's phi, while HEALPix's theta will be 
     given by theta = pi/2 - b.
-    
+
     '''
-    
-    coords    = sc(ra,dec,unit='deg',frame='fk5',equinox='j200')
+
+    w = wcs.WCS(header, naxis=2)
+    x0, y0 = w.wcs.crpix
+    coords = wcs.utils.pixel_to_skycoord(x0, y0, w, origin=1, mode='wcs')
     galcoords = coords.transform_to('galactic')
 
-    l, b =  galcoords.l.radian, galcoords.b.radian
-    
+    l, b = galcoords.l.radian, galcoords.b.radian
+
     return l, b
 
 
