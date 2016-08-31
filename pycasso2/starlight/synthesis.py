@@ -118,7 +118,7 @@ class SynthesisAdapter(object):
         
     def _getTemplates(self, cfg, key):
         grid = PGridFile(self.starlightDir)
-        grid.fluxUnit = float(cfg.get('general', 'flux_unit'))
+        grid.fluxUnit = self._cube.flux_unit
 
         grid.setBasesDir(cfg.get(key, 'base_dir'))
         obs_dir = path.join(cfg.get(key, 'obs_dir'), self.objectName)
