@@ -10,7 +10,7 @@ import numpy as np
 
 __all__ = ['resample_spectra', 'reshape_cube',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
-           'age_smoothing_kernel', 'light2mass_ini', 'interp_age']
+           'age_smoothing_kernel', 'light2mass_ini', 'interp_age', 'vac2air']
 
 
 
@@ -610,3 +610,11 @@ def light2mass_ini(popx, fbase_norm, Lobs_norm, q_norm, A_V):
     Mini = Lobs / fbase_norm[..., np.newaxis, np.newaxis]
     return Mini
 
+
+def vac2air(wave):
+    '''
+    As given in Morton (1991, ApJS, 77, 119).
+    '''
+    wave_air = wave / ( 1.0 + 2.735182e-4 + 131.4182 / wave**2 + 2.76249e8 / wave**4)
+    return wave_air
+    

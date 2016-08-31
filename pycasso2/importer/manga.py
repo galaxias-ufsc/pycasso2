@@ -5,7 +5,7 @@ Created on 08/12/2015
 '''
 from ..cube import safe_getheader, FitsCube
 from ..wcs import update_WCS, get_reference_pixel
-from ..resampling import resample_spectra, reshape_cube
+from ..resampling import resample_spectra, reshape_cube, vac2air
 from ..cosmology import redshift2lum_distance, spectra2restframe
 from astropy import log
 from astropy.io import fits
@@ -52,7 +52,12 @@ def read_manga(cube, name, cfg):
         f_err_orig = np.zeros_like(f_obs_orig)
         f_err_orig[goodpix] = f['IVAR'].data[goodpix]**-0.5
         l_obs = f['WAVE'].data
-
+        
+    log.debug('Vacuum to air wavelengths.')
+    l_obs = vac2air(l_obs)
+    
+    # FIXME: Reddening!
+    
     log.debug('Putting spectra in rest frame (z=%.2f).' % z)
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
