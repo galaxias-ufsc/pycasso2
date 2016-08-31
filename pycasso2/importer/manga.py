@@ -7,7 +7,7 @@ from ..cube import safe_getheader, FitsCube
 from ..wcs import update_WCS, get_reference_pixel
 from ..resampling import resample_spectra, reshape_cube, vac2air
 from ..cosmology import redshift2lum_distance, spectra2restframe
-from ..reddening import get_EBV_map, extinction_corr
+from ..reddening import get_EBV, extinction_corr
 from astropy import log
 from astropy.io import fits
 import numpy as np
@@ -60,8 +60,10 @@ def read_manga(cube, name, cfg):
     # FIXME: Dust maps in air or vacuum?
     dust_map = cfg.get('tables', 'dust_map')
     log.debug('Extinction correction (map = %s).' % dust_map)
-    EBV_map = get_EBV_map(dust_map)
-    f_obs_orig = extinction_corr(l_obs, f_obs_orig, header, EBV_map)
+    #EBV = get_EBV(header, dust_map)
+    EBV = header['EBVGAL']
+    log.debug('    E(B-V) = %f.' % EBV)
+    f_obs_orig = extinction_corr(l_obs, f_obs_orig, EBV)
     
     log.debug('Putting spectra in rest frame (z=%.2f).' % z)
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)

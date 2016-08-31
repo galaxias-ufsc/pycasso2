@@ -12,7 +12,7 @@ import urllib
 import healpy as hp
 from .wcs import get_galactic_coordinates_rad
 
-__all__ =['extinction_corr', 'calc_extincion', 'get_EBV_map']
+__all__ =['extinction_corr', 'calc_extincion', 'get_EBV']
 
 def get_EBV_map(file_name):
     '''
@@ -34,6 +34,14 @@ def get_EBV_map(file_name):
     EBV_map = hp.read_map(file_name, field = 2)
 
     return EBV_map
+
+
+def get_EBV(header, file_name):
+    l, b = get_galactic_coordinates_rad(header)
+    EBV_map = get_EBV_map(file_name)
+    # Get the corresponting HEALPix index and the E(B-V) value:
+    index = hp.ang2pix(nside=2048, theta=(np.pi / 2) - b, phi=l)
+    return EBV_map[index]
 
 
 def CCM(wave, Rv= 3.1):
@@ -65,29 +73,23 @@ def CCM(wave, Rv= 3.1):
     return a + (b/Rv)
 
 
-def calc_extinction(wave, header, EBV_map, Rv=3.1):
+def calc_extinction(wave, EBV, Rv=3.1):
     '''
 
     Gets the galactic extinction in a given wavelenght through a given line of
     sight.
 
-    Input:   RA, Dec, wavelenght, E(B-V) map, Rv (Optional, default is 3.1)
+    Input:   wavelenght, header with WCS, E(B-V), Rv (Optional, default is 3.1)
     Returns: A_lambda, E(B-V)
 
     '''
-    l, b = get_galactic_coordinates_rad(header)
-
-    # Get the corresponting HEALPix index and the E(B-V) value:
-    index = hp.ang2pix(nside=2048, theta=(np.pi / 2) - b, phi=l)
-    EBV = EBV_map[index]
-
     Av = Rv * EBV
-    A_lambda = Av * CCM(wave)
+    A_lambda = Av * CCM(wave, Rv)
 
     return A_lambda, EBV
 
 
-def extinction_corr(wave, flux, header, EBV_map):
+def extinction_corr(wave, flux, EBV):
     '''
 
     Corrects spectra for the effects of galactic extinction.
@@ -96,7 +98,7 @@ def extinction_corr(wave, flux, header, EBV_map):
     Returns: Fluxes corrected for the effects of Milky Way dust.
 
     '''
-    A_lambda, _ = calc_extinction(wave, header, EBV_map)
+    A_lambda, _ = calc_extinction(wave, EBV)
     tau_lambda = A_lambda / (2.5 * np.log10(np.exp(1.)))
     if flux.ndim == 3:
         tau_lambda = tau_lambda[:, np.newaxis, np.newaxis]
