@@ -252,15 +252,14 @@ def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
     shape = f_obs.shape
     y_axis = 1
     x_axis = 2
-    
-    xc = center[x_axis]
-    yc = center[y_axis]
     Nx = shape[x_axis]
     Ny = shape[y_axis]
-    xc_r = int(np.rint(new_shape[x_axis] / 2))
-    yc_r = int(np.rint(new_shape[y_axis] / 2))
     Nx_r = new_shape[x_axis]
     Ny_r = new_shape[y_axis]
+    xc = center[x_axis]
+    yc = center[y_axis]
+    xc_r = int(Nx_r / 2)
+    yc_r = int(Ny_r / 2)
 
     xi_r = xc_r - xc
     if xi_r < 0:
@@ -268,24 +267,24 @@ def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
         xi_r = 0
     else:
         xi = 0
-
+    
     yi_r = yc_r - yc
     if yi_r < 0:
         yi = -yi_r
         yi_r = 0
     else:
         yi = 0
-
-    xf_r = xi_r + Ny
-    if xf_r >= Nx_r:
-        xf = Nx - (xi + xi_r)
+    
+    xf_r = xi_r + Nx
+    if xf_r > Nx_r:
+        xf = xi + Nx_r
         xf_r = Nx_r
     else:
         xf = Nx
-
+    
     yf_r = yi_r + Ny
-    if yf_r >= Ny_r:
-        yf = Ny - (yi + yi_r)
+    if yf_r > Ny_r:
+        yf = yi + Ny_r
         yf_r = Ny_r
     else:
         yf = Ny
