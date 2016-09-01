@@ -15,10 +15,9 @@ import time
 __all__ = ['run_starlight', 'run_starlight_and_check' ,'StarlightRunner']
 
 max_iterations = 10
-starlight_exec_path='starlight'
 
 ###############################################################################
-def run_starlight(starlight_dir, grid_data, timeout, logfile=None):
+def run_starlight(exec_path, starlight_dir, grid_data, timeout, logfile=None):
     '''
     Run STARLIGHT passing the grid data as standard input.
     Set the executable path by changing
@@ -26,6 +25,9 @@ def run_starlight(starlight_dir, grid_data, timeout, logfile=None):
     
     Parameters
     ----------
+    exec_path : string
+        Path to starlight executable.
+        
     starlight_dir : string
         Working dir where to run STARLIGHT.
         
@@ -40,7 +42,8 @@ def run_starlight(starlight_dir, grid_data, timeout, logfile=None):
     exit_status : int
         The exit status of the process. Zero means success.
     '''
-    slProc = subprocess.Popen(starlight_exec_path, cwd=starlight_dir,
+    log.debug('Running %s' % exec_path)
+    slProc = subprocess.Popen(exec_path, cwd=starlight_dir,
                               stdin=subprocess.PIPE, stdout=logfile, stderr=logfile)
     slProc.stdin.write(grid_data)
     slProc.stdin.close()
@@ -57,13 +60,16 @@ def run_starlight(starlight_dir, grid_data, timeout, logfile=None):
 
 
 ###############################################################################
-def run_starlight_and_check(grid, timeout, compress=True):
+def run_starlight_and_check(exec_path, grid, timeout, compress=True):
     '''
     Run STARLIGHT with a grid description, retrying until
     there's no error in output files.
     
     Parameters
     ----------
+    exec_path : string
+        Path to starlight executable.
+        
     grid : :class:`pystarlight.util.gridfile.GridFile`
         A grid file descriptor.
 
@@ -85,7 +91,7 @@ def run_starlight_and_check(grid, timeout, compress=True):
         result = -1
         with open(log_fname, 'w') as logfile:
             log.debug('Starting starlight process for %s, %d to go...' % (grid.name, len(grid.runs)))
-            result = run_starlight(grid.starlightDir, str(grid), timeout, logfile)
+            result = run_starlight(exec_path, grid.starlightDir, str(grid), timeout, logfile)
         grid.checkOutput(compress)
         if result == -999 and len(grid.runs) > 0:
             log.error('%s hung last time, changing first run\'s random seed.' % grid.name)
@@ -125,8 +131,9 @@ class StarlightThread(Thread):
         Compress the output files (bzip2). Default: ``True``.
             
     '''
-    def __init__(self, input_grids, output_grids, timeout, compress=True):
+    def __init__(self, exec_path, input_grids, output_grids, timeout, compress):
         Thread.__init__(self)
+        self._exec_path = exec_path
         self._inputGrids = input_grids
         self._outputGrids = output_grids
         self._timeout = timeout
@@ -139,7 +146,7 @@ class StarlightThread(Thread):
             try:
                 if grid.name is None:
                     grid.name = 'grid_%d' % self.ident
-                _output_grid = run_starlight_and_check(grid, self._timeout, compress=self._compress)
+                _output_grid = run_starlight_and_check(self._exec_path, grid, self._timeout, compress=self._compress)
                 self._outputGrids.append(_output_grid)
             except Exception as e:
                 log.error(str(e))
@@ -167,12 +174,15 @@ class StarlightRunner(object):
     compress : bool
         Compress the output files (bzip2). Default: ``True``.
             
+    exec_path : string
+        Path to starlight executable.
     '''
 
-    def __init__(self, n_workers=1, timeout=1200.0, compress=True):
+    def __init__(self, n_workers=1, timeout=1200.0, compress=True, exec_path='starlight'):
         self._inputGrids = Queue(maxsize=2*n_workers)
         self._outputGrids = deque()
-        self._threads = [StarlightThread(self._inputGrids, self._outputGrids, timeout, compress=compress) \
+        log.debug('starlight executable is %s' % exec_path)
+        self._threads = [StarlightThread(exec_path, self._inputGrids, self._outputGrids, timeout, compress=compress) \
                          for _ in xrange(n_workers)]
         for t in self._threads:
             t.setDaemon(True)

@@ -62,8 +62,9 @@ nproc = args.nproc if args.nproc > 1 else 1
 print 'Loading cube from %s.' % args.cubeIn[0]
 sa = SynthesisAdapter(args.cubeIn[0], cfg, args.configSection)
 
-print 'Starting starlight runner.'
-runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True)
+exec_path = cfg.get(args.configSection, 'exec_path')
+print 'Starting starlight runner (using %s).' % exec_path
+runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorFlag,
                             use_custom_masks=args.useCustomMasks):
     if len(grid.runs) != 0:
