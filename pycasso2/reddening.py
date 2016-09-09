@@ -8,8 +8,6 @@ Provides functions to correct spectra for galactic extinction
 
 import numpy as np
 from os import path
-import urllib
-import healpy as hp
 from .wcs import get_galactic_coordinates_rad
 
 __all__ =['extinction_corr', 'calc_extincion', 'get_EBV']
@@ -23,6 +21,9 @@ def get_EBV_map(file_name):
 
 
     '''
+    import urllib
+    import healpy as hp
+
     if not path.exists(file_name):
         print 'Downloading dust map (1.5GB), this is probably a good time to check XKCD.'
 
@@ -37,6 +38,8 @@ def get_EBV_map(file_name):
 
 
 def get_EBV(header, file_name):
+    import healpy as hp
+
     l, b = get_galactic_coordinates_rad(header)
     EBV_map = get_EBV_map(file_name)
     # Get the corresponting HEALPix index and the E(B-V) value:
