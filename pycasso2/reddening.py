@@ -6,9 +6,11 @@ Created on 08/24/2016
 Provides functions to correct spectra for galactic extinction
 '''
 
+from .wcs import get_galactic_coordinates_rad
+
 import numpy as np
 from os import path
-from .wcs import get_galactic_coordinates_rad
+from astropy import log
 
 __all__ =['extinction_corr', 'calc_extincion', 'get_EBV']
 
@@ -25,13 +27,12 @@ def get_EBV_map(file_name):
     import healpy as hp
 
     if not path.exists(file_name):
-        print 'Downloading dust map (1.5GB), this is probably a good time to check XKCD.'
-
+        log.info('Downloading dust map (1.5GB), this is probably a good time to check XKCD.')
         url = 'http://pla.esac.esa.int/pla/aio/product-action?MAP.MAP_ID=HFI_CompMap_ThermalDustModel_2048_R1.20.fits'
-
+        log.debug('Map: %s' % url)
         urllib.urlretrieve(url, file_name)
 
-    print 'Reading E(B-V) map from ' + file_name
+    log.info('Reading E(B-V) map from ' + file_name)
     EBV_map = hp.read_map(file_name, field = 2)
 
     return EBV_map
