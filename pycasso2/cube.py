@@ -6,13 +6,13 @@ Created on 22/06/2015
 
 from .resampling import bin_edges, hist_resample
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
-from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling
+from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini
 from . import flags
 
 from astropy.io import fits
-from astropy import log
+from astropy import log, wcs
 import numpy as np
 
 __all__ = ['FitsCube']
@@ -62,6 +62,7 @@ class FitsCube(object):
         phdu = fits.PrimaryHDU(f_obs, header)
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
+        self._wcs = wcs.WCS(self._header)
         self._addExtension(FitsCube._ext_f_err, data=f_err, kind='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, kind='spectra')
 
@@ -74,6 +75,7 @@ class FitsCube(object):
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList[self._ext_f_obs].header
+        self._wcs = wcs.WCS(self._header)
         self._initMasks()
         
         
@@ -185,6 +187,21 @@ class FitsCube(object):
 
 
     @property
+    def Nx(self):
+        return get_Nx(self._header)
+    
+    
+    @property
+    def Ny(self):
+        return get_Ny(self._header)
+    
+    
+    @property
+    def Nwave(self):
+        return get_Nwave(self._header)
+    
+    
+    @property
     def f_obs(self):
         data = self._getExtensionData(self._ext_f_obs)
         return np.ma.array(data, mask=self.spectraMask, copy=False)
@@ -265,14 +282,14 @@ class FitsCube(object):
     @property
     def pixelArea_pc2(self):
         lum_dist_pc = self.lumDistMpc * 1e6
-        solid_angle = get_pixel_area_srad(self._header)
+        solid_angle = get_pixel_area_srad(self._wcs)
         return solid_angle * lum_dist_pc * lum_dist_pc
     
     
     @property
     def pixelScale_pc(self):
         lum_dist_pc = self.lumDistMpc * 1e6
-        angle = get_pixel_scale_rad(self._header)
+        angle = get_pixel_scale_rad(self._wcs)
         return angle * lum_dist_pc
     
     
@@ -425,22 +442,22 @@ class FitsCube(object):
     
     @property
     def l_obs(self):
-        return get_wavelength_coordinates(self._header)
+        return get_wavelength_coordinates(self._wcs, self.Nwave)
 
 
     @property
     def dl(self):
-        return get_wavelength_sampling(self._header)
+        return get_wavelength_sampling(self._wcs)
 
 
     @property
     def celestial_coords(self):
-        return get_celestial_coordinates(self._header, relative=True)
+        return get_celestial_coordinates(self._wcs, self.Nx, self.Ny, relative=True)
 
 
     @property
     def center(self):
-        return get_reference_pixel(self._header)
+        return get_reference_pixel(self._wcs)
 
 
     @property
