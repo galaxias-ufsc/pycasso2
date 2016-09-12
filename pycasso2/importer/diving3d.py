@@ -4,13 +4,13 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS
+from ..wcs import get_wavelength_coordinates, get_Nwave, get_reference_pixel, update_WCS
 from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import velocity2redshift
 from ..starlight.tables import read_wavelength_mask
 from .. import flags
 
-from astropy import log
+from astropy import log, wcs
 from astropy.io import fits
 import numpy as np
 
@@ -47,17 +47,17 @@ def read_diving3d(redcube, obscube, name, cfg):
     f_err_orig = np.zeros_like(f_obs_orig)
     badpix = np.zeros(f_obs_orig.shape, dtype='bool')
     
-    # TODO: how to handle redshift?
-    log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
-    l_obs_orig = get_wavelength_coordinates(header)
-    l_obs = np.arange(l_ini, l_fin + dl, dl)
-    f_obs, f_err, f_flag = resample_spectra(l_obs_orig, l_obs, f_obs_orig, f_err_orig, badpix)
-    
     log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    new_shape = (len(l_obs), Ny, Nx)
-    center = get_reference_pixel(header)
-    f_obs, f_err, f_flag, new_center = reshape_cube(f_obs, f_err, f_flag, center, new_shape)
+    w = wcs.WCS(header)
+    l_obs_orig = get_wavelength_coordinates(w, get_Nwave(header))
+    new_shape = (len(l_obs_orig), Ny, Nx)
+    center = get_reference_pixel(w)
+    f_obs, f_err, badpix, new_center = reshape_cube(f_obs_orig, f_err_orig, badpix, center, new_shape)
 
+    log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
+    l_obs = np.arange(l_ini, l_fin + dl, dl)
+    f_obs, f_err, f_flag = resample_spectra(l_obs_orig, l_obs, f_obs, f_err, badpix)
+    
     log.debug('Updating WCS.')
     update_WCS(header, crpix=new_center, crval_wave=l_obs[0], cdelt_wave=dl)
 
@@ -68,7 +68,7 @@ def read_diving3d(redcube, obscube, name, cfg):
     d3d_save_masterlist(header, ml)    
     z = velocity2redshift(ml['V_hel'])
 
-    print 'Applying CCD gap mask (z = %f)' % z
+    log.debug('Applying CCD gap mask (z = %f)' % z)
     gap_mask_template = cfg.get(d3d_cfg_sec, 'gap_mask_template')
     gap_mask_file = gap_mask_template % ml['grating']
     gap_mask = read_wavelength_mask(gap_mask_file, l_obs, z, dest='rest')

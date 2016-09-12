@@ -215,7 +215,7 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
     return f_obs, f_err, f_flag
 
 
-def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
+def reshape_cube(f_obs, f_err, badpix, center, new_shape):
     '''
     Reshape IFS into a new spatial shape, putting the given
     photometric center at the center of the new IFS.
@@ -229,8 +229,8 @@ def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
     f_err : array
         Flux, will remain unchanged.
     
-    f_flag : array
-        Flags.
+    badpix : array
+        bad pixel spectra to be resampled.
     
     center : tuple (l, y, x)
         IFS center, or reference pixel.
@@ -291,14 +291,14 @@ def reshape_cube(f_obs, f_err, f_flag, center, new_shape):
 
     res_f_obs = np.zeros((new_shape))
     res_f_err = np.zeros((new_shape))
-    res_f_flag = np.zeros_like(res_f_obs, dtype='int32') + flags.no_data
+    res_badpix = np.ones_like(res_f_obs, dtype='bool')
     res_f_obs[:, yi_r:yf_r, xi_r:xf_r] = f_obs[:, yi:yf, xi:xf]
     res_f_err[:, yi_r:yf_r, xi_r:xf_r] = f_err[:, yi:yf, xi:xf]
-    res_f_flag[:, yi_r:yf_r, xi_r:xf_r] = f_flag[:, yi:yf, xi:xf]
+    res_badpix[:, yi_r:yf_r, xi_r:xf_r] = badpix[:, yi:yf, xi:xf]
     
     res_center = (center[0], yc_r, xc_r)
     
-    return res_f_obs, res_f_err, res_f_flag, res_center
+    return res_f_obs, res_f_err, res_badpix, res_center
     
 
 def fwhm2sigma(fwhm):

@@ -8,7 +8,7 @@ from ..wcs import update_WCS, get_reference_pixel
 from ..resampling import resample_spectra, reshape_cube, vac2air
 from ..cosmology import redshift2lum_distance, spectra2restframe
 from ..reddening import get_EBV, extinction_corr
-from astropy import log
+from astropy import log, wcs
 from astropy.io import fits
 import numpy as np
 
@@ -71,7 +71,7 @@ def read_manga(cube, name, cfg):
 
     log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
     new_shape = (len(l_rest), Ny, Nx)
-    center = get_reference_pixel(header)
+    center = get_reference_pixel(wcs.WCS(header))
     f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(f_obs_rest, f_err_rest, badpix, center, new_shape)
 
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
