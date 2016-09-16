@@ -8,7 +8,7 @@ from .tables import read_output_tables
 from os import path, unlink
 import sys
 import copy
-import random
+from numpy import random, iinfo
 from string import Template
 from bz2 import BZ2File
 from shutil import copyfileobj
@@ -340,8 +340,8 @@ class GridFile(object):
         return path.join(self._starlightDir, self._logDir)
 
         
-    def seed(self, rng=0x8FFFFFFF):
-        self.randPhone = random.randrange(1, rng)
+    def seed(self):
+        self.randPhone = random.randint(iinfo('int32').max, dtype='int32')
 
     
     def _load(self, grid_data):
