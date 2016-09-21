@@ -11,6 +11,7 @@ import sys
 from matplotlib.ticker import MultipleLocator
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
+from os import path
 
 def plot_setup():
     plotpars = {'legend.fontsize': 8,
@@ -62,16 +63,29 @@ def plot_maps(c, pdf):
     plt.gca().xaxis.set_ticklabels([])
     plt.title(r'$\log M_\star\ [\mathrm{M}_\odot\ pc^{-2}]$')
 
+#     plt.subplot(333)
+#     l_norm = 5635.0 #AA
+#     i_norm = find_nearest_index(c.l_obs, l_norm)
+#     f_obs = c.f_obs
+#     f_err = c.f_err
+#     signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
+#     noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
+#     m = plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
+#     m.set_rasterized(True)
+#     plt.colorbar(ticks=MultipleLocator(10))
+#     plt.gca().set_aspect('equal')
+#     #plt.ylabel(r'dec. [arcsec]')
+#     plt.ylim(yy.min(), yy.max())
+#     plt.gca().yaxis.set_ticklabels([])
+#     #plt.xlabel(r'r.a. [arcsec]')
+#     plt.xlim(xx.min(), xx.max())
+#     plt.gca().xaxis.set_ticklabels([])
+#     plt.title(r'$S/N\ \mathrm{at}\ 5635\,\AA$')
+#     
     plt.subplot(333)
-    l_norm = 5635.0 #AA
-    i_norm = find_nearest_index(c.l_obs, l_norm)
-    f_obs = c.f_obs
-    f_err = c.f_err
-    signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
-    noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
-    m = plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
+    m = plt.pcolormesh(xx, yy, c.adev, cmap='cubehelix_r')
     m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(10))
+    plt.colorbar(ticks=MultipleLocator(1.0))
     plt.gca().set_aspect('equal')
     #plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
@@ -79,7 +93,7 @@ def plot_maps(c, pdf):
     #plt.xlabel(r'r.a. [arcsec]')
     plt.xlim(xx.min(), xx.max())
     plt.gca().xaxis.set_ticklabels([])
-    plt.title(r'$S/N\ \mathrm{at}\ 5635\,\AA$')
+    plt.title(r'$\Delta\ [\%]$')
     
     plt.subplot(334)
     m = plt.pcolormesh(xx, yy, c.at_flux, cmap='cubehelix_r')
@@ -143,7 +157,7 @@ def plot_maps(c, pdf):
     plt.title(r'$v_d\ [\mathrm{km}\ \mathrm{s}^{-1}]$')
     
     plt.subplot(339)
-    m = plt.pcolormesh(xx, yy, c.adev, cmap='cubehelix_r')
+    m = plt.pcolormesh(xx, yy, c.Nclipped / c.Nwave * 100.0, cmap='cubehelix_r')
     m.set_rasterized(True)
     plt.colorbar(ticks=MultipleLocator(1.0))
     plt.gca().set_aspect('equal')
@@ -152,7 +166,7 @@ def plot_maps(c, pdf):
     plt.gca().yaxis.set_ticklabels([])
     #plt.xlabel(r'r.a. [arcsec]')
     plt.xlim(xx.min(), xx.max())
-    plt.title(r'$\Delta\ [\%]$')
+    plt.title(r'$N_\mathrm{clipped} / N_\lambda\ [\%]$')
     
     plt.suptitle('%s' % c.objectName)
     fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.95])
@@ -186,6 +200,7 @@ def plot_spectra(c, pdf):
     f_syn = c.f_syn * c.flux_unit
     f_err = c.f_err * c.flux_unit
     f_res = f_obs - f_syn
+    f_wei = c.f_wei
 
     vmax = f_syn.max() * 1.1
     err_lim = 5.0
@@ -231,9 +246,9 @@ def plot_spectra(c, pdf):
     f = f_obs[:, center[1], center[2]]
     err_scale = int(0.2 * f.mean() / err.mean())
     s = f_syn[:, center[1], center[2]]
-    plt.plot(ll, f, 'k-', label='observed')
+    plt.plot(ll, f, 'b-', label='observed')
     plt.plot(ll, s, 'r-', label='synthetic')
-    plt.plot(ll, err * err_scale, 'b-', label='error (x %d)' % err_scale)
+    plt.plot(ll, err * err_scale, 'k-', label='error (x %d)' % err_scale)
     plt.ylabel(r'$F_\lambda$ [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.xlim(ll.min(), ll.max())
     plt.gca().xaxis.set_ticklabels([])
@@ -242,10 +257,26 @@ def plot_spectra(c, pdf):
 
     plt.subplot(212)
     r = f_res[:, center[1], center[2]]
+    w = f_wei[:, center[1], center[2]]
     err = f_err[:, center[1], center[2]]
-    plt.plot(ll, r, 'm-', label='residual')
-    plt.plot(ll, err, 'b-', label='error (estimated)')
+    plt.plot(ll, r, 'k-', label='residual')
+    plt.plot(ll, err, '-', color='gray', label='error')
     plt.plot(ll, np.zeros_like(ll), 'k:')
+
+    fitted = np.ma.masked_where(w < 0, r)
+    plt.plot(ll, fitted, 'b-')
+
+    masked = np.ma.masked_where(w != 0, r)
+    plt.plot(ll, masked, '-', color='magenta')
+    
+    clipped = np.ma.masked_where(w != -1, r)
+    plt.plot(ll, clipped, 'x', color='red')
+    
+    flagged = np.ma.masked_where(w != -2, r)
+    plt.plot(ll, flagged, 'o', color='green')
+    
+    
+    
     plt.ylabel(r'error / residual flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.xlabel(r'Wavelength [$\AA$]')
     #plt.ylim(-err_lim, err_lim)
@@ -259,7 +290,10 @@ def plot_spectra(c, pdf):
 def plot_metal_poor(c, pdf):
     at_flux = c.at_flux.compressed()
     alogZ_mass = c.alogZ_mass.compressed()
-    tau_V = c.tau_V.compressed()
+    mask = c.popx.sum(axis=0) == 0.0
+    tau_V = c.tau_V
+    tau_V[mask] = np.ma.masked
+    tau_V = tau_V.compressed()
     
     plt.figure(figsize=(5, 7))
     plt.subplot(311)
@@ -296,7 +330,8 @@ def plot_metal_poor(c, pdf):
 cube = sys.argv[1]
 c = FitsCube(cube)
 
-pdf = PdfPages('data/plots/%s.pdf' % c.objectName)
+dossier_plot = sys.argv[2] 
+pdf = PdfPages(dossier_plot)
 
 plot_setup()
 plot_spectra(c, pdf)
