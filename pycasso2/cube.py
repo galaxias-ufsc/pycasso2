@@ -441,6 +441,11 @@ class FitsCube(object):
     
     
     @property
+    def Nclipped(self):
+        return (self.f_wei == -1.0).astype('float').sum(axis=0)
+    
+    
+    @property
     def l_obs(self):
         return get_wavelength_coordinates(self._wcs, self.Nwave)
 
