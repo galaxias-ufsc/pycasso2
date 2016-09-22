@@ -185,8 +185,13 @@ def find_nearest_index(array, value):
     Return the array index that is closest to the valued provided. Note that
     this is intended for use with coordinates array.
     '''
-    from numpy import abs
-    idx = (abs(array-value)).argmin()
+    if np.isscalar(value):
+        value = np.array([value])
+    else:
+        value = np.array(value)
+    idx = (np.abs(array - value[:, np.newaxis])).argmin(axis=1)
+    if len(idx) == 1:
+        idx = np.asscalar(idx)
     return idx
 
 

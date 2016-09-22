@@ -9,6 +9,7 @@ from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS
 from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini
+from .lick import get_Lick_index
 from . import flags
 
 from astropy.io import fits
@@ -543,3 +544,9 @@ class FitsCube(object):
         '''
         flagged = ((self.f_flag & flags) > 0).astype(int).sum(axis=0)
         return flagged > threshold * len(self.l_obs)
+    
+    
+    def LickIndex(self, index_id):
+        return get_Lick_index(self.l_obs, self.f_obs, self.dl, index_id)
+    
+    
