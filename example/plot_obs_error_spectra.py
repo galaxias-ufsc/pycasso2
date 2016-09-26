@@ -32,7 +32,7 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, ll, yy, xx, center, cube):
     plt.rcParams.update(plotpars)
     plt.ioff()
     
-    vmax = f_obs.max() * 1.1
+    vmax = np.median(f_obs[:, center[1], center[2]]) * 1.5
     err_lim = 5.0
     x_slice = center[2]
     
@@ -71,29 +71,31 @@ def plot_spectra(f_obs, f_syn, f_res, f_err, ll, yy, xx, center, cube):
     
     plt.figure(2, figsize=(5, 5))
     plt.subplot(211)
-    err = f_err[:, center[1], center[2]]
     f = f_obs[:, center[1], center[2]]
-    plt.plot(ll, np.log10(f), 'k-', label='observed')
+    plt.plot(ll, f, 'k-', label='observed')
     if f_syn is not None:
         s = f_syn[:, center[1], center[2]]
-        plt.plot(ll, np.log10(s), 'r-', label='synthetic')
-    plt.plot(ll, np.log10(err), 'b-', label='error')
-    plt.ylabel(r'$\log F_\lambda$ [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
+        plt.plot(ll, s, 'r-', label='synthetic')
+    plt.ylabel(r'$F_\lambda$ [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.xlim(ll.min(), ll.max())
+    plt.ylim(0.0, vmax)
     plt.gca().xaxis.set_ticklabels([])
     plt.legend(loc='center right')
     plt.title('%s - center spaxel' % cube)
 
     plt.subplot(212)
     if f_res is not None:
-        r = f_res[:, center[1], center[2]]
+        r = f_res[:, center[1], center[2]] / f_syn[:, center[1], center[2]]
         plt.plot(ll, r, 'm-', label='residual')
-    err = f_err[:, center[1], center[2]]
+        err = f_err[:, center[1], center[2]] / f_syn[:, center[1], center[2]]
+        plt.ylabel(r'residual flux (normalized to $F_\lambda^{syn}$)')
+    else:
+        err = f_err[:, center[1], center[2]] / f_obs[:, center[1], center[2]]
+        plt.ylabel(r'residual flux (normalized to $F_\lambda^{obs}$)')
     plt.plot(ll, err, 'b-', label='error (estimated)')
     plt.plot(ll, np.zeros_like(ll), 'k:')
-    plt.ylabel(r'error / residual flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.xlabel(r'Wavelength [$\AA$]')
-    #plt.ylim(-err_lim, err_lim)
+    plt.ylim(-0.1, 0.1)
     plt.xlim(ll.min(), ll.max())
     plt.legend(loc='lower right')
     plt.gcf().set_tight_layout(True)
