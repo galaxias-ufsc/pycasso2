@@ -62,6 +62,6 @@ def read_califa(cube, name, cfg):
     K.flux_unit = flux_unit
     K.lumDistMpc = redshift2lum_distance(z)
     K.redshift = z    
-    K.objectName = name
+    K.name = name
     
     return K

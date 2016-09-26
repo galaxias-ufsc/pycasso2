@@ -80,7 +80,7 @@ def read_diving3d(redcube, obscube, name, cfg):
     d3dcube.flux_unit = flux_unit
     d3dcube.lumDistMpc = ml['DL']
     d3dcube.redshift = z    
-    d3dcube.objectName = name
+    d3dcube.name = name
     return d3dcube
 
 

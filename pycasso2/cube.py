@@ -44,7 +44,10 @@ class FitsCube(object):
     _h_lum_dist_Mpc = 'PIPE LUM_DIST_MPC'
     _h_redshift = 'PIPE REDSHIFT'
     _h_flux_unit = 'PIPE FLUX_UNIT'
-    _h_object_name = 'PIPE OBJECT_NAME'
+    _h_name = 'PIPE CUBE_NAME'
+    
+    # FIXME: remove legacy code
+    _h_old_name = 'PIPE OBJECT_NAME'
     
     _Z_sun = 0.019
     
@@ -57,6 +60,17 @@ class FitsCube(object):
         if cubefile is None:
             return
         self._load(cubefile)
+        self._fix_name()
+        
+        
+    def _fix_name(self):
+        # FIXME: remove legacy code
+        if self._h_name in self._header:
+            return
+        if self._h_old_name in self._header:
+            name = self._header[self._h_old_name] 
+            log.warn('Using old cube name header.')
+            self.name = name
         
         
     def _initFits(self, f_obs, f_err, f_flag, header):
@@ -508,16 +522,16 @@ class FitsCube(object):
     
     
     @property
-    def objectName(self):
-        key = self._h_object_name
+    def name(self):
+        key = self._h_name
         if not key in self._header:
             raise Exception('Object name not set. Header key: %s' % key)
         return self._header[key]
     
     
-    @objectName.setter
-    def objectName(self, value):
-        key = 'HIERARCH %s' % self._h_object_name
+    @name.setter
+    def name(self, value):
+        key = 'HIERARCH %s' % self._h_name
         self._header[key] = value
     
     

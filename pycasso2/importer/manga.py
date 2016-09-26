@@ -82,11 +82,11 @@ def read_manga(cube, name, cfg):
     update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
     
     log.debug('Creating pycasso cube.')
-    K = FitsCube()
-    K._initFits(f_obs, f_err, f_flag, header)
-    K.flux_unit = flux_unit
-    K.lumDistMpc = redshift2lum_distance(z)
-    K.redshift = z    
-    K.objectName = name
+    c = FitsCube()
+    c._initFits(f_obs, f_err, f_flag, header)
+    c.flux_unit = flux_unit
+    c.lumDistMpc = redshift2lum_distance(z)
+    c.redshift = z    
+    c.name = name
     
-    return K
+    return c

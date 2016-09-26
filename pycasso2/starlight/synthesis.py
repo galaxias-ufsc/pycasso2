@@ -94,14 +94,19 @@ def makedirs(the_path):
 
 class SynthesisAdapter(object):
     
-    def __init__(self, cube, cfg, key='starlight'):
+    def __init__(self, cube, cfg, key='starlight', new_name=None):
         from ..cube import FitsCube
         self.starlightDir = cfg.get(key, 'starlight_dir')
         self._arqMaskFormat = cfg.get(key, 'arq_mask_format')
         self._inFileFormat = cfg.get(key, 'arq_obs_format')
         self._outFileFormat = cfg.get(key, 'arq_out_format')
         self._cube = FitsCube(cube)
-        self.objectName = self._cube.objectName
+        if new_name is None:
+            self.name = self._cube.name
+        else:
+            log.debug('Renamed cube to %s' % new_name)
+            self.name = new_name
+            self._cube.name = new_name
         self._readData()
         self._gridTemplate, self._runTemplate = self._getTemplates(cfg, key)
         self._createDirs()
@@ -121,11 +126,11 @@ class SynthesisAdapter(object):
         grid.fluxUnit = self._cube.flux_unit
 
         grid.setBasesDir(cfg.get(key, 'base_dir'))
-        obs_dir = path.join(cfg.get(key, 'obs_dir'), self.objectName)
+        obs_dir = path.join(cfg.get(key, 'obs_dir'), self.name)
         grid.setObsDir(obs_dir)
-        out_dir = path.join(cfg.get(key, 'out_dir'), self.objectName)
+        out_dir = path.join(cfg.get(key, 'out_dir'), self.name)
         grid.setOutDir(out_dir)
-        grid.setLogDir(path.join(grid.logDir, self.objectName))
+        grid.setLogDir(path.join(grid.logDir, self.name))
         
         grid.setMaskDir(cfg.get(key, 'mask_dir'))
         grid.setEtcDir(cfg.get(key, 'etc_dir'))
@@ -168,9 +173,9 @@ class SynthesisAdapter(object):
     def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks):
         grid = self._gridTemplate.copy()
         if x1 != x2:
-            grid.name = 'grid_%s_%04d_%04d-%04d' % (self.objectName, y, x1, x2)
+            grid.name = 'grid_%s_%04d_%04d-%04d' % (self.name, y, x1, x2)
         else:
-            grid.name = 'grid_%04d_%04d' % (self.objectName, y, x1)
+            grid.name = 'grid_%04d_%04d' % (self.name, y, x1)
         grid.randPhone = -958089828
         # grid.seed()
         if use_errors_flags:
@@ -196,10 +201,10 @@ class SynthesisAdapter(object):
         
         log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
         new_run = self._runTemplate.copy()
-        new_run.inFile = self._inFileFormat % (self.objectName, y, x)
-        new_run.outFile = self._outFileFormat % (self.objectName, y, x)
+        new_run.inFile = self._inFileFormat % (self.name, y, x)
+        new_run.outFile = self._outFileFormat % (self.name, y, x)
         if use_custom_masks:
-            new_run.maskFile = self._arqMaskFormat % (self.objectName, y, x)
+            new_run.maskFile = self._arqMaskFormat % (self.name, y, x)
         new_run.x = x
         new_run.y = y
         if use_errors_flags:
