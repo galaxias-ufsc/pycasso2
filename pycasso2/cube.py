@@ -82,6 +82,8 @@ class FitsCube(object):
         self._wcs = wcs.WCS(self._header)
         self._addExtension(FitsCube._ext_f_err, data=f_err, kind='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, kind='spectra')
+        self._initMasks()
+        self._calcEllipseParams()
 
     
     def _initMasks(self):
