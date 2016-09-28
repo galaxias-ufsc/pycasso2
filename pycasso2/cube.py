@@ -5,7 +5,7 @@ Created on 22/06/2015
 '''
 
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
-from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
+from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave, find_nearest_index
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .lick import get_Lick_index
@@ -26,6 +26,11 @@ def safe_getheader(f, ext=0):
         hdu = hl[ext]
         hdu.verify('fix')
         return hdu.header
+
+
+def get_median_flux(wave, flux, wave1, wave2):
+    l1, l2 = find_nearest_index(wave, [wave1, wave2])
+    return np.median(flux[l1:l2], axis=0)
         
 
 class FitsCube(object):
@@ -93,7 +98,7 @@ class FitsCube(object):
      
     def _calcEllipseParams(self, image=None):
         if image is None:
-            image = self.Lobs_norm
+            image = self.flux_norm_window
         self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
     
     
@@ -349,8 +354,8 @@ class FitsCube(object):
     
     @lazyproperty
     def HLR(self):
-        r = get_image_distance(self.Lobs_norm.shape, self.x0, self.y0, self.pa, self.ba)
-        return get_half_radius(self.Lobs_norm, r)
+        r = get_image_distance((self.Ny, self.Nx), self.x0, self.y0, self.pa, self.ba)
+        return get_half_radius(self.flux_norm_window, r)
      
     
     @lazyproperty
@@ -367,6 +372,12 @@ class FitsCube(object):
     def Lobs_norm(self):
         return self._getSynthExtension('LOBS_NORM')
 
+    
+    @lazyproperty
+    def flux_norm_window(self):
+        norm_lambda = 5635.0
+        return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 50.0, norm_lambda + 50.0)
+    
     
     @property
     def McorSD(self):
