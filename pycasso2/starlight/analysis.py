@@ -4,19 +4,16 @@ Created on 08/12/2015
 @author: andre
 '''
 
-from ..resampling import age_smoothing_kernel, light2mass_ini, interp_age
+from ..resampling import age_smoothing_kernel, light2mass_ini, interp_age, bin_edges, hist_resample
 import numpy as np
 
-__all__ = ['smooth_Mini']
+__all__ = ['smooth_Mini', 'SFR']
 
 def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FWHM):
     '''
-    Calculate the star formation rate (SFR) from the light fractions,
+    Calculate the initial mass from the light fractions,
     using a smoothed logarithmic (base 10) time base. The smoothed
     log. time base ``logtc`` must be evenly spaced.
-    
-    This code is is basen on the equation (5) from Asari (2007)
-    <http://adsabs.harvard.edu/abs/2007MNRAS.381..263A> 
 
     Parameters
     ----------
@@ -48,9 +45,8 @@ def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FW
     
     Returns
     -------
-    SFR_sm : array
-        The star formation rate, smoothed.
-        Note: ``len(SFR_sm) == len(logtc)`` 
+    Mini_sm : array
+        The initial mass rate, smoothed.
 
     '''
     smoothKernel = age_smoothing_kernel(logtb, logtc, logtc_FWHM)
@@ -60,3 +56,44 @@ def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FW
     Mini_sm = light2mass_ini(popx_sm, fbase_norm_interp, Lobs_norm, q_norm, A_V)
     return Mini_sm
 
+
+def SFR(Mini, tb, dt=0.5e9):
+    '''
+    Calculate the star formation rate (SFR) resampling the initial mass.
+
+    Parameters
+    ----------
+    Mini: array
+        The initial mass. The age axis must be the leftmost (axis=0).
+        
+    tb : array 
+        Original time base.
+    
+    dt : float 
+        Sampling size of the SFR output.
+    Returns
+    -------
+    SFR : array
+        The star formation rate.
+    
+    t : array
+        Time.
+        Note: ``SFR.shape[0] == len(t)`` 
+
+    '''
+    logtb = np.log10(tb)
+    logtb_bins = bin_edges(logtb)
+    tb_bins = 10**logtb_bins
+    tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
+    tl_bins = bin_edges(tl)
+    sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
+    sfr = np.zeros(sfr_shape)
+    for j in xrange(sfr_shape[1]):
+        for i in xrange(sfr_shape[2]):
+            if Mini[:, j, i].mask.all():
+                continue
+            Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, j, i])
+            sfr[1:-1, j, i] = Mini_resam / dt
+    
+    tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
+    return sfr, tl

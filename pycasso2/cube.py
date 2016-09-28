@@ -8,11 +8,12 @@ from .resampling import bin_edges, hist_resample
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
 from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
 from .starlight.synthesis import get_base_grid
-from .starlight.analysis import smooth_Mini
+from .starlight.analysis import smooth_Mini, SFR
 from .lick import get_Lick_index
 from . import flags
 
 from astropy.io import fits
+from astropy.utils.decorators import lazyproperty
 from astropy import log, wcs
 import numpy as np
 
@@ -187,12 +188,11 @@ class FitsCube(object):
         return data
     
     
-    def _reshapeBase(self, a, fill_value=0.0):
-        mask, _, _ = get_base_grid(self.popage_base, self.popZ_base)
-        shape = (mask.shape) + a.shape[1:]
+    def toRectBase(self, a, fill_value=0.0):
+        shape = (self._baseMask.shape) + a.shape[1:]
         a__Zt = np.ma.masked_all(shape, dtype=a.dtype)
         a__Zt.fill_value = fill_value
-        a__Zt[mask, ...] = a
+        a__Zt[self._baseMask, ...] = a
         if a__Zt.ndim == 2:
             return a__Zt.T
         elif a__Zt.ndim == 4:
@@ -269,6 +269,12 @@ class FitsCube(object):
         return np.unique(self.popZ_base)
 
     
+    @lazyproperty
+    def _baseMask(self):
+        base_mask, _, _ = get_base_grid(self.popage_base, self.popZ_base)
+        return base_mask
+
+
     @property
     def Mstars(self):
         return self._getExtensionData(self._ext_mstars)
@@ -373,52 +379,22 @@ class FitsCube(object):
 
     
     def SFRSD(self, dt=0.5e9):
-        logtb = np.log10(self.popage_base)
-        logtb_bins = bin_edges(np.unique(logtb))
-        tb_bins = 10**logtb_bins
-        tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
-        tl_bins = bin_edges(tl)
-        Mini = self._reshapeBase(self.MiniSD).sum(axis=1)
-        sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
-        sfr = np.zeros(sfr_shape)
-        for j in xrange(sfr_shape[1]):
-            for i in xrange(sfr_shape[2]):
-                if Mini[:, j, i].mask.all():
-                    continue
-                Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, j, i])
-                sfr[1:-1, j, i] = Mini_resam / dt
-        
-        tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
-        return sfr, tl
+        Mini = self.toRectBase(self.MiniSD).sum(axis=1)
+        return SFR(Mini, self.age_base, dt)
     
     
-    def SFRSD_smooth(self,  logtc_ini=None, logtc_fin=None, logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
-        logtb = np.unique(np.log10(self.popage_base))
-        if logtc_ini is None:
-            logtc_ini = logtb.min()
-        if logtc_fin is None:
-            logtc_fin = logtb.max()
-        logtc = np.arange(logtc_ini, logtc_fin + logtc_step, logtc_step)
-        popx = self._reshapeBase(self.popx)
-        fbase_norm = self._reshapeBase(self.fbase_norm)
+    def SFRSD_smooth(self,  logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
+        logtb = np.log10(self.age_base)
+        logtc = np.arange(logtb.min(), logtb.max() + logtc_step, logtc_step)
+        popx = self.toRectBase(self.popx)
+        fbase_norm = self.toRectBase(self.fbase_norm)
         Mini = smooth_Mini(popx, fbase_norm, self.Lobs_norm,
                            self.q_norm, self.A_V,
                            logtb, logtc, logtc_FWHM)
-        Mini /= self.pixelArea_pc2
-        logtc_bins = bin_edges(logtc)
-        tc_bins = 10**logtc_bins
-        tl = np.arange(tc_bins.min(), tc_bins.max()+dt, dt)
-        tl_bins = bin_edges(tl)
-        Mini = Mini.sum(axis=1)
-        sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
-        sfr = np.zeros(sfr_shape)
-        for j in xrange(sfr_shape[1]):
-            for i in xrange(sfr_shape[2]):
-                Mini_resam = hist_resample(tc_bins, tl_bins, Mini[:, j, i])
-                sfr[1:-1, j, i] = Mini_resam / dt
-        
-        tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
-        return sfr, tl
+        Mini = Mini.sum(axis=1) / self.pixelArea_pc2
+        tc = 10.0**logtc
+        return SFR(Mini, tc, dt)
+
 
     @property
     def A_V(self):
