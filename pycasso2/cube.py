@@ -34,7 +34,7 @@ def get_median_flux(wave, flux, wave1, wave2):
         
 
 class FitsCube(object):
-    _ext_f_obs = 'PRIMARY'
+    _ext_f_obs = 'F_OBS'
     _ext_f_err = 'F_ERR'
     _ext_f_syn = 'F_SYN'
     _ext_f_wei = 'F_WEI'
@@ -54,6 +54,7 @@ class FitsCube(object):
     _h_name = 'PIPE CUBE_NAME'
     
     # FIXME: remove legacy code
+    _ext_old_f_obs = 'PRIMARY'
     _h_old_name = 'PIPE OBJECT_NAME'
     
     _Z_sun = 0.019
@@ -67,7 +68,6 @@ class FitsCube(object):
         if cubefile is None:
             return
         self._load(cubefile)
-        self._fix_name()
         
         
     def _fix_name(self):
@@ -76,12 +76,22 @@ class FitsCube(object):
             return
         if self._h_old_name in self._header:
             name = self._header[self._h_old_name] 
-            log.warn('Using old cube name header.')
+            log.warn('Using old cube name header. This check will be removed in the future.')
             self.name = name
+        
+        
+    def _fix_f_obs_ext(self):
+        # FIXME: remove legacy code
+        if self._ext_f_obs in self._HDUList:
+            return
+        if self._ext_old_f_obs in self._HDUList:
+            self._HDUList[self._ext_old_f_obs].update_ext_name(self._ext_f_obs)
+            log.warn('Fixed primary extension name. This check will be removed in the future.')
         
         
     def _initFits(self, f_obs, f_err, f_flag, header):
         phdu = fits.PrimaryHDU(f_obs, header)
+        phdu.update_ext_name(FitsCube._ext_f_obs)
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
         self._wcs = wcs.WCS(self._header)
@@ -104,7 +114,9 @@ class FitsCube(object):
     
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
+        self._fix_f_obs_ext()
         self._header = self._HDUList[self._ext_f_obs].header
+        self._fix_name()
         self._wcs = wcs.WCS(self._header)
         self._initMasks()
         self._calcEllipseParams()
