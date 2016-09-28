@@ -58,7 +58,7 @@ def get_base_grid(popage_base, popZ_base):
 
     shape = (len(Z_base), len(age_base))
     base_mask = np.zeros(shape, dtype='bool')
-    for a, Z in zip(age_base, Z_base):
+    for a, Z in zip(popage_base, popZ_base):
         i = np.where(Z_base == Z)[0]
         j = np.where(age_base == a)[0]
         base_mask[i, j] = True
