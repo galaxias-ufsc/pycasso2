@@ -4,12 +4,12 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from .resampling import bin_edges, hist_resample
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
 from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .lick import get_Lick_index
+from .geometry import radial_profile, get_ellipse_params
 from . import flags
 
 from astropy.io import fits
@@ -87,12 +87,19 @@ class FitsCube(object):
         self.synthesisMask = self.getSpatialMask(flags.no_obs | flags.no_starlight)
         self.spectraMask = (self.f_flag & flags.no_obs) > 0
     
+     
+    def _calcEllipseParams(self, image=None):
+        if image is None:
+            image = self.LobnSD.sum(axis=0)
+        self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
+    
     
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList[self._ext_f_obs].header
         self._wcs = wcs.WCS(self._header)
         self._initMasks()
+        self._calcEllipseParams()
         
         
     def write(self, filename, overwrite=False):
@@ -199,6 +206,29 @@ class FitsCube(object):
             return a__Zt.transpose(1, 0, 2, 3)
         else:
             raise Exception('Unsupported number of dimensions.')
+
+
+    def radialProfile(self, prop, bin_r, x0=None, y0=None, pa=None, ba=None,
+                      rad_scale=1.0, mode='mean', return_npts=False):
+        if x0 is None:
+            x0 = self.x0
+        if y0 is None:
+            y0 = self.y0
+        if pa is None:
+            pa = self.pa
+        if ba is None:
+            ba = self.ba
+        return radial_profile(prop, bin_r, x0, y0, pa, ba, rad_scale, mode, return_npts)
+    
+    
+    @property
+    def x0(self):
+        return self.center[2]
+
+
+    @property
+    def y0(self):
+        return self.center[1]
 
 
     @property
