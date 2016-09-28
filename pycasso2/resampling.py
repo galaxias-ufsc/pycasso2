@@ -650,3 +650,50 @@ def vac2air(wave):
     wave_air = wave / ( 1.0 + 2.735182e-4 + 131.4182 / wave**2 + 2.76249e8 / wave**4)
     return wave_air
     
+
+def get_half_radius(X, r, r_max=None):
+    '''
+    Evaluate radius where the cumulative value of `X` reaches half of its value.
+
+    Parameters
+    ----------
+    X : array like
+        The property whose half radius will be evaluated.
+    
+    r : array like
+        Radius associated to each value of `X`. Must be the
+        same shape as `X`.
+
+    r_max : int
+        Integrate up to `r_max`. Defaults to `np.max(r)`. 
+    
+    Returns
+    -------
+    HXR : float
+        The "half X radius."
+
+    Examples
+    --------
+    
+    Find the radius containing half of the volume of a gaussian.
+    
+    >>> import numpy as np
+    >>> xx, yy = np.indices((100, 100))
+    >>> x0, y0, A, a = 50.0, 50.0, 1.0, 20.0
+    >>> z = A * np.exp(-((xx-x0)**2 + (yy-y0)**2)/a**2)
+    >>> r = np.sqrt((xx - 50)**2 + (yy-50)**2)
+    >>> get_half_radius(z, r)
+    16.786338066912215
+
+    '''
+    if r_max is None:
+        r_max = np.max(r)
+    bin_r = np.arange(0, r_max, 1)
+    cumsum_X = gen_rebin(X, r, bin_r, mean=False).cumsum()
+
+    from scipy.interpolate import interp1d
+    invX_func = interp1d(cumsum_X, bin_r[1:])
+    half_radius_pix = invX_func(cumsum_X.max() / 2.0)
+    return float(half_radius_pix)
+
+

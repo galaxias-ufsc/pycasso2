@@ -9,7 +9,8 @@ from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampli
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .lick import get_Lick_index
-from .geometry import radial_profile, get_ellipse_params
+from .resampling import get_half_radius
+from .geometry import radial_profile, get_ellipse_params, get_image_distance
 from . import flags
 
 from astropy.io import fits
@@ -90,7 +91,7 @@ class FitsCube(object):
      
     def _calcEllipseParams(self, image=None):
         if image is None:
-            image = self.LobnSD.sum(axis=0)
+            image = self.Lobs_norm
         self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
     
     
@@ -343,6 +344,12 @@ class FitsCube(object):
         angle = get_pixel_scale_rad(self._wcs)
         return angle * lum_dist_pc
     
+    
+    @lazyproperty
+    def HLR(self):
+        r = get_image_distance(self.Lobs_norm.shape, self.x0, self.y0, self.pa, self.ba)
+        return get_half_radius(self.Lobs_norm, r)
+     
     
     @property
     def Mcor_tot(self):
