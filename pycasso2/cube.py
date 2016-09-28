@@ -234,34 +234,34 @@ class FitsCube(object):
         return self.center[1]
 
 
-    @property
+    @lazyproperty
     def Nx(self):
         return get_Nx(self._header)
     
     
-    @property
+    @lazyproperty
     def Ny(self):
         return get_Ny(self._header)
     
     
-    @property
+    @lazyproperty
     def Nwave(self):
         return get_Nwave(self._header)
     
     
-    @property
+    @lazyproperty
     def f_obs(self):
         data = self._getExtensionData(self._ext_f_obs)
         return np.ma.array(data, mask=self.spectraMask, copy=False)
     
 
-    @property
+    @lazyproperty
     def f_err(self):
         data = self._getExtensionData(self._ext_f_err)
         return np.ma.array(data, mask=self.spectraMask, copy=False)
     
 
-    @property
+    @lazyproperty
     def f_syn(self):
         data = self._getExtensionData(self._ext_f_syn)
         data = np.ma.array(data, copy=False)
@@ -269,7 +269,7 @@ class FitsCube(object):
         return data
     
 
-    @property
+    @lazyproperty
     def f_wei(self):
         data = self._getExtensionData(self._ext_f_wei)
         data = np.ma.array(data, copy=False)
@@ -277,27 +277,27 @@ class FitsCube(object):
         return data
     
 
-    @property
+    @lazyproperty
     def f_flag(self):
         return self._getExtensionData(self._ext_f_flag)
 
     
-    @property
+    @lazyproperty
     def popage_base(self):
         return self._getExtensionData(self._ext_popage_base)
 
     
-    @property
+    @lazyproperty
     def age_base(self):
         return np.unique(self.popage_base)
 
     
-    @property
+    @lazyproperty
     def popZ_base(self):
         return self._getExtensionData(self._ext_popZ_base)
 
     
-    @property
+    @lazyproperty
     def Z_base(self):
         return np.unique(self.popZ_base)
 
@@ -308,39 +308,39 @@ class FitsCube(object):
         return base_mask
 
 
-    @property
+    @lazyproperty
     def Mstars(self):
         return self._getExtensionData(self._ext_mstars)
 
     
-    @property
+    @lazyproperty
     def fbase_norm(self):
         return self._getExtensionData(self._ext_fbase_norm)
 
     
-    @property
+    @lazyproperty
     def popx(self):
         return self._getSynthExtension(self._ext_popx)
 
     
-    @property
+    @lazyproperty
     def popmu_ini(self):
         return self._getSynthExtension(self._ext_popmu_ini)
 
     
-    @property
+    @lazyproperty
     def popmu_cor(self):
         return self._getSynthExtension(self._ext_popmu_cor)
     
     
-    @property
+    @lazyproperty
     def pixelArea_pc2(self):
         lum_dist_pc = self.lumDistMpc * 1e6
         solid_angle = get_pixel_area_srad(self._wcs)
         return solid_angle * lum_dist_pc * lum_dist_pc
     
     
-    @property
+    @lazyproperty
     def pixelScale_pc(self):
         lum_dist_pc = self.lumDistMpc * 1e6
         angle = get_pixel_scale_rad(self._wcs)
@@ -353,17 +353,17 @@ class FitsCube(object):
         return get_half_radius(self.Lobs_norm, r)
      
     
-    @property
+    @lazyproperty
     def Mcor_tot(self):
         return self._getSynthExtension('MCOR_TOT')
 
     
-    @property
+    @lazyproperty
     def Mini_tot(self):
         return self._getSynthExtension('MINI_TOT')
 
     
-    @property
+    @lazyproperty
     def Lobs_norm(self):
         return self._getSynthExtension('LOBS_NORM')
 
@@ -435,12 +435,12 @@ class FitsCube(object):
         return SFR(Mini, tc, dt)
 
 
-    @property
+    @lazyproperty
     def A_V(self):
         return self._getSynthExtension('A_V')
 
     
-    @property
+    @lazyproperty
     def q_norm(self):
         return self._getSynthExtension('q_norm')
 
@@ -450,22 +450,22 @@ class FitsCube(object):
         return self.A_V / (2.5 * np.log10(np.exp(1.)))
 
     
-    @property
+    @lazyproperty
     def v_0(self):
         return self._getSynthExtension('V_0')
     
     
-    @property
+    @lazyproperty
     def v_d(self):
         return self._getSynthExtension('V_D')
     
     
-    @property
+    @lazyproperty
     def chi2(self):
         return self._getSynthExtension('CHI2')
 
 
-    @property
+    @lazyproperty
     def adev(self):
         return self._getSynthExtension('ADEV')
     
@@ -475,22 +475,22 @@ class FitsCube(object):
         return (self.f_wei == -1.0).astype('float').sum(axis=0)
     
     
-    @property
+    @lazyproperty
     def l_obs(self):
         return get_wavelength_coordinates(self._wcs, self.Nwave)
 
 
-    @property
+    @lazyproperty
     def dl(self):
         return get_wavelength_sampling(self._wcs)
 
 
-    @property
+    @lazyproperty
     def celestial_coords(self):
         return get_celestial_coordinates(self._wcs, self.Nx, self.Ny, relative=True)
 
 
-    @property
+    @lazyproperty
     def center(self):
         return get_reference_pixel(self._wcs)
 
