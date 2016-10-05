@@ -235,6 +235,7 @@ class SynthesisAdapter(object):
         self.popmu_cor = self._cube.popmu_cor
         self.popage_base = self._cube.popage_base
         self.popZ_base = self._cube.popZ_base
+        self.popaFe_base = self._cube.popaFe_base
         self.Mstars = self._cube.Mstars
         self.fbase_norm = self._cube.fbase_norm
         
@@ -254,6 +255,7 @@ class SynthesisAdapter(object):
                 self.fbase_norm[:] = ts.population.popfbase_norm
                 self.popZ_base[:] = ts.population.popZ_base
                 self.popage_base[:] = ts.population.popage_base
+                self.popaFe_base[:] = ts.population.aFe
                 self._base_data_saved = True
                 
             log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))

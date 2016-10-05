@@ -42,6 +42,7 @@ class FitsCube(object):
 
     _ext_popZ_base = 'POPZ_BASE'
     _ext_popage_base = 'POPAGE_BASE'
+    _ext_popaFe_base = 'POPAFE_BASE'
     _ext_popx = 'POPX'
     _ext_popmu_ini = 'POPMU_INI'
     _ext_popmu_cor = 'POPMU_COR'
@@ -61,7 +62,7 @@ class FitsCube(object):
     
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
                          'A_V', 'q_norm', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
-                         'Nglobal_steps', 'chi2']
+                         'Nglobal_steps', 'chi2', 'SN_normwin']
     
     def __init__(self, cubefile=None):
         self._pop_len = None
@@ -135,6 +136,7 @@ class FitsCube(object):
         self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
         self._addExtension(self._ext_popage_base, kind='base', overwrite=True)
         self._addExtension(self._ext_popZ_base, kind='base', overwrite=True)
+        self._addExtension(self._ext_popaFe_base, kind='base', overwrite=True)
         self._addExtension(self._ext_mstars, kind='base', overwrite=True)
         self._addExtension(self._ext_fbase_norm, kind='base', overwrite=True)
 
@@ -320,6 +322,16 @@ class FitsCube(object):
 
     
     @lazyproperty
+    def popaFe_base(self):
+        return self._getExtensionData(self._ext_popaFe_base)
+
+    
+    @lazyproperty
+    def aFe_base(self):
+        return np.unique(self.popaFe_base)
+
+    
+    @lazyproperty
     def _baseMask(self):
         base_mask, _, _ = get_base_grid(self.popage_base, self.popZ_base)
         return base_mask
@@ -438,6 +450,20 @@ class FitsCube(object):
         mu = self.popmu_cor
         popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
         return (mu * np.log10(popZ_base / self._Z_sun)).sum(axis=0) / mu.sum(axis=0)
+
+    
+    @property
+    def aaFe_flux(self):
+        popx = self.popx
+        popaFe_base = self.popaFe_base[:, np.newaxis, np.newaxis]
+        return (popx * popaFe_base).sum(axis=0) / popx.sum(axis=0)
+
+    
+    @property
+    def aaFe_mass(self):
+        popmu_cor = self.popmu_cor
+        popaFe_base = self.popaFe_base[:, np.newaxis, np.newaxis]
+        return (popmu_cor * popaFe_base).sum(axis=0) / popmu_cor.sum(axis=0)
 
     
     def SFRSD(self, dt=0.5e9):
