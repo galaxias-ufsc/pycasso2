@@ -95,3 +95,68 @@ def read_manga(cube, name, cfg):
     c.name = name
     
     return c
+
+def get_bitmask_indices(bitmask):
+    if bitmask == 0:
+        return 0
+    true_indices = []
+    binary = bin(bitmask)[:1:-1]
+    for x in range(len(binary)):
+        if int(binary[x]):
+            true_indices.append(x)
+    return np.array(true_indices)
+
+
+def bitmask2string(targ1, targ2, targ3):
+    bits = {
+
+        'targ1': np.array(['NONE', 'PRIMARY_PLUS_COM', 'SECONDARY_COM',
+        'COLOR_ENHANCED_COM', 'PRIMARY_v1_1_0', 'SECONDARY_v1_1_0',
+        'COLOR_ENHANCED_v1_1_0', 'PRIMARY_COM2', 'SECONDARY_COM2',
+        'COLOR_ENHANCED_COM2', 'PRIMARY_v1_2_0', 'SECONDARY_v1_2_0',
+        'COLOR_ENHANCED_v1_2_0', 'FILLER', 'RETIRED']),
+
+        'targ2': np.array(['NONE', 'SKY', 'STELLIB_SDSS_COM'
+        , 'STELLIB_2MASS_COM', 'STELLIB_KNOWN_COM', 'STELLIB_COM_mar2015'
+        , 'STELLIB_COM_jun2015', 'STELLIB_PS1', 'STELLIB_APASS'
+        , 'STELLIB_PHOTO_COM', 'STELLIB_aug2015', 'STD_FSTAR_COM'
+        , 'STD_WD_COM', 'STD_STD_COM', 'STD_FSTAR', 'STD_WD'
+        , 'STD_APASS_COM', 'STD_PS1_COM']),
+
+        'targ3': np.array(['NONE', 'AGN_BAT', 'AGN_OIII', 'AGN_WISE'
+        , 'AGN_PALOMAR', 'VOID', 'EDGE_ON_WINDS', 'PAIR_ENLARGE'
+        , 'PAIR_RECENTER', 'PAIR_SIM', 'PAIR_2IFU', 'LETTERS'
+        , 'MASSIVE', 'MWA', 'DWARF', 'RADIO_JETS', 'DISKMASS'
+        , 'BCG', 'ANGST', 'DEEP_COMA'])
+
+    }
+
+    targ1_bits = bits['targ1'][get_bitmask_indices(targ1)]
+    targ2_bits = bits['targ2'][get_bitmask_indices(targ2)]
+    targ3_bits = bits['targ3'][get_bitmask_indices(targ3)]
+
+    return np.hstack((targ1_bits, targ2_bits, targ3_bits))
+
+
+def isgalaxy(targ1, targ3):
+    return (targ1 > 0) | (targ3 > 0)
+
+
+def isprimary(targ1):
+    return (targ1 & 1024) > 0
+
+
+def issecondary(targ1):
+    return (targ1 & 2048) > 0
+
+
+def iscolorenhanced(targ1):
+    return (targ1 & 4096) > 0
+
+
+def isprimaryplus(targ1):
+    return (targ1 & (1024 | 4096)) > 0
+
+
+def isancillary(targ3):
+    return (targ3 > 0)
