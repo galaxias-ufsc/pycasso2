@@ -16,6 +16,8 @@ __all__ = ['read_manga', 'read_drpall']
 
 manga_cfg_sec = 'manga'
 
+CRITICAL_BIT = 1 << 30
+
 
 def read_drpall(filename, mangaid=None):
     with fits.open(filename) as f:
@@ -43,6 +45,9 @@ def read_manga(cube, name, cfg):
     header = safe_getheader(cube, ext='FLUX')
     drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
+    
+    if header['DRP3QUAL'] & CRITICAL_BIT:
+        log.warn('Critical bit set. There are problems with this cube.')
     
     log.debug('Loading data from %s.' % cube)
     with fits.open(cube) as f:
@@ -82,11 +87,11 @@ def read_manga(cube, name, cfg):
     update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
     
     log.debug('Creating pycasso cube.')
-    K = FitsCube()
-    K._initFits(f_obs, f_err, f_flag, header)
-    K.flux_unit = flux_unit
-    K.lumDistMpc = redshift2lum_distance(z)
-    K.redshift = z    
-    K.objectName = name
+    c = FitsCube()
+    c._initFits(f_obs, f_err, f_flag, header)
+    c.flux_unit = flux_unit
+    c.lumDistMpc = redshift2lum_distance(z)
+    c.redshift = z    
+    c.name = name
     
-    return K
+    return c

@@ -4,14 +4,17 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from .resampling import bin_edges, hist_resample
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
-from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
+from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave, find_nearest_index
 from .starlight.synthesis import get_base_grid
-from .starlight.analysis import smooth_Mini
+from .starlight.analysis import smooth_Mini, SFR
+from .lick import get_Lick_index
+from .resampling import get_half_radius
+from .geometry import radial_profile, get_ellipse_params, get_image_distance
 from . import flags
 
 from astropy.io import fits
+from astropy.utils.decorators import lazyproperty
 from astropy import log, wcs
 import numpy as np
 
@@ -23,10 +26,15 @@ def safe_getheader(f, ext=0):
         hdu = hl[ext]
         hdu.verify('fix')
         return hdu.header
+
+
+def get_median_flux(wave, flux, wave1, wave2):
+    l1, l2 = find_nearest_index(wave, [wave1, wave2])
+    return np.median(flux[l1:l2], axis=0)
         
 
 class FitsCube(object):
-    _ext_f_obs = 'PRIMARY'
+    _ext_f_obs = 'F_OBS'
     _ext_f_err = 'F_ERR'
     _ext_f_syn = 'F_SYN'
     _ext_f_wei = 'F_WEI'
@@ -34,6 +42,7 @@ class FitsCube(object):
 
     _ext_popZ_base = 'POPZ_BASE'
     _ext_popage_base = 'POPAGE_BASE'
+    _ext_popaFe_base = 'POPAFE_BASE'
     _ext_popx = 'POPX'
     _ext_popmu_ini = 'POPMU_INI'
     _ext_popmu_cor = 'POPMU_COR'
@@ -43,13 +52,17 @@ class FitsCube(object):
     _h_lum_dist_Mpc = 'PIPE LUM_DIST_MPC'
     _h_redshift = 'PIPE REDSHIFT'
     _h_flux_unit = 'PIPE FLUX_UNIT'
-    _h_object_name = 'PIPE OBJECT_NAME'
+    _h_name = 'PIPE CUBE_NAME'
+    
+    # FIXME: remove legacy code
+    _ext_old_f_obs = 'PRIMARY'
+    _h_old_name = 'PIPE OBJECT_NAME'
     
     _Z_sun = 0.019
     
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
                          'A_V', 'q_norm', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
-                         'Nglobal_steps', 'chi2']
+                         'Nglobal_steps', 'chi2', 'SN_normwin']
     
     def __init__(self, cubefile=None):
         self._pop_len = None
@@ -58,25 +71,56 @@ class FitsCube(object):
         self._load(cubefile)
         
         
+    def _fix_name(self):
+        # FIXME: remove legacy code
+        if self._h_name in self._header:
+            return
+        if self._h_old_name in self._header:
+            name = self._header[self._h_old_name] 
+            log.warn('Using old cube name header. This check will be removed in the future.')
+            self.name = name
+        
+        
+    def _fix_f_obs_ext(self):
+        # FIXME: remove legacy code
+        if self._ext_f_obs in self._HDUList:
+            return
+        if self._ext_old_f_obs in self._HDUList:
+            self._HDUList[self._ext_old_f_obs].update_ext_name(self._ext_f_obs)
+            log.warn('Fixed primary extension name. This check will be removed in the future.')
+        
+        
     def _initFits(self, f_obs, f_err, f_flag, header):
         phdu = fits.PrimaryHDU(f_obs, header)
+        phdu.update_ext_name(FitsCube._ext_f_obs)
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
         self._wcs = wcs.WCS(self._header)
         self._addExtension(FitsCube._ext_f_err, data=f_err, kind='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, kind='spectra')
+        self._initMasks()
+        self._calcEllipseParams()
 
     
     def _initMasks(self):
         self.synthesisMask = self.getSpatialMask(flags.no_obs | flags.no_starlight)
         self.spectraMask = (self.f_flag & flags.no_obs) > 0
     
+     
+    def _calcEllipseParams(self, image=None):
+        if image is None:
+            image = self.flux_norm_window
+        self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
+    
     
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
+        self._fix_f_obs_ext()
         self._header = self._HDUList[self._ext_f_obs].header
+        self._fix_name()
         self._wcs = wcs.WCS(self._header)
         self._initMasks()
+        self._calcEllipseParams()
         
         
     def write(self, filename, overwrite=False):
@@ -92,6 +136,7 @@ class FitsCube(object):
         self._addExtension(self._ext_popmu_cor, kind='population', overwrite=True)
         self._addExtension(self._ext_popage_base, kind='base', overwrite=True)
         self._addExtension(self._ext_popZ_base, kind='base', overwrite=True)
+        self._addExtension(self._ext_popaFe_base, kind='base', overwrite=True)
         self._addExtension(self._ext_mstars, kind='base', overwrite=True)
         self._addExtension(self._ext_fbase_norm, kind='base', overwrite=True)
 
@@ -172,12 +217,11 @@ class FitsCube(object):
         return data
     
     
-    def _reshapeBase(self, a, fill_value=0.0):
-        mask, _, _ = get_base_grid(self.popage_base, self.popZ_base)
-        shape = (mask.shape) + a.shape[1:]
+    def toRectBase(self, a, fill_value=0.0):
+        shape = (self._baseMask.shape) + a.shape[1:]
         a__Zt = np.ma.masked_all(shape, dtype=a.dtype)
         a__Zt.fill_value = fill_value
-        a__Zt[mask, ...] = a
+        a__Zt[self._baseMask, ...] = a
         if a__Zt.ndim == 2:
             return a__Zt.T
         elif a__Zt.ndim == 4:
@@ -186,34 +230,57 @@ class FitsCube(object):
             raise Exception('Unsupported number of dimensions.')
 
 
+    def radialProfile(self, prop, bin_r, x0=None, y0=None, pa=None, ba=None,
+                      rad_scale=1.0, mode='mean', return_npts=False):
+        if x0 is None:
+            x0 = self.x0
+        if y0 is None:
+            y0 = self.y0
+        if pa is None:
+            pa = self.pa
+        if ba is None:
+            ba = self.ba
+        return radial_profile(prop, bin_r, x0, y0, pa, ba, rad_scale, mode, return_npts)
+    
+    
     @property
+    def x0(self):
+        return self.center[2]
+
+
+    @property
+    def y0(self):
+        return self.center[1]
+
+
+    @lazyproperty
     def Nx(self):
         return get_Nx(self._header)
     
     
-    @property
+    @lazyproperty
     def Ny(self):
         return get_Ny(self._header)
     
     
-    @property
+    @lazyproperty
     def Nwave(self):
         return get_Nwave(self._header)
     
     
-    @property
+    @lazyproperty
     def f_obs(self):
         data = self._getExtensionData(self._ext_f_obs)
         return np.ma.array(data, mask=self.spectraMask, copy=False)
     
 
-    @property
+    @lazyproperty
     def f_err(self):
         data = self._getExtensionData(self._ext_f_err)
         return np.ma.array(data, mask=self.spectraMask, copy=False)
     
 
-    @property
+    @lazyproperty
     def f_syn(self):
         data = self._getExtensionData(self._ext_f_syn)
         data = np.ma.array(data, copy=False)
@@ -221,7 +288,7 @@ class FitsCube(object):
         return data
     
 
-    @property
+    @lazyproperty
     def f_wei(self):
         data = self._getExtensionData(self._ext_f_wei)
         data = np.ma.array(data, copy=False)
@@ -229,84 +296,112 @@ class FitsCube(object):
         return data
     
 
-    @property
+    @lazyproperty
     def f_flag(self):
         return self._getExtensionData(self._ext_f_flag)
 
     
-    @property
+    @lazyproperty
     def popage_base(self):
         return self._getExtensionData(self._ext_popage_base)
 
     
-    @property
+    @lazyproperty
     def age_base(self):
         return np.unique(self.popage_base)
 
     
-    @property
+    @lazyproperty
     def popZ_base(self):
         return self._getExtensionData(self._ext_popZ_base)
 
     
-    @property
+    @lazyproperty
     def Z_base(self):
         return np.unique(self.popZ_base)
 
     
-    @property
+    @lazyproperty
+    def popaFe_base(self):
+        return self._getExtensionData(self._ext_popaFe_base)
+
+    
+    @lazyproperty
+    def aFe_base(self):
+        return np.unique(self.popaFe_base)
+
+    
+    @lazyproperty
+    def _baseMask(self):
+        base_mask, _, _ = get_base_grid(self.popage_base, self.popZ_base)
+        return base_mask
+
+
+    @lazyproperty
     def Mstars(self):
         return self._getExtensionData(self._ext_mstars)
 
     
-    @property
+    @lazyproperty
     def fbase_norm(self):
         return self._getExtensionData(self._ext_fbase_norm)
 
     
-    @property
+    @lazyproperty
     def popx(self):
         return self._getSynthExtension(self._ext_popx)
 
     
-    @property
+    @lazyproperty
     def popmu_ini(self):
         return self._getSynthExtension(self._ext_popmu_ini)
 
     
-    @property
+    @lazyproperty
     def popmu_cor(self):
         return self._getSynthExtension(self._ext_popmu_cor)
     
     
-    @property
+    @lazyproperty
     def pixelArea_pc2(self):
         lum_dist_pc = self.lumDistMpc * 1e6
         solid_angle = get_pixel_area_srad(self._wcs)
         return solid_angle * lum_dist_pc * lum_dist_pc
     
     
-    @property
+    @lazyproperty
     def pixelScale_pc(self):
         lum_dist_pc = self.lumDistMpc * 1e6
         angle = get_pixel_scale_rad(self._wcs)
         return angle * lum_dist_pc
     
     
-    @property
+    @lazyproperty
+    def HLR(self):
+        r = get_image_distance((self.Ny, self.Nx), self.x0, self.y0, self.pa, self.ba)
+        return get_half_radius(self.flux_norm_window, r)
+     
+    
+    @lazyproperty
     def Mcor_tot(self):
         return self._getSynthExtension('MCOR_TOT')
 
     
-    @property
+    @lazyproperty
     def Mini_tot(self):
         return self._getSynthExtension('MINI_TOT')
 
     
-    @property
+    @lazyproperty
     def Lobs_norm(self):
         return self._getSynthExtension('LOBS_NORM')
 
+    
+    @lazyproperty
+    def flux_norm_window(self):
+        norm_lambda = 5635.0
+        return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 50.0, norm_lambda + 50.0)
+    
     
     @property
     def McorSD(self):
@@ -357,60 +452,44 @@ class FitsCube(object):
         return (mu * np.log10(popZ_base / self._Z_sun)).sum(axis=0) / mu.sum(axis=0)
 
     
+    @property
+    def aaFe_flux(self):
+        popx = self.popx
+        popaFe_base = self.popaFe_base[:, np.newaxis, np.newaxis]
+        return (popx * popaFe_base).sum(axis=0) / popx.sum(axis=0)
+
+    
+    @property
+    def aaFe_mass(self):
+        popmu_cor = self.popmu_cor
+        popaFe_base = self.popaFe_base[:, np.newaxis, np.newaxis]
+        return (popmu_cor * popaFe_base).sum(axis=0) / popmu_cor.sum(axis=0)
+
+    
     def SFRSD(self, dt=0.5e9):
-        logtb = np.log10(self.popage_base)
-        logtb_bins = bin_edges(np.unique(logtb))
-        tb_bins = 10**logtb_bins
-        tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
-        tl_bins = bin_edges(tl)
-        Mini = self._reshapeBase(self.MiniSD).sum(axis=1)
-        sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
-        sfr = np.zeros(sfr_shape)
-        for j in xrange(sfr_shape[1]):
-            for i in xrange(sfr_shape[2]):
-                if Mini[:, j, i].mask.all():
-                    continue
-                Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, j, i])
-                sfr[1:-1, j, i] = Mini_resam / dt
-        
-        tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
-        return sfr, tl
+        Mini = self.toRectBase(self.MiniSD).sum(axis=1)
+        return SFR(Mini, self.age_base, dt)
     
     
-    def SFRSD_smooth(self,  logtc_ini=None, logtc_fin=None, logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
-        logtb = np.unique(np.log10(self.popage_base))
-        if logtc_ini is None:
-            logtc_ini = logtb.min()
-        if logtc_fin is None:
-            logtc_fin = logtb.max()
-        logtc = np.arange(logtc_ini, logtc_fin + logtc_step, logtc_step)
-        popx = self._reshapeBase(self.popx)
-        fbase_norm = self._reshapeBase(self.fbase_norm)
+    def SFRSD_smooth(self,  logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
+        logtb = np.log10(self.age_base)
+        logtc = np.arange(logtb.min(), logtb.max() + logtc_step, logtc_step)
+        popx = self.toRectBase(self.popx)
+        fbase_norm = self.toRectBase(self.fbase_norm)
         Mini = smooth_Mini(popx, fbase_norm, self.Lobs_norm,
                            self.q_norm, self.A_V,
                            logtb, logtc, logtc_FWHM)
-        Mini /= self.pixelArea_pc2
-        logtc_bins = bin_edges(logtc)
-        tc_bins = 10**logtc_bins
-        tl = np.arange(tc_bins.min(), tc_bins.max()+dt, dt)
-        tl_bins = bin_edges(tl)
-        Mini = Mini.sum(axis=1)
-        sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
-        sfr = np.zeros(sfr_shape)
-        for j in xrange(sfr_shape[1]):
-            for i in xrange(sfr_shape[2]):
-                Mini_resam = hist_resample(tc_bins, tl_bins, Mini[:, j, i])
-                sfr[1:-1, j, i] = Mini_resam / dt
-        
-        tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
-        return sfr, tl
+        Mini = Mini.sum(axis=1) / self.pixelArea_pc2
+        tc = 10.0**logtc
+        return SFR(Mini, tc, dt)
 
-    @property
+
+    @lazyproperty
     def A_V(self):
         return self._getSynthExtension('A_V')
 
     
-    @property
+    @lazyproperty
     def q_norm(self):
         return self._getSynthExtension('q_norm')
 
@@ -420,22 +499,22 @@ class FitsCube(object):
         return self.A_V / (2.5 * np.log10(np.exp(1.)))
 
     
-    @property
+    @lazyproperty
     def v_0(self):
         return self._getSynthExtension('V_0')
     
     
-    @property
+    @lazyproperty
     def v_d(self):
         return self._getSynthExtension('V_D')
     
     
-    @property
+    @lazyproperty
     def chi2(self):
         return self._getSynthExtension('CHI2')
 
 
-    @property
+    @lazyproperty
     def adev(self):
         return self._getSynthExtension('ADEV')
     
@@ -445,22 +524,22 @@ class FitsCube(object):
         return (self.f_wei == -1.0).astype('float').sum(axis=0)
     
     
-    @property
+    @lazyproperty
     def l_obs(self):
         return get_wavelength_coordinates(self._wcs, self.Nwave)
 
 
-    @property
+    @lazyproperty
     def dl(self):
         return get_wavelength_sampling(self._wcs)
 
 
-    @property
+    @lazyproperty
     def celestial_coords(self):
         return get_celestial_coordinates(self._wcs, self.Nx, self.Ny, relative=True)
 
 
-    @property
+    @lazyproperty
     def center(self):
         return get_reference_pixel(self._wcs)
 
@@ -507,16 +586,16 @@ class FitsCube(object):
     
     
     @property
-    def objectName(self):
-        key = self._h_object_name
+    def name(self):
+        key = self._h_name
         if not key in self._header:
             raise Exception('Object name not set. Header key: %s' % key)
         return self._header[key]
     
     
-    @objectName.setter
-    def objectName(self, value):
-        key = 'HIERARCH %s' % self._h_object_name
+    @name.setter
+    def name(self, value):
+        key = 'HIERARCH %s' % self._h_name
         self._header[key] = value
     
     
@@ -543,3 +622,9 @@ class FitsCube(object):
         '''
         flagged = ((self.f_flag & flags) > 0).astype(int).sum(axis=0)
         return flagged > threshold * len(self.l_obs)
+    
+    
+    def LickIndex(self, index_id):
+        return get_Lick_index(self.l_obs, self.f_obs, self.dl, index_id)
+    
+    

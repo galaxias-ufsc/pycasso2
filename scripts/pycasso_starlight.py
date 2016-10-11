@@ -21,6 +21,8 @@ def parse_args():
                         help='Cube. Ex.: T001.fits')
     parser.add_argument('--out', dest='cubeOut', required=True,
                         help='Output cube.')
+    parser.add_argument('--rename', dest='newName',
+                        help='Rename the output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--config-section', dest='configSection', default='starlight',
@@ -60,7 +62,7 @@ cfg = get_config(args.configFile)
 nproc = args.nproc if args.nproc > 1 else 1
 
 print 'Loading cube from %s.' % args.cubeIn[0]
-sa = SynthesisAdapter(args.cubeIn[0], cfg, args.configSection)
+sa = SynthesisAdapter(args.cubeIn[0], cfg, args.configSection, new_name=args.newName)
 
 exec_path = cfg.get(args.configSection, 'exec_path')
 print 'Starting starlight runner (using %s).' % exec_path

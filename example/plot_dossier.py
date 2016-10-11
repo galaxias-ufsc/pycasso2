@@ -246,7 +246,7 @@ def plot_spectra(c, pdf):
     plt.ylim(yy.min(), yy.max())
     plt.gca().xaxis.set_ticklabels([])
     plt.xlim(ll.min(), ll.max())
-    plt.title(r'%s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (c.objectName, xx[x_slice]))
+    plt.title(r'%s - flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$] @ R.A. = %.02f' % (c.name, xx[x_slice]))
     plt.colorbar(ticks=[0.0, 0.5e-16, 1.0e-16, 1.5e-16, 2.0e-16])
     
     plt.subplot(312)
@@ -287,7 +287,7 @@ def plot_spectra(c, pdf):
     plt.ylim(0, 2.0*np.median(f))
     plt.gca().xaxis.set_ticklabels([])
     plt.legend(loc='upper left', frameon=False)
-    plt.title('%s - center spaxel' % c.objectName)
+    plt.title('%s - center spaxel' % c.name)
 
     plt.subplot(212)
     r = f_res[:, center[1], center[2]]
@@ -389,7 +389,7 @@ def plot_metal_poor(c, pdf):
     plt.gca().set_yticks(np.log10(c.Z_base / 0.019), minor=True)
     plt.gca().yaxis.grid(True, which='minor')
     plt.ylim(alogZ_mass.min() - 0.2, alogZ_mass.max() + 0.2)
-    plt.title('%s' % c.objectName)
+    plt.title('%s' % c.name)
 
     plt.subplot(312)
     plt.scatter(at_flux, tau_V, c='k', s=2, edgecolor='none')
