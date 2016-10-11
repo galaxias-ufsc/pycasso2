@@ -33,7 +33,7 @@ def plot_setup():
     plt.ioff()
     
 
-def plot_maps(c, pdf):
+def plot_mapsf(c, pdf):
     xx, yy = c.celestial_coords
    
     fig = plt.figure(figsize=(8, 10))
@@ -41,7 +41,7 @@ def plot_maps(c, pdf):
     plt.subplot(331)
     m = plt.pcolormesh(xx, yy, np.log10(c.LobnSD.sum(axis=0)), cmap='cubehelix_r')
     m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(0.1))
+    plt.colorbar(ticks=MultipleLocator(0.5))
     plt.gca().set_aspect('equal')
     #plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
@@ -53,7 +53,7 @@ def plot_maps(c, pdf):
     plt.subplot(332)
     m = plt.pcolormesh(xx, yy, np.log10(c.McorSD.sum(axis=0)), cmap='cubehelix_r')
     m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(0.1))
+    plt.colorbar(ticks=MultipleLocator(0.5))
     plt.gca().set_aspect('equal')
     #plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
@@ -63,43 +63,12 @@ def plot_maps(c, pdf):
     plt.gca().xaxis.set_ticklabels([])
     plt.title(r'$\log M_\star\ [\mathrm{M}_\odot\ pc^{-2}]$')
 
-#     plt.subplot(333)
-#     l_norm = 5635.0 #AA
-#     i_norm = find_nearest_index(c.l_obs, l_norm)
-#     f_obs = c.f_obs
-#     f_err = c.f_err
-#     signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
-#     noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
-#     m = plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
-#     m.set_rasterized(True)
-#     plt.colorbar(ticks=MultipleLocator(10))
-#     plt.gca().set_aspect('equal')
-#     #plt.ylabel(r'dec. [arcsec]')
-#     plt.ylim(yy.min(), yy.max())
-#     plt.gca().yaxis.set_ticklabels([])
-#     #plt.xlabel(r'r.a. [arcsec]')
-#     plt.xlim(xx.min(), xx.max())
-#     plt.gca().xaxis.set_ticklabels([])
-#     plt.title(r'$S/N\ \mathrm{at}\ 5635\,\AA$')
-#     
-    plt.subplot(333)
-    m = plt.pcolormesh(xx, yy, c.adev, cmap='cubehelix_r')
-    m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(1.0))
-    plt.gca().set_aspect('equal')
-    #plt.ylabel(r'dec. [arcsec]')
-    plt.ylim(yy.min(), yy.max())
-    plt.gca().yaxis.set_ticklabels([])
-    #plt.xlabel(r'r.a. [arcsec]')
-    plt.xlim(xx.min(), xx.max())
-    plt.gca().xaxis.set_ticklabels([])
-    plt.title(r'$\Delta\ [\%]$')
-    
+
     plt.subplot(334)
     m = plt.pcolormesh(xx, yy, c.at_flux, cmap='cubehelix_r')
     m.set_rasterized(True)
     plt.gca().set_aspect('equal')
-    plt.colorbar(ticks=MultipleLocator(0.1))
+    plt.colorbar(ticks=MultipleLocator(0.5))
     plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
     #plt.xlabel(r'r.a. [arcsec]')
@@ -110,7 +79,7 @@ def plot_maps(c, pdf):
     plt.subplot(335)
     m = plt.pcolormesh(xx, yy, c.alogZ_mass, cmap='cubehelix_r')
     m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(0.1))
+    plt.colorbar(ticks=MultipleLocator(0.5))
     plt.gca().set_aspect('equal')
     #plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
@@ -120,10 +89,10 @@ def plot_maps(c, pdf):
     plt.gca().xaxis.set_ticklabels([])
     plt.title(r'$\langle \log Z/\mathrm{Z}_\odot \rangle_M$')
 
-    plt.subplot(336)
+    plt.subplot(333)
     m = plt.pcolormesh(xx, yy, c.tau_V, cmap='cubehelix_r')
     m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(0.1))
+    plt.colorbar(ticks=MultipleLocator(0.5))
     plt.gca().set_aspect('equal')
     #plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
@@ -136,7 +105,7 @@ def plot_maps(c, pdf):
     plt.subplot(337)
     m = plt.pcolormesh(xx, yy, c.v_0, vmin=-200, vmax=200, cmap='RdBu')
     m.set_rasterized(True)
-    plt.colorbar(ticks=MultipleLocator(100))
+    plt.colorbar(ticks=MultipleLocator(50))
     plt.gca().set_aspect('equal')
     #plt.ylabel(r'dec. [arcsec]')
     plt.ylim(yy.min(), yy.max())
@@ -155,9 +124,57 @@ def plot_maps(c, pdf):
     plt.xlabel(r'r.a. [arcsec]')
     plt.xlim(xx.min(), xx.max())
     plt.title(r'$v_d\ [\mathrm{km}\ \mathrm{s}^{-1}]$')
-    
-    plt.subplot(339)
-    m = plt.pcolormesh(xx, yy, c.Nclipped / c.Nwave * 100.0, cmap='cubehelix_r')
+  
+  
+    plt.suptitle('%s' % c.objectName)
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.95])
+    pdf.savefig()
+
+
+
+def plot_maps(c, pdf):
+    xx, yy = c.celestial_coords
+          
+    fig = plt.figure(figsize=(6, 7))
+  
+  
+    plt.subplot(221)
+    l_norm = 5635.0 #AA
+    i_norm = find_nearest_index(c.l_obs, l_norm)
+    f_obs = c.f_obs
+    f_err = c.f_err
+    signal_image = np.median(f_obs[i_norm - 50:i_norm + 50], axis=0)
+    noise_image = np.median(f_err[i_norm - 50:i_norm + 50], axis=0)
+    m = plt.pcolormesh(xx, yy, signal_image / noise_image, cmap='cubehelix_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    #plt.ylabel(r'dec. [arcsec]')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    #plt.xlabel(r'r.a. [arcsec]')
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$S/N\ \mathrm{at}\ 5635\,\AA$')
+  
+  
+    plt.subplot(222)
+    m = plt.pcolormesh(xx, yy, c.adev, cmap='cubehelix_r', vmin = 0, vmax = 10)
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(1.0))
+    plt.gca().set_aspect('equal')
+    #plt.ylabel(r'dec. [arcsec]')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    #plt.xlabel(r'r.a. [arcsec]')
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$\Delta\ [\%]$')
+
+  
+  
+    plt.subplot(223)
+    m = plt.pcolormesh(xx, yy, c.Nclipped / c.Nwave * 100.0, cmap='cubehelix_r', vmin = 0, vmax = 10)
     m.set_rasterized(True)
     plt.colorbar(ticks=MultipleLocator(1.0))
     plt.gca().set_aspect('equal')
@@ -168,10 +185,24 @@ def plot_maps(c, pdf):
     plt.xlim(xx.min(), xx.max())
     plt.title(r'$N_\mathrm{clipped} / N_\lambda\ [\%]$')
     
-    plt.suptitle('%s' % c.name)
+    
+    plt.subplot(224)
+    m = plt.pcolormesh(xx, yy, c.chi2, cmap='cubehelix_r')
+    m.set_rasterized(True)
+    plt.colorbar()
+    plt.gca().set_aspect('equal')
+    #plt.ylabel(r'dec. [arcsec]')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    #plt.xlabel(r'r.a. [arcsec]')
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$\chi^2\ [\%]$')
+
+
+    plt.suptitle('%s' % c.objectName)
     fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.95])
     pdf.savefig()
-
 
 def plot_spectra(c, pdf):
     plotpars = {'legend.fontsize': 8,
@@ -240,7 +271,9 @@ def plot_spectra(c, pdf):
     plt.gcf().set_tight_layout(True)
     pdf.savefig()
     
-    plt.figure(2, figsize=(5, 5))
+
+    
+    plt.figure(2, figsize=(6, 6))
     plt.subplot(211)
     err = f_err[:, center[1], center[2]]
     f = f_obs[:, center[1], center[2]]
@@ -251,6 +284,7 @@ def plot_spectra(c, pdf):
     plt.plot(ll, err * err_scale, 'k-', label='error (x %d)' % err_scale)
     plt.ylabel(r'$F_\lambda$ [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
     plt.xlim(ll.min(), ll.max())
+    plt.ylim(0, 2.0*np.median(f))
     plt.gca().xaxis.set_ticklabels([])
     plt.legend(loc='upper left', frameon=False)
     plt.title('%s - center spaxel' % c.name)
@@ -262,6 +296,55 @@ def plot_spectra(c, pdf):
     plt.plot(ll, r, 'k-', label='residual')
     plt.plot(ll, err, '-', color='gray', label='error')
     plt.plot(ll, np.zeros_like(ll), 'k:')
+    
+    fitted = np.ma.masked_where(w < 0, r)
+    plt.plot(ll, fitted, 'b-')
+    
+    masked = np.ma.masked_where(w != 0, r)
+    plt.plot(ll, masked, '-', color='magenta')
+    
+    clipped = np.ma.masked_where(w != -1, r)
+    plt.plot(ll, clipped, 'x', color='red')
+    
+    flagged = np.ma.masked_where(w != -2, r)
+    plt.plot(ll, flagged, 'o', color='green')
+    
+    plt.ylabel(r'error / residual flux [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
+    plt.xlabel(r'Wavelength [$\AA$]')
+    #plt.ylim(-err_lim, err_lim)
+    plt.xlim(ll.min(), ll.max())
+    plt.legend(loc='upper left', frameon=False)
+    
+    plt.gcf().set_tight_layout(True)
+    pdf.savefig()
+    
+
+
+    plt.figure(3, figsize=(6, 6))
+    plt.subplot(211)
+    err = f_err[:, center[1], center[2]+10]
+    f = f_obs[:, center[1], center[2]+10]
+    err_scale = int(0.2 * f.mean() / err.mean())
+    s = f_syn[:, center[1], center[2]+10]
+    plt.plot(ll, f, 'b-', label='observed')
+    plt.plot(ll, s, 'r-', label='synthetic')
+    plt.plot(ll, err * err_scale, 'k-', label='error (x %d)' % err_scale)
+    plt.ylabel(r'$F_\lambda$ [$\mathrm{erg}\ \mathrm{s}^{-1} \mathrm{cm}^{-2}\ \AA^{-1}$]')
+    plt.xlim(ll.min(), ll.max())
+    plt.ylim(0, 2.0*np.median(f))
+    plt.gca().xaxis.set_ticklabels([])
+    plt.legend(loc='upper left', frameon=False)
+    plt.title('%s - center spaxel + 10' % c.objectName)
+    
+    plt.subplot(212)
+    r = f_res[:, center[1], center[2]+10]
+    w = f_wei[:, center[1], center[2]+10]
+    err = f_err[:, center[1], center[2]+10]
+    plt.plot(ll, r, 'k-', label='residual')
+    plt.plot(ll, err, '-', color='gray', label='error')
+    plt.plot(ll, np.zeros_like(ll), 'k:')
+    
+    
 
     fitted = np.ma.masked_where(w < 0, r)
     plt.plot(ll, fitted, 'b-')
@@ -329,12 +412,13 @@ def plot_metal_poor(c, pdf):
 
 cube = sys.argv[1]
 c = FitsCube(cube)
-
-dossier_plot = sys.argv[2] 
+plt.close('all')
+dossier_plot = sys.argv[2]
 pdf = PdfPages(dossier_plot)
 
 plot_setup()
 plot_spectra(c, pdf)
+plot_mapsf(c, pdf)
 plot_maps(c, pdf)
 plot_metal_poor(c, pdf)
 
