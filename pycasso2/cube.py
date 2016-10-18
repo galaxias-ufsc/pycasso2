@@ -519,6 +519,11 @@ class FitsCube(object):
         return self._getSynthExtension('ADEV')
     
     
+    @lazyproperty
+    def SN_normwin(self):
+        return self._getSynthExtension('SN_NORMWIN')
+    
+    
     @property
     def Nclipped(self):
         return (self.f_wei == -1.0).astype('float').sum(axis=0)
