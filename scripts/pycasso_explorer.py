@@ -30,14 +30,16 @@ class PycassoExplorer:
         self.ax_res.set_ylabel('Residual [%]')
         plt.setp(self.ax_sp.get_xticklabels(), visible = False)
 
-        self.ax_im.imshow(self.c.LobnSD.sum(axis=0), cmap='Blues', label=r'Image @ $5635 \AA$')
-        self.ax_im.imshow(self.c.A_V, cmap='Reds', vmin=0.0, vmax=2.0, label=r'$A_V$')
-        self.ax_im.imshow(self.c.at_flux, cmap='Reds', label=r'$\langle \log\,t \rangle_L$')
-        self.ax_im.imshow(self.c.alogZ_flux, cmap='Reds',label=r'$\langle \log\,Z/Z_\odot \rangle_M$')
-        self.ax_im.imshow(self.c.LickIndex('D4000'), cmap='Reds', vmin=0.9, vmax=2.5, label=r'$D(4000)$')
+        self.ax_im.imshow(np.log10(self.c.LobnSD.sum(axis=0)), cmap='viridis_r', label=r'Image @ $5635 \AA$')
+        self.ax_im.imshow(self.c.A_V, cmap='viridis_r', vmin=0.0, vmax=1.7, label=r'$A_V$')
+        self.ax_im.imshow(self.c.at_flux, cmap='viridis_r', label=r'$\langle \log\,t \rangle_L$')
+        self.ax_im.imshow(self.c.alogZ_flux, cmap='viridis_r',label=r'$\langle \log\,Z/Z_\odot \rangle_M$')
+        self.ax_im.imshow(self.c.LickIndex('D4000'), cmap='viridis_r', vmin=0.9, vmax=2.5, label=r'$D(4000)$')
+        self.ax_im.imshow(self.c.v_0, cmap='RdBu_r', vmin=-300, vmax=300, label=r'$v_\star\ [km\,s_{-1}]$')
+        self.ax_im.imshow(self.c.v_d, cmap='viridis_r', vmin=0, vmax=500, label=r'$\sigma_\star\ [km\,s_{-1}]$')
         self.cb = plt.colorbar(self.ax_im.images[0], ax=self.ax_im)
         
-        self.cursor = Circle((0, 0), radius=1.5, lw=1.0, facecolor='none', edgecolor='k', figure=self.fig)
+        self.cursor = Circle((0, 0), radius=1.5, lw=1.0, facecolor='none', edgecolor='r', figure=self.fig)
         self.ax_im.add_patch(self.cursor)
 
 
@@ -59,7 +61,7 @@ class PycassoExplorer:
 
 
     def onKeyPress(self, ev):
-        if ev.key in ['1', '2', '3', '4', '5']:
+        if ev.key in ['1', '2', '3', '4', '5', '6', '7']:
             self.raiseImage(ev.key)
         elif ev.key in ['up', 'down', 'left', 'right']:
             self.displaceCursor(ev.key)
@@ -131,19 +133,17 @@ class PycassoExplorer:
         ax = self.ax_sp
         c = self.c
         ax.lines = []
-        f = c.f_obs[:, y, x]
-        s = c.f_syn[:, y, x]
+        f = c.f_obs[:, y, x] / c.flux_norm_window[y, x]
+        s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
         w = c.f_wei[:, y, x]
-        r = (f - s) / f
+        r = (f - s) / f * 100.0
         ax.plot(c.l_obs, f, '-', color='blue')
         ax.plot(c.l_obs, s, '-', color='red')
-        ax.set_ylim(0, 2.0 * np.median(f))
+        ax.set_ylim(0, 2.5)
         
         ax = self.ax_res
         ax.lines = []
-        vmax = np.std(r)
-        scale = 3.0
-        ax.set_ylim(-scale * vmax, scale * vmax)
+        ax.set_ylim(-20, 20)
         ax.plot(c.l_obs, np.zeros_like(c.l_obs), 'k:')
         fitted = np.ma.masked_where(w < 0, r)
         ax.plot(c.l_obs, fitted, 'b-')
@@ -158,11 +158,13 @@ class PycassoExplorer:
         plt.plot(c.l_obs, flagged, 'o', color='green')
         
         self.fig.texts = []
-        self.fig.text(.6, .92, '(y, x) = (%d, %d)' % (y, x))
-        self.fig.text(.6, .88, '$\chi^2 =\ $' + ('%3.2f' % self.c.chi2[y, x]))
-        self.fig.text(.6, .84, 'adev = ' + ('%3.2f' % self.c.adev[y, x]))
-        self.fig.text(.6, .76, '$A_V =\ $' + ('%3.2f' % self.c.A_V[y, x]))
-        self.fig.text(.6, .72, '$\sigma_\star =\ ' + ('%3.2f' % self.c.v_d[y, x]) + '\ $km/s\t$v_\star =\ ' + ('%3.2f' % self.c.v_0[y, x]) + '\ $km/s')
+        textsize = 'large'
+        self.fig.text(.6, .92, '(y, x) = (%d, %d)' % (y, x), size=textsize)
+        self.fig.text(.6, .88, '$\chi^2 =\ $' + ('%3.2f' % self.c.chi2[y, x]), size=textsize)
+        self.fig.text(.6, .84, 'adev = ' + ('%3.2f' % self.c.adev[y, x]), size=textsize)
+        self.fig.text(.6, .80, 'S/N (norm. window) = %.1f' % self.c.SN_normwin[y, x], size=textsize)
+        self.fig.text(.6, .76, '$A_V =\ $' + ('%3.2f' % self.c.A_V[y, x]), size=textsize)
+        self.fig.text(.6, .72, '$\sigma_\star =\ ' + ('%3.2f' % self.c.v_d[y, x]) + '\ $km/s\t$v_\star =\ ' + ('%3.2f' % self.c.v_0[y, x]) + '\ $km/s', size=textsize)
 
 ################################################################################        
     
