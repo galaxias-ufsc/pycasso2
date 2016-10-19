@@ -103,7 +103,7 @@ class IndexMag(object):
         cont = cont1 + alpha * (l_obs - self.wave1)
 
         # FIXME: How to integrate masked arrays?
-        return -2.5 * np.log10(1.0 / (self.wave1 - self.wave2) * np.trapz(flux / cont, dx=dl, axis=0))
+        return -2.5 * np.log10(1.0 / (self.wave2 - self.wave1) * np.trapz(flux / cont, dx=dl, axis=0))
 ################################################################################
 
 
