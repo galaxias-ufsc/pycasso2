@@ -4,7 +4,7 @@ Created on 21 de set de 2016
 @author: andre
 '''
 
-from pycasso2.wcs import find_nearest_index
+from .resampling import find_nearest_index
 import numpy as np
 
 __all__ = ['get_Lick_index', 'list_Lick_indices']

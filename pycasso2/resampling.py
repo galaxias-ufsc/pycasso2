@@ -8,9 +8,9 @@ from . import flags
 import numpy as np
 
 
-__all__ = ['resample_spectra', 'reshape_cube',
+__all__ = ['resample_spectra', 'reshape_cube', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
-           'age_smoothing_kernel', 'light2mass_ini', 'interp_age', 'vac2air']
+           'age_smoothing_kernel', 'light2mass_ini', 'interp_age', 'vac2air', 'get_subset_slices']
 
 
 
@@ -651,49 +651,34 @@ def vac2air(wave):
     return wave_air
     
 
-def get_half_radius(X, r, r_max=None):
+def find_nearest_index(array, value):
     '''
-    Evaluate radius where the cumulative value of `X` reaches half of its value.
-
-    Parameters
-    ----------
-    X : array like
-        The property whose half radius will be evaluated.
-    
-    r : array like
-        Radius associated to each value of `X`. Must be the
-        same shape as `X`.
-
-    r_max : int
-        Integrate up to `r_max`. Defaults to `np.max(r)`. 
-    
-    Returns
-    -------
-    HXR : float
-        The "half X radius."
-
-    Examples
-    --------
-    
-    Find the radius containing half of the volume of a gaussian.
-    
-    >>> import numpy as np
-    >>> xx, yy = np.indices((100, 100))
-    >>> x0, y0, A, a = 50.0, 50.0, 1.0, 20.0
-    >>> z = A * np.exp(-((xx-x0)**2 + (yy-y0)**2)/a**2)
-    >>> r = np.sqrt((xx - 50)**2 + (yy-50)**2)
-    >>> get_half_radius(z, r)
-    16.786338066912215
-
+    Return the array index that is closest to the valued provided. Note that
+    this is intended for use with coordinates array.
     '''
-    if r_max is None:
-        r_max = np.max(r)
-    bin_r = np.arange(0, r_max, 1)
-    cumsum_X = gen_rebin(X, r, bin_r, mean=False).cumsum()
+    if np.isscalar(value):
+        value = np.array([value])
+    else:
+        value = np.array(value)
+    idx = (np.abs(array - value[:, np.newaxis])).argmin(axis=1)
+    if len(idx) == 1:
+        idx = np.asscalar(idx)
+    return idx
 
-    from scipy.interpolate import interp1d
-    invX_func = interp1d(cumsum_X, bin_r[1:])
-    half_radius_pix = invX_func(cumsum_X.max() / 2.0)
-    return float(half_radius_pix)
 
+def get_subset_slices(l_obs_d, l_obs_o):
+    if l_obs_d[0] > l_obs_o[0]:
+        l1_d = 0
+        l1_o = find_nearest_index(l_obs_o, l_obs_d[0])
+    else:
+        l1_d = find_nearest_index(l_obs_d, l_obs_o[0])
+        l1_o = 0
+
+    if l_obs_d[-1] < l_obs_o[-1]:
+        l2_d = len(l_obs_d)
+        l2_o = find_nearest_index(l_obs_o, l_obs_d[-1]) + 1
+    else:
+        l2_d = find_nearest_index(l_obs_d,l_obs_o[-1]) + 1
+        l2_o = len(l_obs_o)
+    return slice(l1_d, l2_d), slice(l1_o, l2_o)
 

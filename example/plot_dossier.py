@@ -399,7 +399,7 @@ def plot_metal_poor(c, pdf):
 
 cube = sys.argv[1]
 c = FitsCube(cube)
-c.synthesisMask[c.SN_normwin < 5.0] = True
+c.synthImageMask[c.SN_normwin < 5.0] = True
 plt.close('all')
 dossier_plot = sys.argv[2]
 pdf = PdfPages(dossier_plot)

@@ -11,7 +11,7 @@ import numpy as np
 __all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'copy_WCS', 'update_WCS',
            'get_cube_limits', 'get_shape', 'get_reference_pixel', 'get_galactic_coordinates_rad',
            'get_pixel_area', 'get_pixel_area_srad', 'get_pixel_scale', 'get_pixel_scale_rad',
-           'get_Nx', 'get_Ny', 'get_Nwave', 'find_nearest_index']
+           'get_Nx', 'get_Ny', 'get_Nwave']
 
 
 rad_per_deg = np.pi / 180.0
@@ -178,20 +178,3 @@ def update_WCS(header, crpix, crval_wave, cdelt_wave):
     else:
         w.wcs.cdelt[2] = cdelt_wave
     header.extend(w.to_header(), update=True)
-
-
-def find_nearest_index(array, value):
-    '''
-    Return the array index that is closest to the valued provided. Note that
-    this is intended for use with coordinates array.
-    '''
-    if np.isscalar(value):
-        value = np.array([value])
-    else:
-        value = np.array(value)
-    idx = (np.abs(array - value[:, np.newaxis])).argmin(axis=1)
-    if len(idx) == 1:
-        idx = np.asscalar(idx)
-    return idx
-
-

@@ -5,12 +5,12 @@ Created on 22/06/2015
 '''
 
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
-from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave, find_nearest_index
+from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .lick import get_Lick_index
-from .resampling import get_half_radius
-from .geometry import radial_profile, get_ellipse_params, get_image_distance
+from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
+from .resampling import find_nearest_index
 from . import flags
 
 from astropy.io import fits
@@ -103,7 +103,8 @@ class FitsCube(object):
 
     
     def _initMasks(self):
-        self.synthesisMask = self.getSpatialMask(flags.no_obs | flags.no_starlight)
+        self.synthImageMask = self.getSpatialMask(flags.no_obs | flags.no_starlight)
+        self.synthSpectraMask = (self.f_flag & flags.no_starlight) > 0
         self.spectraMask = (self.f_flag & flags.no_obs) > 0
     
      
@@ -210,10 +211,10 @@ class FitsCube(object):
     def _getSynthExtension(self, name):
         data = self._getExtensionData(name)
         if data.ndim == 2:
-            data = np.ma.array(data, mask=self.synthesisMask, copy=False)
+            data = np.ma.array(data, mask=self.synthImageMask, copy=False)
         if data.ndim == 3:
             data = np.ma.array(data, copy=False)
-            data[:, self.synthesisMask] = np.ma.masked
+            data[:, self.synthImageMask] = np.ma.masked
         return data
     
     
@@ -284,7 +285,7 @@ class FitsCube(object):
     def f_syn(self):
         data = self._getExtensionData(self._ext_f_syn)
         data = np.ma.array(data, copy=False)
-        data[:, self.synthesisMask] = np.ma.masked
+        data[self.synthSpectraMask] = np.ma.masked
         return data
     
 
@@ -292,7 +293,7 @@ class FitsCube(object):
     def f_wei(self):
         data = self._getExtensionData(self._ext_f_wei)
         data = np.ma.array(data, copy=False)
-        data[:, self.synthesisMask] = np.ma.masked
+        data[self.synthSpectraMask] = np.ma.masked
         return data
     
 

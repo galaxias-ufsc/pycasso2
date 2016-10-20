@@ -4,6 +4,7 @@ Created on 28 de set de 2016
 @author: andre
 '''
 
+from .resampling import gen_rebin
 import numpy as np
 
 __all__ = ['get_ellipse_params', 'get_image_distance', 'get_image_angle', 'radial_profile']
@@ -349,4 +350,51 @@ def radial_profile(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0,
     if return_npts:
         return prop_profile, npts
     return prop_profile
+
+
+def get_half_radius(X, r, r_max=None):
+    '''
+    Evaluate radius where the cumulative value of `X` reaches half of its value.
+
+    Parameters
+    ----------
+    X : array like
+        The property whose half radius will be evaluated.
+    
+    r : array like
+        Radius associated to each value of `X`. Must be the
+        same shape as `X`.
+
+    r_max : int
+        Integrate up to `r_max`. Defaults to `np.max(r)`. 
+    
+    Returns
+    -------
+    HXR : float
+        The "half X radius."
+
+    Examples
+    --------
+    
+    Find the radius containing half of the volume of a gaussian.
+    
+    >>> import numpy as np
+    >>> xx, yy = np.indices((100, 100))
+    >>> x0, y0, A, a = 50.0, 50.0, 1.0, 20.0
+    >>> z = A * np.exp(-((xx-x0)**2 + (yy-y0)**2)/a**2)
+    >>> r = np.sqrt((xx - 50)**2 + (yy-50)**2)
+    >>> get_half_radius(z, r)
+    16.786338066912215
+
+    '''
+    if r_max is None:
+        r_max = np.max(r)
+    bin_r = np.arange(0, r_max, 1)
+    cumsum_X = gen_rebin(X, r, bin_r, mean=False).cumsum()
+
+    from scipy.interpolate import interp1d
+    invX_func = interp1d(cumsum_X, bin_r[1:])
+    half_radius_pix = invX_func(cumsum_X.max() / 2.0)
+    return float(half_radius_pix)
+
 

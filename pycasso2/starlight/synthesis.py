@@ -5,6 +5,7 @@ Created on 26/06/2015
 '''
 from .tables import write_input, read_output_tables
 from .gridfile import GridRun, GridFile
+from ..resampling import get_subset_slices
 from ..error import estimate_error
 from .. import flags
 
@@ -137,8 +138,8 @@ class SynthesisAdapter(object):
         grid.randPhone = int(cfg.get(key, 'rand_seed'))
         grid.lLow_SN = float(cfg.get(key, 'llow_SN'))
         grid.lUpp_SN = float(cfg.get(key, 'lupp_SN'))
-        grid.lLow_Syn = self.l_obs.min()
-        grid.lUpp_Syn = self.l_obs.max()
+        grid.lLow_Syn = float(cfg.get(key, 'Olsyn_ini'))
+        grid.lUpp_Syn = float(cfg.get(key, 'Olsyn_fin'))
         grid.dLambda = self._cube.dl
         grid.fScale_Chi2 = float(cfg.get(key, 'fscale_chi2'))
         grid.fitFix = cfg.get(key, 'fit_fix')
@@ -260,9 +261,13 @@ class SynthesisAdapter(object):
                 
             log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))
             f_obs_norm = ts.keywords['fobs_norm']
-            self.f_syn[:, y, x] = ts.spectra.f_syn * f_obs_norm / grid.fluxUnit
-            self.f_wei[:, y, x] = ts.spectra.f_wei
+            slice_d, slice_o = get_subset_slices(self.l_obs, ts.spectra.l_obs)
+            self.f_syn[slice_d, y, x] = ts.spectra.f_syn[slice_o] * (f_obs_norm / grid.fluxUnit)
+            self.f_wei[slice_d, y, x] = ts.spectra.f_wei[slice_o]
             # TODO: update flags with starlight clipped, etc.
+            self.f_flag[:slice_d.start] |= flags.no_starlight
+            self.f_flag[slice_d.stop:] |= flags.no_starlight
+
             self.popx[:, y, x] = ts.population.popx
             self.popmu_ini[:, y, x] = ts.population.popmu_ini
             self.popmu_cor[:, y, x] = ts.population.popmu_cor
@@ -273,20 +278,6 @@ class SynthesisAdapter(object):
     def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):    
         f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_wei <= 0)
         self.f_err[...] = estimate_error(self.l_obs, f_res, self.spatialMask, smooth_fwhm, box_width)
-            
-            
-    def updateErrorsFromResidual2(self, smooth_fwhm=15.0, box_width=100.0):    
-        f_res = self.f_obs - self.f_syn
-        f_err = estimate_error(self.l_obs, f_res, self.spatialMask, smooth_fwhm, box_width)
-        X = f_err.shape[2]
-        Y = f_err.shape[1]
-        for j in xrange(Y):
-            for i in xrange(X):
-                if f_err[:, j, i].mask.all(): continue
-                print j, i
-                print f_err[:, j, i].mean()
-                self.f_err[:, j, i] = f_err[:, j, i]
-                print self.f_err[:, j, i].mean()
             
             
     def writeCube(self, filename, overwrite=False):
