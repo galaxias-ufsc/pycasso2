@@ -630,7 +630,11 @@ class FitsCube(object):
         return flagged > threshold * len(self.l_obs)
     
     
-    def LickIndex(self, index_id):
-        return get_Lick_index(self.l_obs, self.f_obs, self.dl, index_id)
+    def LickIndex(self, index_id, calc_error=False):
+        if calc_error:
+            return get_Lick_index(index_id, self.l_obs, self.f_obs, self.f_err)
+        else:
+            idx, _ = get_Lick_index(index_id, self.l_obs, self.f_obs, error=None)
+            return idx
     
     
