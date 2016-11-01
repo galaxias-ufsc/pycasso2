@@ -42,17 +42,6 @@ def get_base_grid(popage_base, popZ_base):
     
     ages : array
         Ages in the grid.
-    
-    Examples
-    --------
-    Calculate average stellar (log) age.
-    
-    >>> ts = atpy.TableSet('starlight.out.bz2', type='starlight')
-    >>> pop = ts.population
-    >>> base_mask, Z, age = get_base_grid(pop.popage_base, pop.popage_base)
-    >>> popx_Zt = np.zeros(base_mask.shape)
-    >>> popx_Zt[base_mask] = pop.popx
-    >>> at_flux = (popx_Zt * np.log10(age)).sum() / popx_Zt.sum()
     '''
     age_base = np.unique(popage_base)
     Z_base = np.unique(popZ_base)
@@ -251,28 +240,31 @@ class SynthesisAdapter(object):
             keyword_data[k] = self._cube._getSynthExtension(k)
             
         for x, y, ts in grid.getTables():
+            population = ts['population']
+            spectra = ts['spectra']
+            keywords = ts['keywords']
             if not self._base_data_saved:
-                self.Mstars[:] = ts.population.popMstars
-                self.fbase_norm[:] = ts.population.popfbase_norm
-                self.popZ_base[:] = ts.population.popZ_base
-                self.popage_base[:] = ts.population.popage_base
-                self.popaFe_base[:] = ts.population.aFe
+                self.Mstars[:] = population['popMstars']
+                self.fbase_norm[:] = population['popfbase_norm']
+                self.popZ_base[:] = population['popZ_base']
+                self.popage_base[:] = population['popage_base']
+                self.popaFe_base[:] = population['aFe']
                 self._base_data_saved = True
                 
             log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))
-            f_obs_norm = ts.keywords['fobs_norm']
-            slice_d, slice_o = get_subset_slices(self.l_obs, ts.spectra.l_obs)
-            self.f_syn[slice_d, y, x] = ts.spectra.f_syn[slice_o] * (f_obs_norm / grid.fluxUnit)
-            self.f_wei[slice_d, y, x] = ts.spectra.f_wei[slice_o]
+            f_obs_norm = keywords['fobs_norm']
+            slice_d, slice_o = get_subset_slices(self.l_obs, spectra['l_obs'])
+            self.f_syn[slice_d, y, x] = spectra['f_syn'][slice_o] * (f_obs_norm / grid.fluxUnit)
+            self.f_wei[slice_d, y, x] = spectra['f_wei'][slice_o]
             # TODO: update flags with starlight clipped, etc.
             self.f_flag[:slice_d.start] |= flags.no_starlight
             self.f_flag[slice_d.stop:] |= flags.no_starlight
 
-            self.popx[:, y, x] = ts.population.popx
-            self.popmu_ini[:, y, x] = ts.population.popmu_ini
-            self.popmu_cor[:, y, x] = ts.population.popmu_cor
+            self.popx[:, y, x] = population['popx']
+            self.popmu_ini[:, y, x] = population['popmu_ini']
+            self.popmu_cor[:, y, x] = population['popmu_cor']
             for k in self._cube._ext_keyword_list:
-                keyword_data[k][y, x] = ts.keywords[k]
+                keyword_data[k][y, x] = keywords[k]
     
     
     def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):    

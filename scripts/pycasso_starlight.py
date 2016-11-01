@@ -53,7 +53,7 @@ def get_pop_len(grids):
     for g in grids:
         if len(g.completed) == 0: continue
         ts = g.getTables()[0][2]
-        return len(ts.population.popx)
+        return len(ts['population']['popx'])
     raise Exception('No output found in grids.')
 
 log.setLevel('DEBUG')
