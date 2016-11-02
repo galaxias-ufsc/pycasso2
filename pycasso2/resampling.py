@@ -109,11 +109,11 @@ def ReSamplingMatrixNonUniform(lorig, lresam, extrap = False):
                     aux += d_lo / d_lr
     
                 # Case 3: resampling window is on the right of the original window.
-                if (lr_low[i_r] > lo_low[i_o]) & (lr_upp[i_r] > lo_upp[i_o]):
+                if (lr_low[i_r] >= lo_low[i_o]) & (lr_upp[i_r] > lo_upp[i_o]):
                     aux += d_ir / d_lr
     
                 # Case 4: resampling window is on the left of the original window.
-                if (lr_low[i_r] < lo_low[i_o]) & (lr_upp[i_r] < lo_upp[i_o]):
+                if (lr_low[i_r] < lo_low[i_o]) & (lr_upp[i_r] <= lo_upp[i_o]):
                     aux += d_il / d_lr
     
                 matrix[i_r, i_o] += aux
