@@ -120,7 +120,8 @@ class IndexMag(object):
             aux = (2.5 * 10**(-mag / 2.5))
             e1 = (((1.0 / (l2 - l1)**2) * int_flux_cont)**2) * (error[-1]**2)
             e2 = (((1.0 / (l2 - l1)**2) * int_flux_cont)**2) * (error[0]**2)
-            e3 = (((1.0 / (l2 - l1)) * np.trapz(error / cont, dx=dl, axis=0))**2)
+            e3 = (
+                ((1.0 / (l2 - l1)) * np.trapz(error / cont, dx=dl, axis=0))**2)
             mag_error = aux * np.sqrt(e1 + e2 + e3)
         else:
             mag_error = None

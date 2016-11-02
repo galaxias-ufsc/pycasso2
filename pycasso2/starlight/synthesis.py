@@ -23,23 +23,23 @@ def get_base_grid(popage_base, popZ_base):
     arrays from a starlight output file to 2-d
     population grids, and the grid coordinate values,
     metallicity and age.
-    
+
     Parameters
     ----------
     popage_base : array
         Column ``popage_base`` from population table.
-    
+
     popZbase : array
         Column ``popZ_base`` from population table.
-    
+
     Returns
     -------
     base_mask : array
         Boolean 2-d array of defined elements in the base grid.
-    
+
     Z : array
         Metallicities in the grid.
-    
+
     ages : array
         Ages in the grid.
     '''
@@ -57,10 +57,10 @@ def get_base_grid(popage_base, popZ_base):
 
 
 class PGridFile(GridFile):
+
     def __init__(self, *args):
         GridFile.__init__(self, *args)
-    
-    
+
     def getTables(self):
         tables = []
         for run in self.completed:
@@ -68,9 +68,10 @@ class PGridFile(GridFile):
             ts = read_output_tables(outfile)
             tables.append((run.x, run.y, ts))
         return tables
-            
+
 
 class PGridRun(GridRun):
+
     def __init__(self, x=None, y=None, *args):
         GridRun.__init__(self, *args)
         self.x = x
@@ -83,7 +84,7 @@ def makedirs(the_path):
 
 
 class SynthesisAdapter(object):
-    
+
     def __init__(self, cube, cfg, key='starlight', new_name=None):
         from ..cube import FitsCube
         self.starlightDir = cfg.get(key, 'starlight_dir')
@@ -101,16 +102,14 @@ class SynthesisAdapter(object):
         self._gridTemplate, self._runTemplate = self._getTemplates(cfg, key)
         self._createDirs()
         self._base_data_saved = False
-        
-    
+
     def _readData(self):
         self.l_obs = self._cube.l_obs
         self.f_obs = self._cube.f_obs
         self.f_err = self._cube.f_err
         self.f_flag = self._cube.f_flag
         self.spatialMask = self._cube.getSpatialMask(flags.no_obs)
-    
-        
+
     def _getTemplates(self, cfg, key):
         grid = PGridFile(self.starlightDir)
         grid.fluxUnit = self._cube.flux_unit
@@ -121,7 +120,7 @@ class SynthesisAdapter(object):
         out_dir = path.join(cfg.get(key, 'out_dir'), self.name)
         grid.setOutDir(out_dir)
         grid.setLogDir(path.join(grid.logDir, self.name))
-        
+
         grid.setMaskDir(cfg.get(key, 'mask_dir'))
         grid.setEtcDir(cfg.get(key, 'etc_dir'))
         grid.randPhone = int(cfg.get(key, 'rand_seed'))
@@ -135,7 +134,7 @@ class SynthesisAdapter(object):
         grid.isPhoEnabled = int(cfg.get(key, 'IsPHOcOn'))
         grid.isQHREnabled = int(cfg.get(key, 'IsQHRcOn'))
         grid.isFIREnabled = int(cfg.get(key, 'IsFIRcOn'))
-        
+
         run = PGridRun()
         run.configFile = cfg.get(key, 'arq_config')
         run.baseFile = cfg.get(key, 'arq_base')
@@ -148,7 +147,6 @@ class SynthesisAdapter(object):
 
         return grid, run
 
-    
     def _createDirs(self):
         obs_dir = path.normpath(self._gridTemplate.obsDirAbs)
         self.obsDir = obs_dir
@@ -158,8 +156,7 @@ class SynthesisAdapter(object):
         makedirs(obs_dir)
         makedirs(out_dir)
         makedirs(log_dir)
-        
-        
+
     def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks):
         grid = self._gridTemplate.copy()
         if x1 != x2:
@@ -174,7 +171,7 @@ class SynthesisAdapter(object):
         else:
             grid.errSpecAvail = 0
             grid.flagSpecAvail = 0
-        
+
         for x in xrange(x1, x2):
             run = self._createRun(x, y, use_errors_flags, use_custom_masks)
             if run is not None:
@@ -183,12 +180,11 @@ class SynthesisAdapter(object):
                 log.debug('Skipping masked spaxel (%d,%d)' % (x, y))
         return grid
 
-
     def _createRun(self, x, y, use_errors_flags, use_custom_masks):
         if self.spatialMask[y, x]:
             self.f_flag[:, y, x] |= flags.starlight_masked_pix
             return None
-        
+
         log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
         new_run = self._runTemplate.copy()
         new_run.inFile = self._inFileFormat % (self.name, y, x)
@@ -205,16 +201,15 @@ class SynthesisAdapter(object):
                         path.join(self.obsDir, new_run.inFile))
         return new_run
 
-
     def gridIterator(self, chunk_size, use_errors_flags=True, use_custom_masks=False):
         Nx = self.f_obs.shape[2]
         Ny = self.f_obs.shape[1]
         for y in xrange(0, Ny, 1):
             for x1 in xrange(0, Nx, chunk_size):
                 x2 = x1 + chunk_size
-                if x2 > Nx: x2 = Nx
+                if x2 > Nx:
+                    x2 = Nx
                 yield self._getGrid(y, x1, x2, use_errors_flags, use_custom_masks)
-
 
     def createSynthesisCubes(self, pop_len):
         self._cube.createSynthesisCubes(pop_len)
@@ -228,17 +223,16 @@ class SynthesisAdapter(object):
         self.popaFe_base = self._cube.popaFe_base
         self.Mstars = self._cube.Mstars
         self.fbase_norm = self._cube.fbase_norm
-        
-    
+
     def updateSynthesis(self, grid):
         for fr in grid.failed:
             log.warn('Failed run for pixel (%d, %d)' % (fr.y, fr.x))
-            self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run            
+            self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run
 
         keyword_data = {}
         for k in self._cube._ext_keyword_list:
             keyword_data[k] = self._cube._getSynthExtension(k)
-            
+
         for x, y, ts in grid.getTables():
             population = ts['population']
             spectra = ts['spectra']
@@ -250,11 +244,12 @@ class SynthesisAdapter(object):
                 self.popage_base[:] = population['popage_base']
                 self.popaFe_base[:] = population['aFe']
                 self._base_data_saved = True
-                
-            log.debug('Writing synthesis for spaxel (%d,%d)' %(x, y))
+
+            log.debug('Writing synthesis for spaxel (%d,%d)' % (x, y))
             f_obs_norm = keywords['fobs_norm']
             slice_d, slice_o = get_subset_slices(self.l_obs, spectra['l_obs'])
-            self.f_syn[slice_d, y, x] = spectra['f_syn'][slice_o] * (f_obs_norm / grid.fluxUnit)
+            self.f_syn[slice_d, y, x] = spectra['f_syn'][
+                slice_o] * (f_obs_norm / grid.fluxUnit)
             self.f_wei[slice_d, y, x] = spectra['f_wei'][slice_o]
             # TODO: update flags with starlight clipped, etc.
             self.f_flag[:slice_d.start] |= flags.no_starlight
@@ -265,13 +260,11 @@ class SynthesisAdapter(object):
             self.popmu_cor[:, y, x] = population['popmu_cor']
             for k in self._cube._ext_keyword_list:
                 keyword_data[k][y, x] = keywords[k]
-    
-    
-    def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):    
+
+    def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):
         f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_wei <= 0)
-        self.f_err[...] = estimate_error(self.l_obs, f_res, self.spatialMask, smooth_fwhm, box_width)
-            
-            
+        self.f_err[...] = estimate_error(
+            self.l_obs, f_res, self.spatialMask, smooth_fwhm, box_width)
+
     def writeCube(self, filename, overwrite=False):
         self._cube.write(filename, overwrite=overwrite)
-        

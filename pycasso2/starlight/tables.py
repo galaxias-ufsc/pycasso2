@@ -74,7 +74,7 @@ def _read_mask(maskfile):
         l_upp.append(float(cols[1]))
         weight.append(float(cols[2]))
         name.append(' '.join(cols[3:]))
-    
+
     cols = [l_low, l_upp, weight, name]
     names = ['l_low', 'l_upp', 'weight', 'name']
     return Table(cols, names=names)
@@ -394,7 +394,7 @@ def read_output_tables(filename):
     tables['chains_par'] = Table(cols, names=chains_names)
 
     cols = [Best_LAx, Ave_LAx, Chain_LAx]
-    tables['chains_LAx ']= Table(cols, names=chains_names)
+    tables['chains_LAx'] = Table(cols, names=chains_names)
 
     cols = [Best_mu_cor, Ave_mu_cor, Chain_mu_cor]
     tables['chains_mu_cor'] = Table(cols, names=chains_names)

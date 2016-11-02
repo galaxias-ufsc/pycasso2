@@ -24,7 +24,7 @@ def get_celestial(w):
         log.warn('No celestial axes found, using axes 1,2.')
         wc = w.sub(2)
     return wc
-    
+
 
 def proj_plane_pixel_area(w):
     '''
@@ -37,7 +37,7 @@ def proj_plane_pixel_area(w):
     if x_unit == '' or y_unit == '':
         a /= 3600**2
     return a
-    
+
 
 def get_wavelength_coordinates(w, Nwave):
     w = w.sub([3])
@@ -50,18 +50,19 @@ def get_wavelength_coordinates(w, Nwave):
 
 def get_Nx(header):
     return header['NAXIS1']
-    
+
 
 def get_Ny(header):
     return header['NAXIS2']
-    
+
 
 def get_Nwave(header):
     return header['NAXIS3']
-    
+
 
 def get_celestial_coordinates(w, Nx, Ny, relative=True):
-    # FIXME: Not sure how to make the coordinates relative for all cases. Nor how to return arcsec always.
+    # FIXME: Not sure how to make the coordinates relative for all cases. Nor
+    # how to return arcsec always.
     w = get_celestial(w)
     x0_world, y0_world = w.wcs.crval
     make_relative = (x0_world != 0.0 and y0_world != 0.0 and relative)
@@ -114,7 +115,7 @@ def get_cube_limits(cube, ext):
     l_obs = get_wavelength_coordinates(header)
     Ny = get_Ny(header)
     Nx = get_Nx(header)
-    return l_obs.min(), l_obs.max(), Ny, Nx 
+    return l_obs.min(), l_obs.max(), Ny, Nx
 
 
 def get_shape(header):
@@ -131,16 +132,16 @@ def get_wavelength_sampling(w):
         s /= one_angstrom
     return np.asscalar(s)
 
-    
+
 def get_pixel_area(w):
     return proj_plane_pixel_area(w)
 
-    
+
 def get_pixel_area_srad(w):
     a = get_pixel_area(w)
     return a * (rad_per_deg * rad_per_deg)
 
-    
+
 def get_pixel_scale(w):
     w = get_celestial(w)
     s = wcs.utils.proj_plane_pixel_scales(w)
@@ -150,16 +151,16 @@ def get_pixel_scale(w):
         s /= 3600
     return s
 
-    
+
 def get_pixel_scale_rad(w):
     s = get_pixel_scale(w)
     return s * rad_per_deg
 
-    
+
 def copy_WCS(header, dest_header, axes):
     if np.isscalar(axes):
         axes = [axes]
-    
+
     w = wcs.WCS(header, naxis=axes)
     dest_header.extend(w.to_header(), update=True)
 

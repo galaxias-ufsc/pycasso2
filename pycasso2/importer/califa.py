@@ -31,7 +31,7 @@ def read_califa(cube, name, cfg):
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube)
-    
+
     log.debug('Loading data from %s.' % cube)
     f_obs_orig = fits.getdata(cube, extname='PRIMARY')
     f_err_orig = fits.getdata(cube, extname='ERROR')
@@ -40,28 +40,31 @@ def read_califa(cube, name, cfg):
 
     med_vel = float(header['MED_VEL'])
     z = velocity2redshift(med_vel)
-    log.debug('Putting spectra in rest frame (z=%.2f, v=%.1f km/s).' % (z, med_vel))
+    log.debug('Putting spectra in rest frame (z=%.2f, v=%.1f km/s).' %
+              (z, med_vel))
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
-    f_obs, f_err, f_flag = resample_spectra(l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
-    
+    f_obs, f_err, f_flag = resample_spectra(
+        l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
+
     log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
     new_shape = (len(l_resam), Ny, Nx)
     center = get_reference_pixel(header)
-    f_obs, f_err, f_flag, new_center = reshape_cube(f_obs, f_err, f_flag, center, new_shape)
+    f_obs, f_err, f_flag, new_center = reshape_cube(
+        f_obs, f_err, f_flag, center, new_shape)
 
     log.debug('Updating WCS.')
-    update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)    
-    
+    update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
+
     log.debug('Creating pycasso cube.')
     K = FitsCube()
     K._initFits(f_obs, f_err, f_flag, header)
     K.flux_unit = flux_unit
     K.lumDistMpc = redshift2lum_distance(z)
-    K.redshift = z    
+    K.redshift = z
     K.name = name
-    
+
     return K

@@ -15,8 +15,9 @@ from astropy import log
 
 ###############################################################################
 def parse_args():
-    parser = argparse.ArgumentParser(description='Run starlight for a pycasso cube.')
-    
+    parser = argparse.ArgumentParser(
+        description='Run starlight for a pycasso cube.')
+
     parser.add_argument('cubeIn', type=str, nargs=1,
                         help='Cube. Ex.: T001.fits')
     parser.add_argument('--out', dest='cubeOut', required=True,
@@ -27,7 +28,7 @@ def parse_args():
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--config-section', dest='configSection', default='starlight',
                         help='Config section with starlight settings. Default: starlight')
-    parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count()-1,
+    parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count() - 1,
                         help='Number of worker processes.')
     parser.add_argument('--chunk-size', dest='chunkSize', type=int, default=5,
                         help='Grid chunk size, defaults to the same as --nproc.')
@@ -49,9 +50,11 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
+
 def get_pop_len(grids):
     for g in grids:
-        if len(g.completed) == 0: continue
+        if len(g.completed) == 0:
+            continue
         ts = g.getTables()[0][2]
         return len(ts['population']['popx'])
     raise Exception('No output found in grids.')
@@ -62,11 +65,13 @@ cfg = get_config(args.configFile)
 nproc = args.nproc if args.nproc > 1 else 1
 
 print 'Loading cube from %s.' % args.cubeIn[0]
-sa = SynthesisAdapter(args.cubeIn[0], cfg, args.configSection, new_name=args.newName)
+sa = SynthesisAdapter(
+    args.cubeIn[0], cfg, args.configSection, new_name=args.newName)
 
 exec_path = cfg.get(args.configSection, 'exec_path')
 print 'Starting starlight runner (using %s).' % exec_path
-runner = StarlightRunner(n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
+runner = StarlightRunner(
+    n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorFlag,
                             use_custom_masks=args.useCustomMasks):
     if len(grid.runs) != 0:
@@ -83,10 +88,10 @@ sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
 for grid in output_grids:
     log.debug('Reading results of %s.' % grid.name)
     sa.updateSynthesis(grid)
-    
+
 if args.estimateError:
     print 'Estimating errors from the starlight residual. Will overwrite the previous error values.'
     sa.updateErrorsFromResidual(args.errorSmoothFwhm, args.errorBoxWidth)
-    
+
 print 'Saving cube to %s.' % args.cubeOut
 sa.writeCube(args.cubeOut, args.overwrite)

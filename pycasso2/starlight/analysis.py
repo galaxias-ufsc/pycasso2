@@ -9,6 +9,7 @@ import numpy as np
 
 __all__ = ['smooth_Mini', 'SFR']
 
+
 def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FWHM):
     '''
     Calculate the initial mass from the light fractions,
@@ -19,30 +20,30 @@ def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FW
     ----------
     popx: array
         The light fractions (in percents).
-        
+
     fbase_norm: array
         Light to mass ratio for each population.
-        
+
     Lobs_norm : array
         Luminosity norm of ``popx``.
-        
+
     q_norm : float 
         Ratio between the extinction in l_norm (where Lobs_norm
         is calculated) and ``A_V``.
-        
+
     A_V : array 
         Extinction in V band.
-    
+
     logtb : array 
         Logarithm (base 10) of original time base.
-    
+
     logtc : array 
         Logarithm (base 10) of resampled time base.
         Must be evenly spaced.
-    
+
     logtc_FWHM : float
         Width of the age smoothing kernel used to resample ``popx``.
-    
+
     Returns
     -------
     Mini_sm : array
@@ -50,10 +51,11 @@ def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FW
 
     '''
     smoothKernel = age_smoothing_kernel(logtb, logtc, logtc_FWHM)
-    popx_sm = np.tensordot(smoothKernel, popx, (0,0))
-    
+    popx_sm = np.tensordot(smoothKernel, popx, (0, 0))
+
     fbase_norm_interp = interp_age(fbase_norm, logtb, logtc)
-    Mini_sm = light2mass_ini(popx_sm, fbase_norm_interp, Lobs_norm, q_norm, A_V)
+    Mini_sm = light2mass_ini(
+        popx_sm, fbase_norm_interp, Lobs_norm, q_norm, A_V)
     return Mini_sm
 
 
@@ -65,17 +67,17 @@ def SFR(Mini, tb, dt=0.5e9):
     ----------
     Mini: array
         The initial mass. The age axis must be the leftmost (axis=0).
-        
+
     tb : array 
         Original time base.
-    
+
     dt : float 
         Sampling size of the SFR output.
     Returns
     -------
     SFR : array
         The star formation rate.
-    
+
     t : array
         Time.
         Note: ``SFR.shape[0] == len(t)`` 
@@ -84,7 +86,7 @@ def SFR(Mini, tb, dt=0.5e9):
     logtb = np.log10(tb)
     logtb_bins = bin_edges(logtb)
     tb_bins = 10**logtb_bins
-    tl = np.arange(tb_bins.min(), tb_bins.max()+dt, dt)
+    tl = np.arange(tb_bins.min(), tb_bins.max() + dt, dt)
     tl_bins = bin_edges(tl)
     sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
     sfr = np.zeros(sfr_shape)
@@ -94,6 +96,6 @@ def SFR(Mini, tb, dt=0.5e9):
                 continue
             Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, j, i])
             sfr[1:-1, j, i] = Mini_resam / dt
-    
+
     tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
     return sfr, tl
