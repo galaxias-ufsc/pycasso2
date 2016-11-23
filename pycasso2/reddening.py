@@ -12,7 +12,8 @@ import numpy as np
 from os import path
 from astropy import log
 
-__all__ =['extinction_corr', 'calc_extincion', 'get_EBV']
+__all__ = ['extinction_corr', 'calc_extincion', 'get_EBV']
+
 
 def get_EBV_map(file_name):
     '''
@@ -27,13 +28,14 @@ def get_EBV_map(file_name):
     import healpy as hp
 
     if not path.exists(file_name):
-        log.info('Downloading dust map (1.5GB), this is probably a good time to check XKCD.')
+        log.info(
+            'Downloading dust map (1.5GB), this is probably a good time to check XKCD.')
         url = 'http://pla.esac.esa.int/pla/aio/product-action?MAP.MAP_ID=HFI_CompMap_ThermalDustModel_2048_R1.20.fits'
         log.debug('Map: %s' % url)
         urllib.urlretrieve(url, file_name)
 
     log.info('Reading E(B-V) map from ' + file_name)
-    EBV_map = hp.read_map(file_name, field = 2)
+    EBV_map = hp.read_map(file_name, field=2)
 
     return EBV_map
 
@@ -48,7 +50,7 @@ def get_EBV(header, file_name):
     return EBV_map[index]
 
 
-def CCM(wave, Rv= 3.1):
+def CCM(wave, Rv=3.1):
     '''
 
     Calculates the Cardelli, Clayton & Mathis (CCM) extinction curve in the
@@ -60,21 +62,21 @@ def CCM(wave, Rv= 3.1):
     Reference: http://adsabs.harvard.edu/abs/1989ApJ...345..245C
 
     '''
-    #Turn lambda from angstrons to microns:
+    # Turn lambda from angstrons to microns:
     wave = wave / 10000.
 
-    x =  1./wave
-    y =  (x-1.82)
+    x = 1. / wave
+    y = (x - 1.82)
 
-    a =  1.+(0.17699 * y) - ( 0.50447 * (y **2) ) - ( 0.02427 * (y **3) )
-    a += ( 0.72085 * (y **4) ) + (0.01979 * (y **5) ) - ( 0.77530 * (y **6) )
-    a += (0.32999 * (y **7) )
+    a = 1. + (0.17699 * y) - (0.50447 * (y ** 2)) - (0.02427 * (y ** 3))
+    a += (0.72085 * (y ** 4)) + (0.01979 * (y ** 5)) - (0.77530 * (y ** 6))
+    a += (0.32999 * (y ** 7))
 
-    b =  (1.41338 * y) + ( 2.28305 * (y **2) ) + ( 1.07233 * (y **3) )
-    b += -( 5.38434 * (y **4) ) - (0.62251 * (y **5) ) + ( 5.30260 * (y **6) )
-    b += -(2.09002 * (y **7) )
+    b = (1.41338 * y) + (2.28305 * (y ** 2)) + (1.07233 * (y ** 3))
+    b += -(5.38434 * (y ** 4)) - (0.62251 * (y ** 5)) + (5.30260 * (y ** 6))
+    b += -(2.09002 * (y ** 7))
 
-    return a + (b/Rv)
+    return a + (b / Rv)
 
 
 def calc_extinction(wave, EBV, Rv=3.1):
@@ -108,4 +110,3 @@ def extinction_corr(wave, flux, EBV):
         tau_lambda = tau_lambda[:, np.newaxis, np.newaxis]
 
     return flux * np.exp(tau_lambda)
-

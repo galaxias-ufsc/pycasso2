@@ -39,16 +39,16 @@ def read_manga(cube, name, cfg):
     Nx = cfg.getint(manga_cfg_sec, 'import_Nx')
     Ny = cfg.getint(manga_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(manga_cfg_sec, 'flux_unit')
-    
+
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
     drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
-    
+
     if header['DRP3QUAL'] & CRITICAL_BIT:
         log.warn('Critical bit set. There are problems with this cube.')
-    
+
     log.debug('Loading data from %s.' % cube)
     with fits.open(cube) as f:
         f_obs_orig = f['FLUX'].data
@@ -58,10 +58,10 @@ def read_manga(cube, name, cfg):
         f_err_orig = np.zeros_like(f_obs_orig)
         f_err_orig[goodpix] = f['IVAR'].data[goodpix]**-0.5
         l_obs = f['WAVE'].data
-        
+
     log.debug('Vacuum to air wavelengths.')
     l_obs = vac2air(l_obs)
-    
+
     # FIXME: Dust maps in air or vacuum?
     dust_map = cfg.get('tables', 'dust_map')
     log.debug('Extinction correction (map = %s).' % dust_map)
@@ -69,7 +69,7 @@ def read_manga(cube, name, cfg):
     EBV = header['EBVGAL']
     log.debug('    E(B-V) = %f.' % EBV)
     f_obs_orig = extinction_corr(l_obs, f_obs_orig, EBV)
-    
+
     log.debug('Putting spectra in rest frame (z=%.2f).' % z)
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
@@ -77,24 +77,27 @@ def read_manga(cube, name, cfg):
     log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
     new_shape = (len(l_rest), Ny, Nx)
     center = get_reference_pixel(wcs.WCS(header))
-    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(f_obs_rest, f_err_rest, badpix, center, new_shape)
+    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(
+        f_obs_rest, f_err_rest, badpix, center, new_shape)
 
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
-    f_obs, f_err, f_flag = resample_spectra(l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
-    
+    f_obs, f_err, f_flag = resample_spectra(
+        l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
+
     log.debug('Updating WCS.')
     update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
-    
+
     log.debug('Creating pycasso cube.')
     c = FitsCube()
     c._initFits(f_obs, f_err, f_flag, header)
     c.flux_unit = flux_unit
     c.lumDistMpc = redshift2lum_distance(z)
-    c.redshift = z    
+    c.redshift = z
     c.name = name
-    
+
     return c
+
 
 def get_bitmask_indices(bitmask):
     if bitmask == 0:
@@ -111,23 +114,14 @@ def bitmask2string(targ1, targ2, targ3):
     bits = {
 
         'targ1': np.array(['NONE', 'PRIMARY_PLUS_COM', 'SECONDARY_COM',
-        'COLOR_ENHANCED_COM', 'PRIMARY_v1_1_0', 'SECONDARY_v1_1_0',
-        'COLOR_ENHANCED_v1_1_0', 'PRIMARY_COM2', 'SECONDARY_COM2',
-        'COLOR_ENHANCED_COM2', 'PRIMARY_v1_2_0', 'SECONDARY_v1_2_0',
-        'COLOR_ENHANCED_v1_2_0', 'FILLER', 'RETIRED']),
+                           'COLOR_ENHANCED_COM', 'PRIMARY_v1_1_0', 'SECONDARY_v1_1_0',
+                           'COLOR_ENHANCED_v1_1_0', 'PRIMARY_COM2', 'SECONDARY_COM2',
+                           'COLOR_ENHANCED_COM2', 'PRIMARY_v1_2_0', 'SECONDARY_v1_2_0',
+                           'COLOR_ENHANCED_v1_2_0', 'FILLER', 'RETIRED']),
 
-        'targ2': np.array(['NONE', 'SKY', 'STELLIB_SDSS_COM'
-        , 'STELLIB_2MASS_COM', 'STELLIB_KNOWN_COM', 'STELLIB_COM_mar2015'
-        , 'STELLIB_COM_jun2015', 'STELLIB_PS1', 'STELLIB_APASS'
-        , 'STELLIB_PHOTO_COM', 'STELLIB_aug2015', 'STD_FSTAR_COM'
-        , 'STD_WD_COM', 'STD_STD_COM', 'STD_FSTAR', 'STD_WD'
-        , 'STD_APASS_COM', 'STD_PS1_COM']),
+        'targ2': np.array(['NONE', 'SKY', 'STELLIB_SDSS_COM', 'STELLIB_2MASS_COM', 'STELLIB_KNOWN_COM', 'STELLIB_COM_mar2015', 'STELLIB_COM_jun2015', 'STELLIB_PS1', 'STELLIB_APASS', 'STELLIB_PHOTO_COM', 'STELLIB_aug2015', 'STD_FSTAR_COM', 'STD_WD_COM', 'STD_STD_COM', 'STD_FSTAR', 'STD_WD', 'STD_APASS_COM', 'STD_PS1_COM']),
 
-        'targ3': np.array(['NONE', 'AGN_BAT', 'AGN_OIII', 'AGN_WISE'
-        , 'AGN_PALOMAR', 'VOID', 'EDGE_ON_WINDS', 'PAIR_ENLARGE'
-        , 'PAIR_RECENTER', 'PAIR_SIM', 'PAIR_2IFU', 'LETTERS'
-        , 'MASSIVE', 'MWA', 'DWARF', 'RADIO_JETS', 'DISKMASS'
-        , 'BCG', 'ANGST', 'DEEP_COMA'])
+        'targ3': np.array(['NONE', 'AGN_BAT', 'AGN_OIII', 'AGN_WISE', 'AGN_PALOMAR', 'VOID', 'EDGE_ON_WINDS', 'PAIR_ENLARGE', 'PAIR_RECENTER', 'PAIR_SIM', 'PAIR_2IFU', 'LETTERS', 'MASSIVE', 'MWA', 'DWARF', 'RADIO_JETS', 'DISKMASS', 'BCG', 'ANGST', 'DEEP_COMA'])
 
     }
 

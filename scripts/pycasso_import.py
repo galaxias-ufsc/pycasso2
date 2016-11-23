@@ -16,9 +16,12 @@ import sys
 from os import path
 
 ###############################################################################
+
+
 def parse_args():
-    parser = argparse.ArgumentParser(description='Import data into a pycasso cube.')
-    
+    parser = argparse.ArgumentParser(
+        description='Import data into a pycasso cube.')
+
     parser.add_argument('cubeIn', type=str, nargs='+',
                         help='Input cube. Ex.: T001.fits [other_cubes.fits ...]')
     parser.add_argument('--out', dest='cubeOut',
@@ -59,7 +62,8 @@ else:
 
 print 'Applying telluric lines masks (z = %f)' % g.redshift
 telluric_mask_file = cfg.get('tables', 'telluric_mask')
-telluric_mask = read_wavelength_mask(telluric_mask_file, g.l_obs, g.redshift, dest='rest')
+telluric_mask = read_wavelength_mask(
+    telluric_mask_file, g.l_obs, g.redshift, dest='rest')
 g.f_flag[telluric_mask] |= flags.telluric
 
 print 'Saving cube %s.' % args.cubeOut

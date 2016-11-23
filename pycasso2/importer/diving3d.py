@@ -39,33 +39,36 @@ def read_diving3d(redcube, obscube, name, cfg):
     log.debug('Loading header from observed cube %s.' % obscube)
     obs_header = safe_getheader(obscube)
     for k in obs_header.keys():
-        if k in header or k == 'COMMENT' or k == '': continue
+        if k in header or k == 'COMMENT' or k == '':
+            continue
         header[k] = obs_header[k]
-    
+
     log.debug('Loading data from reduced cube %s.' % redcube)
     f_obs_orig = fits.getdata(redcube)
     f_err_orig = np.zeros_like(f_obs_orig)
     badpix = np.zeros(f_obs_orig.shape, dtype='bool')
-    
+
     log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
     w = wcs.WCS(header)
     l_obs_orig = get_wavelength_coordinates(w, get_Nwave(header))
     new_shape = (len(l_obs_orig), Ny, Nx)
     center = get_reference_pixel(w)
-    f_obs, f_err, badpix, new_center = reshape_cube(f_obs_orig, f_err_orig, badpix, center, new_shape)
+    f_obs, f_err, badpix, new_center = reshape_cube(
+        f_obs_orig, f_err_orig, badpix, center, new_shape)
 
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_obs = np.arange(l_ini, l_fin + dl, dl)
-    f_obs, f_err, f_flag = resample_spectra(l_obs_orig, l_obs, f_obs, f_err, badpix)
-    
+    f_obs, f_err, f_flag = resample_spectra(
+        l_obs_orig, l_obs, f_obs, f_err, badpix)
+
     log.debug('Updating WCS.')
     update_WCS(header, crpix=new_center, crval_wave=l_obs[0], cdelt_wave=dl)
 
     masterlist = cfg.get(d3d_cfg_sec, 'masterlist')
-    galaxy_id = d3d_get_galaxy_id(redcube)    
+    galaxy_id = d3d_get_galaxy_id(redcube)
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = d3d_read_masterlist(masterlist, galaxy_id)
-    d3d_save_masterlist(header, ml)    
+    d3d_save_masterlist(header, ml)
     z = velocity2redshift(ml['V_hel'])
 
     log.debug('Applying CCD gap mask (z = %f)' % z)
@@ -79,43 +82,43 @@ def read_diving3d(redcube, obscube, name, cfg):
     d3dcube._initFits(f_obs, f_err, f_flag, header)
     d3dcube.flux_unit = flux_unit
     d3dcube.lumDistMpc = ml['DL']
-    d3dcube.redshift = z    
+    d3dcube.redshift = z
     d3dcube.name = name
     return d3dcube
 
 
-masterlist_dtype=[('id', '|S05'),
-                  ('name', '|S12'),
-                  ('V_hel', 'float64'),
-                  ('morph', '|S05'),
-                  ('T', 'float64'),
-                  ('R_e', 'float64'),
-                  ('M_K', 'float64'),
-                  ('n_s', 'float64'),
-                  ('epsilon', 'float64'),
-                  ('DL', 'float64'),
-                  ('eDL', 'float64'),
-                  ('EL', '|S05'),
-                  ('grating', '|S04'),
-                  ('cube', '|S0128'),
-                  ('cube_obs', '|S0128'),
-                  ]
+masterlist_dtype = [('id', '|S05'),
+                    ('name', '|S12'),
+                    ('V_hel', 'float64'),
+                    ('morph', '|S05'),
+                    ('T', 'float64'),
+                    ('R_e', 'float64'),
+                    ('M_K', 'float64'),
+                    ('n_s', 'float64'),
+                    ('epsilon', 'float64'),
+                    ('DL', 'float64'),
+                    ('eDL', 'float64'),
+                    ('EL', '|S05'),
+                    ('grating', '|S04'),
+                    ('cube', '|S0128'),
+                    ('cube_obs', '|S0128'),
+                    ]
 
 
 def d3d_read_masterlist(filename, galaxy_id=None):
     '''
     Read the whole masterlist, or a single entry.
-    
+
     Parameters
     ----------
     filename : string
         Path to the file containing the masterlist.
-        
+
     galaxy_id : string, optional
         ID of the masterlist entry, the first column of the table.
         If set, return only the entry pointed by ``galaxy_id'``.
         Default: ``None``
-        
+
     Returns
     -------
     masterlist : recarray
@@ -126,10 +129,12 @@ def d3d_read_masterlist(filename, galaxy_id=None):
     if galaxy_id is not None:
         index = np.where(ml['id'] == galaxy_id)[0]
         if len(index) == 0:
-            raise Exception('Entry %s not found in masterlist %s.' % (galaxy_id, filename))
+            raise Exception(
+                'Entry %s not found in masterlist %s.' % (galaxy_id, filename))
         return np.squeeze(ml[index][0])
     else:
         return ml
+
 
 def d3d_fix_crpix(header, ax):
     '''
@@ -148,11 +153,12 @@ def d3d_fix_crpix(header, ax):
         crpix = naxis / 2.0 + 0.5
     header['CRPIX%d' % ax] = crpix
 
-    
+
 def d3d_save_masterlist(header, ml):
     header_ignored = ['cube', 'cube_obs']
     for key in ml.dtype.names:
-        if key in header_ignored: continue
+        if key in header_ignored:
+            continue
         hkey = 'HIERARCH MASTERLIST %s' % key.upper()
         header[hkey] = ml[key]
 
