@@ -10,6 +10,7 @@ import sys
 from matplotlib.ticker import MultipleLocator
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
+from pycasso2.lick import list_Lick_indices
 
 def plot_setup():
     plotpars = {'legend.fontsize': 8,
@@ -118,6 +119,119 @@ def plot_mapsf(c, pdf):
     fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.95])
     pdf.savefig()
 
+
+
+def plot_mapslick(c, pdf):
+    xx, yy = c.celestial_coords
+    xx = -xx
+    
+    fig = plt.figure(figsize=(8, 7))
+    
+    plt.subplot(331)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('Mg_b'), vmin=0 , vmax=10, cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$Mg_b$')
+
+    plt.subplot(332)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('CN_1'), vmin=-0.1 , vmax=0.5,cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(0.2))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$CN_1$')
+
+    plt.subplot(333)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('Fe5335'),vmin=0 , vmax=10, cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$Fe5335$')
+
+    plt.subplot(334)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('D4000'), vmin=0.9 , vmax=2,cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(0.2))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$D4000$')
+
+
+    plt.subplot(335)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('G4300'),vmin=0 , vmax=10, cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$G4300$')
+
+    plt.subplot(336)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('H_delta_A'),vmin=0 , vmax=10, cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$H_delta_A$')
+
+    plt.subplot(337)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('MgFe'),vmin=0 , vmax=10, cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$MgFe$')
+
+    plt.subplot(338)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('Mg_2'), vmin=0 , vmax=1,cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(0.2))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$Mg_2$')
+
+    plt.subplot(339)
+    m = plt.pcolormesh(xx, yy, c.LickIndex('Na_D'), vmin=0 , vmax=10,cmap='viridis_r')
+    m.set_rasterized(True)
+    plt.colorbar(ticks=MultipleLocator(10))
+    plt.gca().set_aspect('equal')
+    plt.ylim(yy.min(), yy.max())
+    plt.gca().yaxis.set_ticklabels([])
+    plt.xlim(xx.min(), xx.max())
+    plt.gca().xaxis.set_ticklabels([])
+    plt.title(r'$Na_D$')
+
+
+
+    plt.suptitle('%s' % c.name)
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.95])
+    pdf.savefig()
 
 
 def plot_maps(c, pdf):
@@ -408,6 +522,7 @@ plot_setup()
 plot_spectra(c, pdf)
 plot_mapsf(c, pdf)
 plot_maps(c, pdf)
+plot_mapslick(c, pdf)
 plot_metal_poor(c, pdf)
 
 pdf.close()
