@@ -4,10 +4,10 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS
+from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Nwave
 from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
-from astropy import log
+from astropy import log, wcs
 from astropy.io import fits
 import numpy as np
 
@@ -36,7 +36,8 @@ def read_califa(cube, name, cfg):
     f_obs_orig = fits.getdata(cube, extname='PRIMARY')
     f_err_orig = fits.getdata(cube, extname='ERROR')
     badpix = fits.getdata(cube, extname='BADPIX') != 0
-    l_obs = get_wavelength_coordinates(header)
+    w = wcs.WCS(header)
+    l_obs = get_wavelength_coordinates(w, get_Nwave(header))
 
     med_vel = float(header['MED_VEL'])
     z = velocity2redshift(med_vel)
@@ -45,16 +46,16 @@ def read_califa(cube, name, cfg):
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
+    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
+    center = get_reference_pixel(w)
+    new_shape = (len(l_rest), Ny, Nx)
+    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(
+        f_obs_rest, f_err_rest, badpix, center, new_shape)
+
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(
         l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
-
-    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    new_shape = (len(l_resam), Ny, Nx)
-    center = get_reference_pixel(header)
-    f_obs, f_err, f_flag, new_center = reshape_cube(
-        f_obs, f_err, f_flag, center, new_shape)
 
     log.debug('Updating WCS.')
     update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
