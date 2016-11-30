@@ -5,11 +5,11 @@ Created on 23/06/2015
 '''
 
 from pycasso2 import FitsCube
-from pycasso2.wcs import find_nearest_index
 
 import numpy as np
 import sys
 from matplotlib.ticker import MultipleLocator
+from pycasso2.resampling import find_nearest_index
 
 def plot_spectra(f_obs, f_syn, f_res, f_err, ll, yy, xx, center, cube):
     import matplotlib.pyplot as plt
