@@ -207,7 +207,7 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
     '''
     R = ReSamplingMatrixNonUniform(l_orig, l_resam)
     f_obs = np.tensordot(R, f_obs, (1, 0))
-    f_err = np.tensordot(R, f_err, (1, 0))
+    f_err = np.sqrt(np.tensordot(R, f_err**2, (1, 0)))
     badpix = np.tensordot(R, badpix.astype('float64'), (1, 0)) > 0.0
     f_flag = np.zeros_like(f_obs, dtype='int32')
     out_of_range = (l_resam < l_orig[0]) | (l_resam > l_orig[-1])
