@@ -11,8 +11,12 @@ import numpy as np
 __all__ = ['redshift2lum_distance', 'velocity2redshift']
 
 # Planck Collab 2015, Paper XIII
-H0 = 67.7  # km / s / Mpc
-omega0 = 0.307
+# H0 = 67.7  # km / s / Mpc
+# omega0 = 0.307
+
+# `Concordance' cosmology
+H0 = 70.0  # km / s / Mpc
+omega0 = 0.300
 
 c = 299792.458  # km / s
 
