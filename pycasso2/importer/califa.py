@@ -78,7 +78,6 @@ def read_califa(cube, name, cfg):
         ml = califa_read_masterlist(masterlist, galaxy_id)
         K.lumDistMpc = ml['d_Mpc']
 
-    print K.lumDistMpc
     return K
 
 def califa_read_masterlist(filename, galaxy_id=None):
