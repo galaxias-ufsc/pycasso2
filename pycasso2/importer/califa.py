@@ -9,16 +9,17 @@ from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
 from astropy import log, wcs
 from astropy.io import fits
+from astropy.table import Table
 import numpy as np
 
-__all__ = ['read_califa']
+__all__ = ['read_califa', 'califa_read_masterlist']
 
 califa_cfg_sec = 'califa'
 
 
 def read_califa(cube, name, cfg):
     '''
-    FIXME: doc me! 
+    FIXME: doc me!
     '''
     # FIXME: sanitize kwargs
     l_ini = cfg.getfloat(califa_cfg_sec, 'import_l_ini')
@@ -27,6 +28,7 @@ def read_califa(cube, name, cfg):
     Nx = cfg.getint(califa_cfg_sec, 'import_Nx')
     Ny = cfg.getint(califa_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(califa_cfg_sec, 'flux_unit')
+    DL_from_masterlist = cfg.getboolean(califa_cfg_sec, 'DL_from_masterlist')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
@@ -68,4 +70,43 @@ def read_califa(cube, name, cfg):
     K.redshift = z
     K.name = name
 
+    # Get luminosity distance from master list
+    if DL_from_masterlist:
+        masterlist = cfg.get(califa_cfg_sec, 'masterlist')
+        galaxy_id = name
+        log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
+        ml = califa_read_masterlist(masterlist, galaxy_id)
+        K.lumDistMpc = ml['d_Mpc']
+
+    print K.lumDistMpc
     return K
+
+def califa_read_masterlist(filename, galaxy_id=None):
+    '''
+    Read the whole masterlist, or a single entry.
+
+    Parameters
+    ----------
+    filename : string
+        Path to the file containing the masterlist.
+
+    galaxy_id : string, optional
+        ID of the masterlist entry, the first column of the table.
+        If set, return only the entry pointed by ``galaxy_id'``.
+        Default: ``None``
+
+    Returns
+    -------
+    masterlist : recarray
+        A numpy record array containing either the whole masterlist
+        or the entry pointed by ``galaxy_id``.
+    '''
+    ml = Table.read(filename, format='csv')
+    if galaxy_id is not None:
+        index = np.where(ml['#CALIFA_ID'] == galaxy_id)[0]
+        if len(index) == 0:
+            raise Exception(
+                'Entry %s not found in masterlist %s.' % (galaxy_id, filename))
+        return ml[index][0]
+    else:
+        return ml
