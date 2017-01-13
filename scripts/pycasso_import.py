@@ -5,7 +5,7 @@ Created on 15/06/2015
 
 '''
 
-from pycasso2.importer import read_califa, read_diving3d, read_manga
+from pycasso2.importer import read_califa, read_diving3d, read_manga, read_muse
 from pycasso2.starlight.tables import read_wavelength_mask
 from pycasso2 import flags
 from pycasso2.config import get_config, default_config_path
@@ -56,9 +56,13 @@ elif args.cubeType == 'califa':
 elif args.cubeType == 'manga':
     g = read_manga(args.cubeIn[0], name, cfg)
 
+elif args.cubeType == 'muse':
+    g = read_muse(args.cubeIn[0], name, cfg)
+    
 else:
     log.error('Unknown cube type %s' % args.cubeType)
     sys.exit()
+
 
 print 'Applying telluric lines masks (z = %f)' % g.redshift
 telluric_mask_file = cfg.get('tables', 'telluric_mask')
@@ -68,3 +72,4 @@ g.f_flag[telluric_mask] |= flags.telluric
 
 print 'Saving cube %s.' % args.cubeOut
 g.write(args.cubeOut, overwrite=args.overwrite)
+
