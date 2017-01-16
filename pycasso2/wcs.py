@@ -167,7 +167,7 @@ def copy_WCS(header, dest_header, axes):
 
 def update_WCS(header, crpix, crval_wave, cdelt_wave):
     w = wcs.WCS(header)
-    if w.wcs.cunit[2] == 'm':
+    if header[header.index("CUNIT3")] == 'm':
         crval_wave *= one_angstrom
         cdelt_wave *= one_angstrom
     crpix = np.array([crpix[2], crpix[1], crpix[0]]) + 1
@@ -178,4 +178,5 @@ def update_WCS(header, crpix, crval_wave, cdelt_wave):
         w.wcs.cd[2, 2] = cdelt_wave
     else:
         w.wcs.cdelt[2] = cdelt_wave
+    header[header.index("CD3_3")] = cdelt_wave
     header.extend(w.to_header(), update=True)
