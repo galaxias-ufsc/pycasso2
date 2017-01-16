@@ -9,6 +9,7 @@ from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
 from astropy import log, wcs
 from astropy.io import fits
+from astropy.table import Table
 import numpy as np
 
 __all__ = ['read_muse', 'muse_read_masterlist']
@@ -53,9 +54,9 @@ def read_muse(cube, name, cfg):
     ml = muse_read_masterlist(masterlist, galaxy_id)
     muse_save_masterlist(header, ml)
 
-    z = velocity2redshift(ml['V_r'])
+    z = velocity2redshift(ml['V_r [km/s]'])
     log.debug('Putting spectra in rest frame (z=%.4f, v=%.1f km/s).' %
-              (z, ml['V_r']))
+              (z, ml['V_r [km/s]']))
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
@@ -84,10 +85,10 @@ def read_muse(cube, name, cfg):
 
     return K
 
-masterlist_dtype = [('id', '|S05'),
-                    ('name', '|S12'),
-                    ('V_r', 'float64'),
-                    ('D', 'float64'),
+masterlist_dtype = [('Name', '|S05'),
+                    ('Galaxy name', '|S12'),
+                    ('V_r [km/s]', 'float64'),
+                    ('D (Mpc)', 'float64'),
                     ]
 
 def muse_save_masterlist(header, ml):
@@ -119,11 +120,13 @@ def muse_read_masterlist(filename, galaxy_id=None):
         or the entry pointed by ``galaxy_id``.
     '''
     ml = np.genfromtxt(filename, masterlist_dtype, skip_header=1)
+    ml = Table.read(filename, format='csv')
     if galaxy_id is not None:
         index = np.where(ml['id'] == galaxy_id)[0]
         if len(index) == 0:
             raise Exception(
                 'Entry %s not found in masterlist %s.' % (galaxy_id, filename))
         return np.squeeze(ml[index][0])
+        return ml[index][0]
     else:
         return ml
