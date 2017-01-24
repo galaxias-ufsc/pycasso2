@@ -45,8 +45,9 @@ def read_muse(cube, name, cfg):
     try:
         badpix = fits.getdata(cube, extname='DQ') != 0
     except:
-        badpix = np.isnan(f_obs_orig)
-        
+        badpix = ~np.isfinite(f_obs_orig) | (f_obs_orig <= 0.0) | (f_err_orig <= 0.0)
+    f_obs_orig[badpix] = 0.0
+    f_err_orig[badpix] = 0.0
     # Get distance from master list
     masterlist = cfg.get(muse_cfg_sec, 'masterlist')
     galaxy_id = name
