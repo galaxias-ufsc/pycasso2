@@ -119,14 +119,12 @@ def muse_read_masterlist(filename, galaxy_id=None):
         A numpy record array containing either the whole masterlist
         or the entry pointed by ``galaxy_id``.
     '''
-    ml = np.genfromtxt(filename, masterlist_dtype, skip_header=1)
     ml = Table.read(filename, format='csv')
     if galaxy_id is not None:
-        index = np.where(ml['id'] == galaxy_id)[0]
+        index = np.where(ml['Name'] == galaxy_id)[0]
         if len(index) == 0:
             raise Exception(
                 'Entry %s not found in masterlist %s.' % (galaxy_id, filename))
-        return np.squeeze(ml[index][0])
         return ml[index][0]
     else:
         return ml
