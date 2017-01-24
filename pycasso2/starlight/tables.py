@@ -88,7 +88,7 @@ def write_input(wl, flux, err, flags, filename):
         cols = [wl, flux.data, err.data, flags]
     else:
         cols = [wl, flux.data]
-    ascii.write(cols, filename, Writer=ascii.NoHeader)
+    ascii.write(cols, filename, Writer=ascii.NoHeader, overwrite=True)
 
 
 def read_output_tables(filename):
