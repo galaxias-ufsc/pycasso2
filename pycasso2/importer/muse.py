@@ -7,6 +7,7 @@ from ..cube import safe_getheader, FitsCube
 from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Nwave
 from ..resampling import resample_spectra, reshape_cube
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
+from ..reddening import extinction_corr
 from astropy import log, wcs
 from astropy.io import fits
 from astropy.table import Table
@@ -48,13 +49,19 @@ def read_muse(cube, name, cfg):
         badpix = ~np.isfinite(f_obs_orig) | (f_obs_orig <= 0.0) | (f_err_orig <= 0.0)
     f_obs_orig[badpix] = 0.0
     f_err_orig[badpix] = 0.0
+        
     # Get distance from master list
     masterlist = cfg.get(muse_cfg_sec, 'masterlist')
     galaxy_id = name
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = muse_read_masterlist(masterlist, galaxy_id)
     muse_save_masterlist(header, ml)
-
+    
+    # Correction for galactic extinction
+    ebv = float(ml['E(B-V)'])
+    log.debug('Applying galactic extinction correction: E(B-V) = %.4f.' % ebv)
+    f_obs_orig = extinction_corr(l_obs, f_obs_orig, ebv)
+        
     z = velocity2redshift(ml['V_r [km/s]'])
     log.debug('Putting spectra in rest frame (z=%.4f, v=%.1f km/s).' %
               (z, ml['V_r [km/s]']))
@@ -90,6 +97,7 @@ masterlist_dtype = [('Name', '|S05'),
                     ('Galaxy name', '|S12'),
                     ('V_r [km/s]', 'float64'),
                     ('D (Mpc)', 'float64'),
+                    ('E(B-V)', 'float64'),
                     ]
 
 def muse_save_masterlist(header, ml):
