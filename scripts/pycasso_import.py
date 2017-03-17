@@ -5,7 +5,7 @@ Created on 15/06/2015
 
 '''
 
-from pycasso2.importer import read_califa, read_diving3d, read_manga, read_muse
+from pycasso2.importer import read_califa, read_diving3d, read_manga, read_muse, read_gmos
 from pycasso2.starlight.tables import read_wavelength_mask
 from pycasso2 import flags
 from pycasso2.config import get_config, default_config_path
@@ -78,6 +78,9 @@ elif args.cubeType == 'manga':
 
 elif args.cubeType == 'muse':
     g = read_muse(args.cubeIn[0], name, cfg, sl)
+    
+elif args.cubeType == 'gmos':
+    g = read_gmos(args.cubeIn[0], name, cfg, sl)
     
 else:
     log.error('Unknown cube type %s' % args.cubeType)
