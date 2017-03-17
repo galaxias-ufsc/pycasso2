@@ -5,7 +5,7 @@ Created on 08/12/2015
 '''
 from ..cube import safe_getheader, FitsCube
 from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Nwave
-from ..resampling import resample_spectra, reshape_cube
+from ..resampling import resample_spectra
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
 from astropy import log, wcs
 from astropy.io import fits
@@ -17,29 +17,36 @@ __all__ = ['read_califa', 'califa_read_masterlist']
 califa_cfg_sec = 'califa'
 
 
-def read_califa(cube, name, cfg):
+def read_califa(cube, name, cfg, sl=None):
     '''
     FIXME: doc me!
     '''
-    # FIXME: sanitize kwargs
     l_ini = cfg.getfloat(califa_cfg_sec, 'import_l_ini')
     l_fin = cfg.getfloat(califa_cfg_sec, 'import_l_fin')
     dl = cfg.getfloat(califa_cfg_sec, 'import_dl')
-    Nx = cfg.getint(califa_cfg_sec, 'import_Nx')
-    Ny = cfg.getint(califa_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(califa_cfg_sec, 'flux_unit')
     DL_from_masterlist = cfg.getboolean(califa_cfg_sec, 'DL_from_masterlist')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube)
+    w = wcs.WCS(header)
+    l_obs = get_wavelength_coordinates(w, get_Nwave(header))
+    crpix = get_reference_pixel(w)
 
     log.debug('Loading data from %s.' % cube)
     f_obs_orig = fits.getdata(cube, extname='PRIMARY')
     f_err_orig = fits.getdata(cube, extname='ERROR')
     badpix = fits.getdata(cube, extname='BADPIX') != 0
-    w = wcs.WCS(header)
-    l_obs = get_wavelength_coordinates(w, get_Nwave(header))
+
+    if sl is not None:
+        log.debug('Taking a slice of the cube...')
+        y_slice, x_slice = sl
+        f_obs_orig = f_obs_orig[:, y_slice, x_slice]
+        f_err_orig = f_err_orig[:, y_slice, x_slice]
+        badpix = badpix[:, y_slice, x_slice]
+        crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
+        log.debug('New shape: %s.' % str(f_obs_orig.shape))
 
     med_vel = float(header['MED_VEL'])
     z = velocity2redshift(med_vel)
@@ -48,19 +55,14 @@ def read_califa(cube, name, cfg):
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
-    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    center = get_reference_pixel(w)
-    new_shape = (len(l_rest), Ny, Nx)
-    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(
-        f_obs_rest, f_err_rest, badpix, center, new_shape)
-
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(
         l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
+    crpix = (0, crpix[1], crpix[2])
 
     log.debug('Updating WCS.')
-    update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
+    update_WCS(header, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
 
     log.debug('Creating pycasso cube.')
     K = FitsCube()

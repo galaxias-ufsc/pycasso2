@@ -5,9 +5,8 @@ Created on 08/12/2015
 '''
 from ..cube import safe_getheader, FitsCube
 from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Nwave
-from ..resampling import resample_spectra, reshape_cube
+from ..resampling import resample_spectra
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
-from ..reddening import extinction_corr
 from astropy import log, wcs
 from astropy.io import fits
 from astropy.table import Table
@@ -18,27 +17,25 @@ __all__ = ['read_muse', 'muse_read_masterlist']
 muse_cfg_sec = 'muse'
 
 
-def read_muse(cube, name, cfg):
+def read_muse(cube, name, cfg, sl=None):
     '''
     FIXME: doc me! 
     '''
-    # FIXME: sanitize kwargs
     l_ini = cfg.getfloat(muse_cfg_sec, 'import_l_ini')
     l_fin = cfg.getfloat(muse_cfg_sec, 'import_l_fin')
     dl = cfg.getfloat(muse_cfg_sec, 'import_dl')
-    Nx = cfg.getint(muse_cfg_sec, 'import_Nx')
-    Ny = cfg.getint(muse_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(muse_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext=1)
+    w = wcs.WCS(header)
+    l_obs = get_wavelength_coordinates(w, get_Nwave(header))
+    crpix = get_reference_pixel(w)
 
     log.debug('Loading data from %s.' % cube)
     f_obs_orig = fits.getdata(cube, extname='DATA')
     f_err_orig = fits.getdata(cube, extname='STAT')
-    w = wcs.WCS(header)
-    l_obs = get_wavelength_coordinates(w, get_Nwave(header))
 
     # Try to get bad pixel extension. If not, follow the MUSE pipeline manual 1.6.2,
     # > DQ The data quality flags encoded in an integer value according to the Euro3D standard (cf. [RD05]).
@@ -49,7 +46,18 @@ def read_muse(cube, name, cfg):
         badpix = ~np.isfinite(f_obs_orig) | (f_obs_orig <= 0.0) | (f_err_orig <= 0.0)
     f_obs_orig[badpix] = 0.0
     f_err_orig[badpix] = 0.0
-        
+
+    if sl is not None:
+        print f_obs_orig.shape
+        print crpix
+        log.debug('Taking a slice of the cube...')
+        y_slice, x_slice = sl
+        f_obs_orig = f_obs_orig[:, y_slice, x_slice]
+        f_err_orig = f_err_orig[:, y_slice, x_slice]
+        badpix = badpix[:, y_slice, x_slice]
+        crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
+        log.debug('New shape: %s.' % str(f_obs_orig.shape))
+
     # Get distance from master list
     masterlist = cfg.get(muse_cfg_sec, 'masterlist')
     galaxy_id = name
@@ -68,20 +76,14 @@ def read_muse(cube, name, cfg):
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
-    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    center = get_reference_pixel(w)
-    print center
-    new_shape = (len(l_rest), Ny, Nx)
-    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(
-        f_obs_rest, f_err_rest, badpix, center, new_shape)
-
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(
         l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
+    crpix = (0, crpix[1], crpix[2])
 
     log.debug('Updating WCS.')
-    update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
+    update_WCS(header, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
 
     log.debug('Creating pycasso cube.')
     K = FitsCube()
@@ -97,7 +99,6 @@ masterlist_dtype = [('Name', '|S05'),
                     ('Galaxy name', '|S12'),
                     ('V_r [km/s]', 'float64'),
                     ('D (Mpc)', 'float64'),
-                    ('E(B-V)', 'float64'),
                     ]
 
 def muse_save_masterlist(header, ml):

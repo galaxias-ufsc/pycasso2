@@ -5,7 +5,7 @@ Created on 08/12/2015
 '''
 from ..cube import safe_getheader, FitsCube
 from ..wcs import get_wavelength_coordinates, get_Nwave, get_reference_pixel, update_WCS
-from ..resampling import resample_spectra, reshape_cube
+from ..resampling import resample_spectra
 from ..cosmology import velocity2redshift
 from ..starlight.tables import read_wavelength_mask
 from .. import flags
@@ -19,16 +19,13 @@ __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
 d3d_cfg_sec = 'diving3d'
 
 
-def read_diving3d(redcube, obscube, name, cfg):
+def read_diving3d(redcube, obscube, name, cfg, sl=None):
     '''
     FIXME: doc me! 
     '''
-    # FIXME: sanitize kwargs
     l_ini = cfg.getfloat(d3d_cfg_sec, 'import_l_ini')
     l_fin = cfg.getfloat(d3d_cfg_sec, 'import_l_fin')
     dl = cfg.getfloat(d3d_cfg_sec, 'import_dl')
-    Nx = cfg.getint(d3d_cfg_sec, 'import_Nx')
-    Ny = cfg.getint(d3d_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(d3d_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
@@ -42,27 +39,32 @@ def read_diving3d(redcube, obscube, name, cfg):
         if k in header or k == 'COMMENT' or k == '':
             continue
         header[k] = obs_header[k]
+    w = wcs.WCS(header)
+    l_obs_orig = get_wavelength_coordinates(w, get_Nwave(header))
+    crpix = get_reference_pixel(w)
 
     log.debug('Loading data from reduced cube %s.' % redcube)
     f_obs_orig = fits.getdata(redcube)
     f_err_orig = np.zeros_like(f_obs_orig)
     badpix = np.zeros(f_obs_orig.shape, dtype='bool')
 
-    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    w = wcs.WCS(header)
-    l_obs_orig = get_wavelength_coordinates(w, get_Nwave(header))
-    new_shape = (len(l_obs_orig), Ny, Nx)
-    center = get_reference_pixel(w)
-    f_obs, f_err, badpix, new_center = reshape_cube(
-        f_obs_orig, f_err_orig, badpix, center, new_shape)
+    if sl is not None:
+        log.debug('Taking a slice of the cube...')
+        y_slice, x_slice = sl
+        f_obs_orig = f_obs_orig[:, y_slice, x_slice]
+        f_err_orig = f_err_orig[:, y_slice, x_slice]
+        badpix = badpix[:, y_slice, x_slice]
+        crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
+        log.debug('New shape: %s.' % str(f_obs_orig.shape))
 
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_obs = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(
-        l_obs_orig, l_obs, f_obs, f_err, badpix)
+        l_obs_orig, l_obs, f_obs_orig, f_err_orig, badpix)
+    crpix = (0, crpix[1], crpix[2])
 
     log.debug('Updating WCS.')
-    update_WCS(header, crpix=new_center, crval_wave=l_obs[0], cdelt_wave=dl)
+    update_WCS(header, crpix=crpix, crval_wave=l_obs[0], cdelt_wave=dl)
 
     masterlist = cfg.get(d3d_cfg_sec, 'masterlist')
     galaxy_id = d3d_get_galaxy_id(redcube)
@@ -78,13 +80,13 @@ def read_diving3d(redcube, obscube, name, cfg):
     f_flag[gap_mask] |= flags.ccd_gap
 
     log.debug('Creating pycasso cube.')
-    d3dcube = FitsCube()
-    d3dcube._initFits(f_obs, f_err, f_flag, header)
-    d3dcube.flux_unit = flux_unit
-    d3dcube.lumDistMpc = ml['DL']
-    d3dcube.redshift = z
-    d3dcube.name = name
-    return d3dcube
+    cube = FitsCube()
+    cube._initFits(f_obs, f_err, f_flag, header)
+    cube.flux_unit = flux_unit
+    cube.lumDistMpc = ml['DL']
+    cube.redshift = z
+    cube.name = name
+    return cube
 
 
 masterlist_dtype = [('id', '|S05'),

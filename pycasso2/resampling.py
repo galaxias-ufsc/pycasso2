@@ -8,7 +8,7 @@ from . import flags
 import numpy as np
 
 
-__all__ = ['resample_spectra', 'reshape_cube', 'find_nearest_index',
+__all__ = ['resample_spectra', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
            'age_smoothing_kernel', 'light2mass_ini', 'interp_age', 'vac2air', 'get_subset_slices']
 
@@ -214,92 +214,6 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
     f_flag[out_of_range] |= flags.no_data
     f_flag[badpix] |= flags.bad_pix
     return f_obs, f_err, f_flag
-
-
-def reshape_cube(f_obs, f_err, badpix, center, new_shape):
-    '''
-    Reshape IFS into a new spatial shape, putting the given
-    photometric center at the center of the new IFS.
-    Flag the newly added pixels as ``no_data``.
-
-    Parameters
-    ----------
-    f_obs : array
-        Flux, will remain unchanged.
-
-    f_err : array
-        Flux, will remain unchanged.
-
-    badpix : array
-        bad pixel spectra to be resampled.
-
-    center : tuple (l, y, x)
-        IFS center, or reference pixel.
-
-    new_shape : tuple (Nl, Ny, Nx)
-        New shape.
-
-    Returns
-    -------
-    res_f_obs : array
-        Reshaped ``f_obs``.
-
-    res_f_flag : array
-        Reshaped ``f_flag``
-
-    res_center : tuple (l, y, x)
-        New center or reference pixel of image.
-    '''
-    shape = f_obs.shape
-    y_axis = 1
-    x_axis = 2
-    Nx = shape[x_axis]
-    Ny = shape[y_axis]
-    Nx_r = new_shape[x_axis]
-    Ny_r = new_shape[y_axis]
-    xc = center[x_axis]
-    yc = center[y_axis]
-    xc_r = int(Nx_r / 2)
-    yc_r = int(Ny_r / 2)
-
-    xi_r = xc_r - xc
-    if xi_r < 0:
-        xi = -xi_r
-        xi_r = 0
-    else:
-        xi = 0
-
-    yi_r = yc_r - yc
-    if yi_r < 0:
-        yi = -yi_r
-        yi_r = 0
-    else:
-        yi = 0
-
-    xf_r = xi_r + Nx
-    if xf_r > Nx_r:
-        xf = xi + Nx_r
-        xf_r = Nx_r
-    else:
-        xf = Nx
-
-    yf_r = yi_r + Ny
-    if yf_r > Ny_r:
-        yf = yi + Ny_r
-        yf_r = Ny_r
-    else:
-        yf = Ny
-
-    res_f_obs = np.zeros((new_shape))
-    res_f_err = np.zeros((new_shape))
-    res_badpix = np.ones_like(res_f_obs, dtype='bool')
-    res_f_obs[:, yi_r:yf_r, xi_r:xf_r] = f_obs[:, yi:yf, xi:xf]
-    res_f_err[:, yi_r:yf_r, xi_r:xf_r] = f_err[:, yi:yf, xi:xf]
-    res_badpix[:, yi_r:yf_r, xi_r:xf_r] = badpix[:, yi:yf, xi:xf]
-
-    res_center = (center[0], yc_r, xc_r)
-
-    return res_f_obs, res_f_err, res_badpix, res_center
 
 
 def fwhm2sigma(fwhm):

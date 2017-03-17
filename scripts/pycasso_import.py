@@ -32,11 +32,29 @@ def parse_args():
                         help='Cube type. Ex.: diving3d, califa')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
+    parser.add_argument('--slice', dest='slice', default=None,
+                        help='Import only a slice of the cube. Example: y1:y2,x1:x2. Default: full cube.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
 
     return parser.parse_args()
 ###############################################################################
+
+def parse_slice(sl):
+    if sl is None:
+        return None
+    try:
+        yy, xx = sl.split(',')
+        y1, y2 = yy.split(':')
+        y1 = int(y1)
+        y2 = int(y2)
+        x1, x2 = xx.split(':')
+        x1 = int(x1)
+        x2 = int(x2)
+    except:
+        log.error('Error reading slice definition: %s' % sl)
+        sys.exit()
+    return slice(y1, y2, 1), slice(x1, x2, 1)
 
 log.setLevel('DEBUG')
 args = parse_args()
@@ -47,17 +65,19 @@ if args.name is None:
 else:
     name = args.name
 
+sl = parse_slice(args.slice)
+
 if args.cubeType == 'diving3d':
-    g = read_diving3d(args.cubeIn[0], args.cubeIn[1], name, cfg)
+    g = read_diving3d(args.cubeIn[0], args.cubeIn[1], name, cfg, sl)
 
 elif args.cubeType == 'califa':
-    g = read_califa(args.cubeIn[0], name, cfg)
+    g = read_califa(args.cubeIn[0], name, cfg, sl)
 
 elif args.cubeType == 'manga':
-    g = read_manga(args.cubeIn[0], name, cfg)
+    g = read_manga(args.cubeIn[0], name, cfg, sl)
 
 elif args.cubeType == 'muse':
-    g = read_muse(args.cubeIn[0], name, cfg)
+    g = read_muse(args.cubeIn[0], name, cfg, sl)
     
 else:
     log.error('Unknown cube type %s' % args.cubeType)

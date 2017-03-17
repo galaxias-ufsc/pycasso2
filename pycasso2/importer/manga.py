@@ -5,7 +5,7 @@ Created on 08/12/2015
 '''
 from ..cube import safe_getheader, FitsCube
 from ..wcs import update_WCS, get_reference_pixel
-from ..resampling import resample_spectra, reshape_cube, vac2air
+from ..resampling import resample_spectra, vac2air
 from ..cosmology import redshift2lum_distance, spectra2restframe
 from ..reddening import get_EBV, extinction_corr
 from astropy import log, wcs
@@ -28,21 +28,20 @@ def read_drpall(filename, mangaid=None):
     return t
 
 
-def read_manga(cube, name, cfg):
+def read_manga(cube, name, cfg, sl=None):
     '''
     FIXME: doc me! 
     '''
-    # FIXME: sanitize kwargs
     l_ini = cfg.getfloat(manga_cfg_sec, 'import_l_ini')
     l_fin = cfg.getfloat(manga_cfg_sec, 'import_l_fin')
     dl = cfg.getfloat(manga_cfg_sec, 'import_dl')
-    Nx = cfg.getint(manga_cfg_sec, 'import_Nx')
-    Ny = cfg.getint(manga_cfg_sec, 'import_Ny')
     flux_unit = cfg.getfloat(manga_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
+    crpix = get_reference_pixel(wcs.WCS(header))
+    
     drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
 
@@ -61,6 +60,15 @@ def read_manga(cube, name, cfg):
 
     log.debug('Vacuum to air wavelengths.')
     l_obs = vac2air(l_obs)
+    
+    if sl is not None:
+        log.debug('Taking a slice of the cube...')
+        y_slice, x_slice = sl
+        f_obs_orig = f_obs_orig[:, y_slice, x_slice]
+        f_err_orig = f_err_orig[:, y_slice, x_slice]
+        badpix = badpix[:, y_slice, x_slice]
+        crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
+        log.debug('New shape: %s.' % str(f_obs_orig.shape))
 
     # FIXME: Dust maps in air or vacuum?
     dust_map = cfg.get('tables', 'dust_map')
@@ -69,24 +77,20 @@ def read_manga(cube, name, cfg):
     EBV = header['EBVGAL']
     log.debug('    E(B-V) = %f.' % EBV)
     f_obs_orig = extinction_corr(l_obs, f_obs_orig, EBV)
+    f_err_orig = extinction_corr(l_obs, f_err_orig, EBV)
 
     log.debug('Putting spectra in rest frame (z=%.2f).' % z)
     _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
     l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
 
-    log.debug('Spatially reshaping cube into (%d, %d).' % (Ny, Nx))
-    new_shape = (len(l_rest), Ny, Nx)
-    center = get_reference_pixel(wcs.WCS(header))
-    f_obs_rest, f_err_rest, badpix, new_center = reshape_cube(
-        f_obs_rest, f_err_rest, badpix, center, new_shape)
-
     log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
     l_resam = np.arange(l_ini, l_fin + dl, dl)
     f_obs, f_err, f_flag = resample_spectra(
         l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
+    crpix = (0, crpix[1], crpix[2])
 
     log.debug('Updating WCS.')
-    update_WCS(header, crpix=new_center, crval_wave=l_resam[0], cdelt_wave=dl)
+    update_WCS(header, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
 
     log.debug('Creating pycasso cube.')
     c = FitsCube()
