@@ -91,7 +91,7 @@ class FitsCube(object):
 
     def _initFits(self, f_obs, f_err, f_flag, header):
         phdu = fits.PrimaryHDU(f_obs, header)
-        phdu.update_ext_name(FitsCube._ext_f_obs)
+        phdu.name = FitsCube._ext_f_obs
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
         self._wcs = wcs.WCS(self._header)
