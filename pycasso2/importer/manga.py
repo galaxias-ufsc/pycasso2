@@ -40,7 +40,8 @@ def read_manga(cube, name, cfg, sl=None):
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
-    crpix = get_reference_pixel(wcs.WCS(header))
+    w = wcs.WCS(header)
+    crpix = get_reference_pixel(w)
     
     drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
@@ -94,7 +95,7 @@ def read_manga(cube, name, cfg, sl=None):
 
     log.debug('Creating pycasso cube.')
     c = FitsCube()
-    c._initFits(f_obs, f_err, f_flag, header)
+    c._initFits(f_obs, f_err, f_flag, header, w)
     c.flux_unit = flux_unit
     c.lumDistMpc = redshift2lum_distance(z)
     c.redshift = z

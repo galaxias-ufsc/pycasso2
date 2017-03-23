@@ -4,14 +4,13 @@ Created on 26/06/2015
 @author: andre
 '''
 
-from astropy.io import fits
 from astropy import log, wcs
 import numpy as np
 
-__all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'copy_WCS', 'update_WCS',
-           'get_cube_limits', 'get_shape', 'get_reference_pixel', 'get_galactic_coordinates_rad',
+__all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'write_WCS', 'update_WCS',
+           'get_reference_pixel', 'get_galactic_coordinates_rad',
            'get_pixel_area', 'get_pixel_area_srad', 'get_pixel_scale', 'get_pixel_scale_rad',
-           'get_Nx', 'get_Ny', 'get_Nwave']
+           'get_Naxis']
 
 
 rad_per_deg = np.pi / 180.0
@@ -48,16 +47,8 @@ def get_wavelength_coordinates(w, Nwave):
     return np.squeeze(wave_coords)
 
 
-def get_Nx(header):
-    return header['NAXIS1']
-
-
-def get_Ny(header):
-    return header['NAXIS2']
-
-
-def get_Nwave(header):
-    return header['NAXIS3']
+def get_Naxis(header, i):
+    return header['NAXIS%d' % i]
 
 
 def get_celestial_coordinates(w, Nx, Ny, relative=True):
@@ -110,21 +101,6 @@ def get_reference_pixel(w):
     return (crpix[2], crpix[1], crpix[0])
 
 
-def get_cube_limits(cube, ext):
-    header = fits.getheader(cube, ext)
-    l_obs = get_wavelength_coordinates(header)
-    Ny = get_Ny(header)
-    Nx = get_Nx(header)
-    return l_obs.min(), l_obs.max(), Ny, Nx
-
-
-def get_shape(header):
-    Nx = get_Nx(header)
-    Ny = get_Ny(header)
-    Nwave = get_Nwave(header)
-    return (Nwave, Ny, Nx)
-
-
 def get_wavelength_sampling(w):
     w = w.sub([3])
     s = wcs.utils.proj_plane_pixel_scales(w)
@@ -157,12 +133,11 @@ def get_pixel_scale_rad(w):
     return s * rad_per_deg
 
 
-def copy_WCS(header, dest_header, axes):
-    if np.isscalar(axes):
-        axes = [axes]
-
-    w = wcs.WCS(header, naxis=axes)
-    dest_header.extend(w.to_header(), update=True)
+def write_WCS(header, w):
+    # TODO: clean the previous WCS data from header.
+    if w is None:
+        return
+    header.extend(w.to_header(), update=True)
 
 
 def update_WCS(header, crpix, crval_wave, cdelt_wave):

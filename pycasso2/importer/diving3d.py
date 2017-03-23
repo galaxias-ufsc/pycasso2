@@ -4,7 +4,7 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_wavelength_coordinates, get_Nwave, get_reference_pixel, update_WCS
+from ..wcs import get_wavelength_coordinates, get_Naxis, get_reference_pixel, update_WCS
 from ..resampling import resample_spectra
 from ..cosmology import velocity2redshift
 from ..starlight.tables import read_wavelength_mask
@@ -40,7 +40,7 @@ def read_diving3d(redcube, obscube, name, cfg, sl=None):
             continue
         header[k] = obs_header[k]
     w = wcs.WCS(header)
-    l_obs_orig = get_wavelength_coordinates(w, get_Nwave(header))
+    l_obs_orig = get_wavelength_coordinates(w, get_Naxis(header, 3))
     crpix = get_reference_pixel(w)
 
     log.debug('Loading data from reduced cube %s.' % redcube)
@@ -81,7 +81,7 @@ def read_diving3d(redcube, obscube, name, cfg, sl=None):
 
     log.debug('Creating pycasso cube.')
     cube = FitsCube()
-    cube._initFits(f_obs, f_err, f_flag, header)
+    cube._initFits(f_obs, f_err, f_flag, header, w)
     cube.flux_unit = flux_unit
     cube.lumDistMpc = ml['DL']
     cube.redshift = z

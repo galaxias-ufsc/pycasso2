@@ -4,7 +4,7 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_wavelength_coordinates, get_Nwave, get_reference_pixel, update_WCS
+from ..wcs import get_wavelength_coordinates, get_Naxis, get_reference_pixel, update_WCS
 from ..resampling import resample_spectra
 from ..cosmology import velocity2redshift, spectra2restframe
 from ..reddening import extinction_corr
@@ -31,7 +31,7 @@ def read_gmos(redcube, name, cfg, sl=None):
     log.debug('Loading header from cube %s.' % redcube)
     header = safe_getheader(redcube, ext=1)
     w = wcs.WCS(header)
-    l_obs_orig = get_wavelength_coordinates(w, get_Nwave(header))
+    l_obs_orig = get_wavelength_coordinates(w, get_Naxis(header, 3))
     crpix = get_reference_pixel(w)
     
     masterlist = cfg.get(gmos_cfg_sec, 'masterlist')
@@ -74,7 +74,7 @@ def read_gmos(redcube, name, cfg, sl=None):
 
     log.debug('Creating pycasso cube.')
     cube = FitsCube()
-    cube._initFits(f_obs, f_err, f_flag, header)
+    cube._initFits(f_obs, f_err, f_flag, header, w)
     cube.flux_unit = flux_unit
     cube.lumDistMpc = np.asscalar(ml['DL'])
     cube.redshift = z

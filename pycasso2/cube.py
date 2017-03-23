@@ -4,18 +4,20 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from .wcs import get_wavelength_coordinates, get_celestial_coordinates, copy_WCS, get_reference_pixel, get_shape
-from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Nx, get_Ny, get_Nwave
+from .wcs import get_wavelength_coordinates, get_celestial_coordinates, write_WCS, get_reference_pixel
+from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Naxis
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index
+from .segmentation import spatialize
 from . import flags
 
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
-from astropy import log, wcs
+from astropy.wcs import WCS
+from astropy import log
 import numpy as np
 
 __all__ = ['FitsCube']
@@ -30,7 +32,7 @@ def safe_getheader(f, ext=0):
 
 def get_median_flux(wave, flux, wave1, wave2):
     l1, l2 = find_nearest_index(wave, [wave1, wave2])
-    return np.median(flux[l1:l2], axis=0)
+    return np.ma.median(flux[l1:l2], axis=0)
 
 
 class FitsCube(object):
@@ -39,6 +41,7 @@ class FitsCube(object):
     _ext_f_syn = 'F_SYN'
     _ext_f_wei = 'F_WEI'
     _ext_f_flag = 'F_FLAG'
+    _ext_segmask = 'SEGMASK'
 
     _ext_popZ_base = 'POPZ_BASE'
     _ext_popage_base = 'POPAGE_BASE'
@@ -53,6 +56,7 @@ class FitsCube(object):
     _h_redshift = 'PIPE REDSHIFT'
     _h_flux_unit = 'PIPE FLUX_UNIT'
     _h_name = 'PIPE CUBE_NAME'
+    _h_has_segmap = 'PIPE HAS_SEGMAP'
 
     # FIXME: remove legacy code
     _ext_old_f_obs = 'PRIMARY'
@@ -70,33 +74,18 @@ class FitsCube(object):
             return
         self._load(cubefile)
 
-    def _fix_name(self):
-        # FIXME: remove legacy code
-        if self._h_name in self._header:
-            return
-        if self._h_old_name in self._header:
-            name = self._header[self._h_old_name]
-            log.warn(
-                'Using old cube name header. This check will be removed in the future.')
-            self.name = name
-
-    def _fix_f_obs_ext(self):
-        # FIXME: remove legacy code
-        if self._ext_f_obs in self._HDUList:
-            return
-        if self._ext_old_f_obs in self._HDUList:
-            self._HDUList[self._ext_old_f_obs].update_ext_name(self._ext_f_obs)
-            log.warn(
-                'Fixed primary extension name. This check will be removed in the future.')
-
-    def _initFits(self, f_obs, f_err, f_flag, header):
-        phdu = fits.PrimaryHDU(f_obs, header)
-        phdu.name = FitsCube._ext_f_obs
+    def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None):
+        phdu = fits.PrimaryHDU(header=header)
+        phdu.name = 'PRIMARY'
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
-        self._wcs = wcs.WCS(self._header)
-        self._addExtension(FitsCube._ext_f_err, data=f_err, kind='spectra')
-        self._addExtension(FitsCube._ext_f_flag, data=f_flag, kind='spectra')
+        self._wcs = wcs
+        if segmask is not None:
+            self.hasSegmentationMask = True
+            self._addExtension(FitsCube._ext_segmask, data=segmask, wcstype='segmask')
+        self._addExtension(FitsCube._ext_f_obs, data=f_err, wcstype='spectra')
+        self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
+        self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
         self._initMasks()
         self._calcEllipseParams()
 
@@ -106,17 +95,22 @@ class FitsCube(object):
         self.synthSpectraMask = (self.f_flag & flags.no_starlight) > 0
         self.spectraMask = (self.f_flag & flags.no_obs) > 0
 
-    def _calcEllipseParams(self, image=None):
-        if image is None:
-            image = self.flux_norm_window
+    def _calcEllipseParams(self):
+        image = self.flux_norm_window
+        if self.hasSegmentationMask:
+            try:
+                image = spatialize(image, self.segmentationMask, extensive=True)
+            except:
+                log.debug('Could not calculate ellipse parameters due to segmentation.')
+                self.pa = np.nan
+                self.ba = np.nan
+                return
         self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
 
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
-        self._fix_f_obs_ext()
-        self._header = self._HDUList[self._ext_f_obs].header
-        self._fix_name()
-        self._wcs = wcs.WCS(self._header)
+        self._header = self._HDUList[0].header
+        self._wcs = WCS(self._header)
         self._initMasks()
         self._calcEllipseParams()
 
@@ -125,29 +119,37 @@ class FitsCube(object):
 
     def createSynthesisCubes(self, pop_len):
         self._pop_len = pop_len
-        self._addExtension(self._ext_f_syn, kind='spectra', overwrite=True)
-        self._addExtension(self._ext_f_wei, kind='spectra', overwrite=True)
-        self._addExtension(self._ext_popx, kind='population', overwrite=True)
-        self._addExtension(
-            self._ext_popmu_ini, kind='population', overwrite=True)
-        self._addExtension(
-            self._ext_popmu_cor, kind='population', overwrite=True)
-        self._addExtension(self._ext_popage_base, kind='base', overwrite=True)
-        self._addExtension(self._ext_popZ_base, kind='base', overwrite=True)
-        self._addExtension(self._ext_popaFe_base, kind='base', overwrite=True)
-        self._addExtension(self._ext_mstars, kind='base', overwrite=True)
-        self._addExtension(self._ext_fbase_norm, kind='base', overwrite=True)
+        if self.hasSegmentationMask:
+            pop_shape = (pop_len, self.Nzone)
+            kw_shape = (self.Nzone,)
+            kw_wcs = None
+        else:
+            pop_shape = (pop_len, self.Ny, self.Nx)
+            kw_shape = (self.Ny, self.Nx)
+            kw_wcs = 'image'
+        base_shape = (pop_len,)
+        self._addExtension(self._ext_f_syn, wcstype='full', shape=self.f_obs.shape, overwrite=True)
+        self._addExtension(self._ext_f_wei, wcstype='full', shape=self.f_obs.shape, overwrite=True)
+        self._addExtension(self._ext_popx, wcstype=None, shape=pop_shape, overwrite=True)
+        self._addExtension(self._ext_popmu_ini, wcstype=None, shape=pop_shape, overwrite=True)
+        self._addExtension(self._ext_popmu_cor, wcstype=None, shape=pop_shape, overwrite=True)
+        self._addExtension(self._ext_popage_base, wcstype=None, shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_popZ_base, wcstype=None, shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_popaFe_base, wcstype=None, shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_mstars, wcstype=None, shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_fbase_norm, wcstype=None, shape=base_shape, overwrite=True)
 
         for ext in self._ext_keyword_list:
-            self._addExtension(ext, kind='image', overwrite=True)
+            self._addExtension(ext, wcstype=kw_wcs, shape=kw_shape, overwrite=True)
 
     def _hasExtension(self, name):
         return name in self._HDUList
 
-    def _addExtension(self, name, data=None, dtype=None, kind='spectra', overwrite=False):
+    def _addExtension(self, name, data=None, dtype=None, shape=None, wcstype=None, overwrite=False):
         name = name.upper()
-        shape = self._getExtensionShape(kind)
         if data is None:
+            if shape is None:
+                raise Exception('shape must me specified if data is not set.')
             if dtype is None:
                 dtype = 'float64'
             data = np.zeros(shape, dtype=dtype)
@@ -159,38 +161,26 @@ class FitsCube(object):
                 log.warn('Deleting existing extension %s.' % name)
                 self._delExtension(name)
         imhdu = fits.ImageHDU(data, name=name)
-        self._setExtensionWCS(imhdu, kind)
+        self._setExtensionWCS(imhdu, wcstype)
         self._HDUList.append(imhdu)
 
-    def _setExtensionWCS(self, hdu, kind):
-        if kind == 'spectra':
-            copy_WCS(self._header, hdu.header, axes=[1, 2, 3])
-        elif kind == 'image':
-            copy_WCS(self._header, hdu.header, axes=[1, 2])
-        elif kind == 'population':
-            copy_WCS(self._header, hdu.header, axes=[1, 2])
-        elif kind == 'base':
-            pass
-        else:
-            raise Exception('Unknown extension kind "%s".' % kind)
-
-    def _getExtensionShape(self, kind):
-        spectra_shape = get_shape(self._header)
-        if kind == 'spectra':
-            return spectra_shape
-        elif kind == 'image':
-            return spectra_shape[1:]
-        elif kind == 'population':
-            if self._pop_len is None:
-                raise Exception('Undefined population vector length.')
-            return (self._pop_len,) + spectra_shape[1:]
-        elif kind == 'base':
-            if self._pop_len is None:
-                raise Exception('Undefined population vector length.')
-            return (self._pop_len,)
-        else:
-            raise Exception('Unknown extension kind "%s".' % kind)
-
+    def _setExtensionWCS(self, hdu, wcstype):
+        if wcstype is None:
+            w = None
+        elif wcstype == 'spectra':
+            if self.hasSegmentationMask:
+                w = self._wcs.sub([3])
+            else:
+                w = self._wcs
+        elif wcstype == 'image':
+            if self.hasSegmentationMask:
+                w = self._wcs.celestial
+            else:
+                w = None
+        elif wcstype == 'segmask':
+            w = self._wcs.celestial
+        write_WCS(hdu.header, w)
+        
     def _getExtensionData(self, name):
         return self._HDUList[name].data
 
@@ -233,6 +223,18 @@ class FitsCube(object):
         return radial_profile(prop, bin_r, x0, y0, pa, ba, rad_scale, mode, return_npts)
 
     @property
+    def hasSegmentationMask(self):
+        key = self._h_has_segmap
+        if not key in self._header:
+            return False
+        return bool(self._header[key])
+
+    @hasSegmentationMask.setter
+    def hasSegmentationMask(self, value):
+        key = 'HIERARCH %s' % self._h_has_segmap
+        self._header[key] = value
+
+    @property
     def x0(self):
         return self.center[2]
 
@@ -242,15 +244,37 @@ class FitsCube(object):
 
     @lazyproperty
     def Nx(self):
-        return get_Nx(self._header)
+        if self.hasSegmentationMask:
+            hdu = self._ext_segmask
+        else:
+            hdu = self._ext_f_obs
+        return get_Naxis(self._HDUList[hdu].header, 1)
 
     @lazyproperty
     def Ny(self):
-        return get_Ny(self._header)
+        if self.hasSegmentationMask:
+            hdu = self._ext_segmask
+        else:
+            hdu = self._ext_f_obs
+        return get_Naxis(self._HDUList[hdu].header, 2)
 
     @lazyproperty
     def Nwave(self):
-        return get_Nwave(self._header)
+        if self.hasSegmentationMask:
+            axis = 1
+        else:
+            axis = 3
+        return get_Naxis(self._HDUList[self._ext_f_obs].header, axis)
+
+    @lazyproperty
+    def Nzone(self):
+        if not self.hasSegmentationMask:
+            raise Exception('Cube does not have segmentantion mask.')
+        return self.segmentationMask.shape[0]
+
+    @lazyproperty
+    def segmentationMask(self):
+        return self._getExtensionData(self._ext_segmask)
 
     @lazyproperty
     def f_obs(self):
@@ -343,9 +367,12 @@ class FitsCube(object):
 
     @lazyproperty
     def HLR(self):
+        image = self.flux_norm_window
+        if self.hasSegmentationMask:
+            image = spatialize(image, self.segmentationMask, extensive=True)
         r = get_image_distance(
             (self.Ny, self.Nx), self.x0, self.y0, self.pa, self.ba)
-        return get_half_radius(self.flux_norm_window, r)
+        return get_half_radius(image, r)
 
     @lazyproperty
     def Mcor_tot(self):
@@ -362,7 +389,11 @@ class FitsCube(object):
     @lazyproperty
     def flux_norm_window(self):
         norm_lambda = 5635.0
-        return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 50.0, norm_lambda + 50.0)
+        if self.hasSegmentationMask:
+            fn = get_median_flux(self.l_obs, self.f_obs.T, norm_lambda - 45.0, norm_lambda + 45.0)
+            return fn.T
+        else:
+            return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 45.0, norm_lambda + 45.0)
 
     @property
     def McorSD(self):

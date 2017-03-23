@@ -4,9 +4,10 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..cube import safe_getheader, FitsCube
-from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Nwave
+from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Naxis
 from ..resampling import resample_spectra
 from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
+from ..reddening import extinction_corr
 from astropy import log, wcs
 from astropy.io import fits
 from astropy.table import Table
@@ -30,7 +31,7 @@ def read_muse(cube, name, cfg, sl=None):
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext=1)
     w = wcs.WCS(header)
-    l_obs = get_wavelength_coordinates(w, get_Nwave(header))
+    l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
     crpix = get_reference_pixel(w)
 
     log.debug('Loading data from %s.' % cube)
@@ -87,7 +88,7 @@ def read_muse(cube, name, cfg, sl=None):
 
     log.debug('Creating pycasso cube.')
     K = FitsCube()
-    K._initFits(f_obs, f_err, f_flag, header)
+    K._initFits(f_obs, f_err, f_flag, header, w)
     K.flux_unit = flux_unit
     K.lumDistMpc = redshift2lum_distance(z)
     K.redshift = z
