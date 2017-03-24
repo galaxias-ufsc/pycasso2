@@ -51,8 +51,10 @@ def parse_slice(sl):
         x1, x2 = xx.split(':')
         x1 = int(x1)
         x2 = int(x2)
+        assert(x1 < x2)
+        assert(y1 < y2)
     except:
-        log.error('Error reading slice definition: %s' % sl)
+        log.error('Error reading or bad slice definition: %s' % sl)
         sys.exit()
     return slice(y1, y2, 1), slice(x1, x2, 1)
 
