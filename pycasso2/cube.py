@@ -82,8 +82,11 @@ class FitsCube(object):
         self._wcs = wcs
         if segmask is not None:
             self.hasSegmentationMask = True
+            f_obs = f_obs.T
+            f_err = f_err.T
+            f_flag = f_flag.T
             self._addExtension(FitsCube._ext_segmask, data=segmask, wcstype='segmask')
-        self._addExtension(FitsCube._ext_f_obs, data=f_err, wcstype='spectra')
+        self._addExtension(FitsCube._ext_f_obs, data=f_obs, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
         self._initMasks()
@@ -120,27 +123,27 @@ class FitsCube(object):
     def createSynthesisCubes(self, pop_len):
         self._pop_len = pop_len
         if self.hasSegmentationMask:
-            pop_shape = (pop_len, self.Nzone)
+            spec_shape = (self.Nzone, self.Nwave)
+            pop_shape = (self.Nzone, pop_len)
             kw_shape = (self.Nzone,)
-            kw_wcs = None
         else:
+            spec_shape = (self.Nwave, self.Ny, self.Nx)
             pop_shape = (pop_len, self.Ny, self.Nx)
             kw_shape = (self.Ny, self.Nx)
-            kw_wcs = 'image'
         base_shape = (pop_len,)
-        self._addExtension(self._ext_f_syn, wcstype='full', shape=self.f_obs.shape, overwrite=True)
-        self._addExtension(self._ext_f_wei, wcstype='full', shape=self.f_obs.shape, overwrite=True)
-        self._addExtension(self._ext_popx, wcstype=None, shape=pop_shape, overwrite=True)
-        self._addExtension(self._ext_popmu_ini, wcstype=None, shape=pop_shape, overwrite=True)
-        self._addExtension(self._ext_popmu_cor, wcstype=None, shape=pop_shape, overwrite=True)
-        self._addExtension(self._ext_popage_base, wcstype=None, shape=base_shape, overwrite=True)
-        self._addExtension(self._ext_popZ_base, wcstype=None, shape=base_shape, overwrite=True)
-        self._addExtension(self._ext_popaFe_base, wcstype=None, shape=base_shape, overwrite=True)
-        self._addExtension(self._ext_mstars, wcstype=None, shape=base_shape, overwrite=True)
-        self._addExtension(self._ext_fbase_norm, wcstype=None, shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_f_syn, wcstype='spectra', shape=spec_shape, overwrite=True)
+        self._addExtension(self._ext_f_wei, wcstype='spectra', shape=spec_shape, overwrite=True)
+        self._addExtension(self._ext_popx, wcstype='image', shape=pop_shape, overwrite=True)
+        self._addExtension(self._ext_popmu_ini, wcstype='image', shape=pop_shape, overwrite=True)
+        self._addExtension(self._ext_popmu_cor, wcstype='image', shape=pop_shape, overwrite=True)
+        self._addExtension(self._ext_popage_base, wcstype='image', shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_popZ_base, wcstype='image', shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_popaFe_base, wcstype='image', shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_mstars, wcstype='image', shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_fbase_norm, wcstype='image', shape=base_shape, overwrite=True)
 
         for ext in self._ext_keyword_list:
-            self._addExtension(ext, wcstype=kw_wcs, shape=kw_shape, overwrite=True)
+            self._addExtension(ext, wcstype='image', shape=kw_shape, overwrite=True)
 
     def _hasExtension(self, name):
         return name in self._HDUList
@@ -179,10 +182,15 @@ class FitsCube(object):
                 w = None
         elif wcstype == 'segmask':
             w = self._wcs.celestial
+        else:
+            raise Exception ('Unknown WCS type %s.' % wcstype)
         write_WCS(hdu.header, w)
         
     def _getExtensionData(self, name):
-        return self._HDUList[name].data
+        data = self._HDUList[name].data
+        if (data.ndim > 1) and self.hasSegmentationMask and (name != self._ext_segmask):
+            data = np.moveaxis(data, 0, -1)
+        return data
 
     def _delExtension(self, name):
         if not self._hasExtension(name):
@@ -191,9 +199,13 @@ class FitsCube(object):
 
     def _getSynthExtension(self, name):
         data = self._getExtensionData(name)
-        if data.ndim == 2:
+        if self.hasSegmentationMask:
+            spatial_dims = 1
+        else:
+            spatial_dims = 2
+        if data.ndim == spatial_dims:
             data = np.ma.array(data, mask=self.synthImageMask, copy=False)
-        if data.ndim == 3:
+        elif data.ndim == (spatial_dims + 1):
             data = np.ma.array(data, copy=False)
             data[:, self.synthImageMask] = np.ma.masked
         return data
@@ -203,12 +215,7 @@ class FitsCube(object):
         a__Zt = np.ma.masked_all(shape, dtype=a.dtype)
         a__Zt.fill_value = fill_value
         a__Zt[self._baseMask, ...] = a
-        if a__Zt.ndim == 2:
-            return a__Zt.T
-        elif a__Zt.ndim == 4:
-            return a__Zt.transpose(1, 0, 2, 3)
-        else:
-            raise Exception('Unsupported number of dimensions.')
+        return np.swapaxes(a__Zt, 0, 1)
 
     def radialProfile(self, prop, bin_r, x0=None, y0=None, pa=None, ba=None,
                       rad_scale=1.0, mode='mean', return_npts=False):
@@ -389,11 +396,7 @@ class FitsCube(object):
     @lazyproperty
     def flux_norm_window(self):
         norm_lambda = 5635.0
-        if self.hasSegmentationMask:
-            fn = get_median_flux(self.l_obs, self.f_obs.T, norm_lambda - 45.0, norm_lambda + 45.0)
-            return fn.T
-        else:
-            return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 45.0, norm_lambda + 45.0)
+        return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 45.0, norm_lambda + 45.0)
 
     @property
     def McorSD(self):
@@ -415,39 +418,33 @@ class FitsCube(object):
 
     @property
     def at_flux(self):
-        popx = self.popx
-        popage_base = self.popage_base[:, np.newaxis, np.newaxis]
-        return (popx * np.log10(popage_base)).sum(axis=0) / popx.sum(axis=0)
+        popx = np.moveaxis(self.popx, 0, -1)
+        return (popx * np.log10(self.popage_base)).sum(axis=-1) / popx.sum(axis=-1)
 
     @property
     def at_mass(self):
-        mu = self.popmu_cor
-        popage_base = self.popage_base[:, np.newaxis, np.newaxis]
-        return (mu * np.log10(popage_base)).sum(axis=0) / mu.sum(axis=0)
+        mu = np.moveaxis(self.popmu_cor, 0, -1)
+        return (mu * np.log10(self.popage_base)).sum(axis=-1) / mu.sum(axis=-1)
 
     @property
     def alogZ_flux(self):
-        popx = self.popx
-        popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
-        return (popx * np.log10(popZ_base / self._Z_sun)).sum(axis=0) / popx.sum(axis=0)
+        popx = np.moveaxis(self.popx, 0, -1)
+        return (popx * np.log10(self.popZ_base / self._Z_sun)).sum(axis=-1) / popx.sum(axis=-1)
 
     @property
     def alogZ_mass(self):
-        mu = self.popmu_cor
-        popZ_base = self.popZ_base[:, np.newaxis, np.newaxis]
-        return (mu * np.log10(popZ_base / self._Z_sun)).sum(axis=0) / mu.sum(axis=0)
+        mu = np.moveaxis(self.popmu_cor, 0, -1)
+        return (mu * np.log10(self.popZ_base / self._Z_sun)).sum(axis=-1) / mu.sum(axis=-1)
 
     @property
     def aaFe_flux(self):
-        popx = self.popx
-        popaFe_base = self.popaFe_base[:, np.newaxis, np.newaxis]
-        return (popx * popaFe_base).sum(axis=0) / popx.sum(axis=0)
+        popx = np.moveaxis(self.popx, 0, -1)
+        return (popx * self.popaFe_base).sum(axis=-1) / popx.sum(axis=-1)
 
     @property
     def aaFe_mass(self):
-        popmu_cor = self.popmu_cor
-        popaFe_base = self.popaFe_base[:, np.newaxis, np.newaxis]
-        return (popmu_cor * popaFe_base).sum(axis=0) / popmu_cor.sum(axis=0)
+        mu = np.moveaxis(self.popmu_cor, 0, -1)
+        return (mu * self.popaFe_base).sum(axis=-1) / mu.sum(axis=-1)
 
     def SFRSD(self, dt=0.5e9):
         Mini = self.toRectBase(self.MiniSD).sum(axis=1)

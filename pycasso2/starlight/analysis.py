@@ -83,19 +83,22 @@ def SFR(Mini, tb, dt=0.5e9):
         Note: ``SFR.shape[0] == len(t)`` 
 
     '''
+    is_masked = isinstance(Mini, np.ma.MaskedArray)
     logtb = np.log10(tb)
     logtb_bins = bin_edges(logtb)
     tb_bins = 10**logtb_bins
     tl = np.arange(tb_bins.min(), tb_bins.max() + dt, dt)
     tl_bins = bin_edges(tl)
-    sfr_shape = (len(tl) + 2,) + Mini.shape[1:]
+    spatial_shape = Mini.shape[1:]
+    Mini = Mini.reshape(Mini.shape[0], -1)
+    sfr_shape = (len(tl) + 2, Mini.shape[1])
     sfr = np.zeros(sfr_shape)
-    for j in xrange(sfr_shape[1]):
-        for i in xrange(sfr_shape[2]):
-            if Mini[:, j, i].mask.all():
-                continue
-            Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, j, i])
-            sfr[1:-1, j, i] = Mini_resam / dt
+    for i in xrange(sfr_shape[1]):
+        if is_masked and Mini[:, i].mask.all():
+            continue
+        Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, i])
+        sfr[1:-1, i] = Mini_resam / dt
 
     tl = np.hstack((tl[0] - dt, tl, tl[-1] + dt))
+    sfr.shape = (len(tl),) + spatial_shape
     return sfr, tl

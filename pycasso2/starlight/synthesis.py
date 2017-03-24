@@ -105,10 +105,16 @@ class SynthesisAdapter(object):
 
     def _readData(self):
         self.l_obs = self._cube.l_obs
-        self.f_obs = self._cube.f_obs
-        self.f_err = self._cube.f_err
-        self.f_flag = self._cube.f_flag
         self.spatialMask = self._cube.getSpatialMask(flags.no_obs)
+        if self.isSegmented:
+            self.f_obs = self._cube.f_obs[:, np.newaxis, :]
+            self.f_err = self._cube.f_err[:, np.newaxis, :]
+            self.f_flag = self._cube.f_flag[:, np.newaxis, :]
+            self.spatialMask = self.spatialMask[np.newaxis, :]
+        else:
+            self.f_obs = self._cube.f_obs
+            self.f_err = self._cube.f_err
+            self.f_flag = self._cube.f_flag
 
     def _getTemplates(self, cfg, key):
         grid = PGridFile(self.starlightDir)
@@ -193,12 +199,14 @@ class SynthesisAdapter(object):
             new_run.maskFile = self._arqMaskFormat % (self.name, y, x)
         new_run.x = x
         new_run.y = y
+        f_obs = self.f_obs[:, y, x]
         if use_errors_flags:
-            write_input(self.l_obs, self.f_obs[:, y, x], self.f_err[:, y, x],
-                        self.f_flag[:, y, x], path.join(self.obsDir, new_run.inFile))
+            f_err = self.f_err[:, y, x]
+            f_flag = self.f_flag[:, y, x]
         else:
-            write_input(self.l_obs, self.f_obs[:, y, x], None, None,
-                        path.join(self.obsDir, new_run.inFile))
+            f_err = None
+            f_flag = None
+        write_input(self.l_obs, f_obs, f_err, f_flag, path.join(self.obsDir, new_run.inFile))
         return new_run
 
     def gridIterator(self, chunk_size, use_errors_flags=True, use_custom_masks=False):
@@ -213,11 +221,19 @@ class SynthesisAdapter(object):
 
     def createSynthesisCubes(self, pop_len):
         self._cube.createSynthesisCubes(pop_len)
-        self.f_syn = self._cube.f_syn
-        self.f_wei = self._cube.f_wei
-        self.popx = self._cube.popx
-        self.popmu_ini = self._cube.popmu_ini
-        self.popmu_cor = self._cube.popmu_cor
+        if self.isSegmented:
+            self.f_syn = self._cube.f_syn[:, np.newaxis, :]
+            self.f_wei = self._cube.f_wei[:, np.newaxis, :]
+            self.popx = self._cube.popx[:, np.newaxis, :]
+            self.popmu_ini = self._cube.popmu_ini[:, np.newaxis, :]
+            self.popmu_cor = self._cube.popmu_cor[:, np.newaxis, :]
+        else:
+            self.f_syn = self._cube.f_syn
+            self.f_wei = self._cube.f_wei
+            self.popx = self._cube.popx
+            self.popmu_ini = self._cube.popmu_ini
+            self.popmu_cor = self._cube.popmu_cor
+        
         self.popage_base = self._cube.popage_base
         self.popZ_base = self._cube.popZ_base
         self.popaFe_base = self._cube.popaFe_base
@@ -248,8 +264,7 @@ class SynthesisAdapter(object):
             log.debug('Writing synthesis for spaxel (%d,%d)' % (x, y))
             f_obs_norm = keywords['fobs_norm']
             slice_d, slice_o = get_subset_slices(self.l_obs, spectra['l_obs'])
-            self.f_syn[slice_d, y, x] = spectra['f_syn'][
-                slice_o] * (f_obs_norm / grid.fluxUnit)
+            self.f_syn[slice_d, y, x] = spectra['f_syn'][slice_o] * (f_obs_norm / grid.fluxUnit)
             self.f_wei[slice_d, y, x] = spectra['f_wei'][slice_o]
             # TODO: update flags with starlight clipped, etc.
             self.f_flag[:slice_d.start] |= flags.no_starlight
@@ -259,7 +274,10 @@ class SynthesisAdapter(object):
             self.popmu_ini[:, y, x] = population['popmu_ini']
             self.popmu_cor[:, y, x] = population['popmu_cor']
             for k in self._cube._ext_keyword_list:
-                keyword_data[k][y, x] = keywords[k]
+                if self.isSegmented:
+                    keyword_data[k][x] = keywords[k]
+                else:
+                    keyword_data[k][y, x] = keywords[k]
 
     def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):
         f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_wei <= 0)
@@ -268,3 +286,7 @@ class SynthesisAdapter(object):
 
     def writeCube(self, filename, overwrite=False):
         self._cube.write(filename, overwrite=overwrite)
+        
+    @property
+    def isSegmented(self):
+        return self._cube.hasSegmentationMask

@@ -554,8 +554,12 @@ def light2mass_ini(popx, fbase_norm, Lobs_norm, q_norm, A_V):
     Lobs = popx / 100.0
     Lobs *= Lobs_norm
     Lobs *= 10.0**(0.4 * q_norm * A_V)
+    if Lobs.ndim == 3:
+        fbase_norm = fbase_norm[..., np.newaxis]
+    elif Lobs.ndim == 4:
+        fbase_norm = fbase_norm[..., np.newaxis, np.newaxis]
 
-    Mini = Lobs / fbase_norm[..., np.newaxis, np.newaxis]
+    Mini = Lobs / fbase_norm
     return Mini
 
 

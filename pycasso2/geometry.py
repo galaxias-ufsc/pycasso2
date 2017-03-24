@@ -39,9 +39,6 @@ def get_ellipse_params(image, x0, y0):
         Ellipticity, defined as the ratio between the semiminor
         axis and the semimajor axis (:math:`b/a`).
     '''
-    if not isinstance(image, np.ma.MaskedArray):
-        image = np.ma.array(image)
-
     yy, xx = np.indices(image.shape)
     y = yy - y0
     x = xx - x0
@@ -50,14 +47,14 @@ def get_ellipse_params(image, x0, y0):
     xy = x * y
     r2 = x2 + y2
 
-    mask = image.mask.copy()
-    mask[r2 == 0.0] = True
+    image = np.ma.array(image)
+    image[r2 == 0.0] = np.ma.masked
 
-    x2 = np.ma.array(x2, mask=mask).compressed()
-    y2 = np.ma.array(y2, mask=mask).compressed()
-    xy = np.ma.array(xy, mask=mask).compressed()
-    r2 = np.ma.array(r2, mask=mask).compressed()
-    image = np.ma.array(image, mask=mask).compressed()
+    x2 = np.ma.array(x2, mask=image.mask).compressed()
+    y2 = np.ma.array(y2, mask=image.mask).compressed()
+    xy = np.ma.array(xy, mask=image.mask).compressed()
+    r2 = np.ma.array(r2, mask=image.mask).compressed()
+    image = np.ma.array(image, mask=image.mask).compressed()
     norm = image.sum()
 
     Mxx = ((x2 / r2) * image).sum() / norm

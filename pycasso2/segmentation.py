@@ -45,40 +45,16 @@ def aperture_segmentation(shape, x0, y0, pa=0.0, ba=1.0, step=5):
 
 
 def sum_spectra(segmask, f_obs, f_err, f_flag, threshold=0.5):
-    N_lambda = f_obs.shape[0]
-    N_zone = segmask.shape[0]
+    N_good = np.tensordot((f_flag == 0).astype('float'), segmask, axes=[[1, 2], [1, 2]])
     N_pix = segmask.sum(axis=2).sum(axis=1).astype('float')
-    shape = (N_zone, N_lambda)
-    zone_flux = np.zeros(shape)
-    zone_error = np.zeros(shape)
-    zone_flag = np.zeros(shape, dtype='int')
-    for z in xrange(N_zone):
-        zmask = segmask[z]
-        fo = f_obs[:, zmask]
-        fe = f_err[:, zmask]
-        ff = f_flag[:, zmask]
-        N_good = (ff == 0).astype('float').sum(axis=1)
-        good_frac = N_good / N_pix[z]
-        zone_flux[z] = fo.sum(axis=1) / good_frac
-        zone_error[z] = np.sqrt((fe**2).sum(axis=1) / good_frac)
-        bad_lambdas = good_frac < threshold
-        zone_flag[z, bad_lambdas] = np.bitwise_or.reduce(ff[bad_lambdas], axis=1)
-        zone_flux[z, bad_lambdas] = 0.0
-        zone_error[z, bad_lambdas] = 0.0
-    return zone_flux, zone_error, zone_flag
-        
-
-def sum_spectra_vector(segmask, f_obs, f_err, f_flag, threshold=0.5):
-    N_good = np.tensordot(segmask, (f_flag == 0).astype('float'), axes=[[1,2],[1,2]])
-    N_pix = segmask.sum(axis=2).sum(axis=1).astype('float')
-    good_frac = N_good / N_pix[:, np.newaxis]
-    bad_zone = good_frac < threshold
-    zone_flag = np.where(bad_zone, flags.no_data, 0)
-    zone_flux = np.tensordot(segmask, f_obs.filled(0.0), axes=[[1,2],[1,2]]) / good_frac
-    zone_flux[bad_zone] = 0.0
-    zone_error2 = np.tensordot(segmask, f_err.filled(0.0)**2, axes=[[1,2],[1,2]]) / good_frac
+    good_frac = N_good / N_pix
+    bad_lambdas = good_frac < threshold
+    zone_flag = np.where(bad_lambdas, flags.no_data, 0)
+    zone_flux = np.tensordot(f_obs.filled(0.0), segmask, axes=[[1, 2], [1, 2]]) / good_frac
+    zone_flux[bad_lambdas] = 0.0
+    zone_error2 = np.tensordot(f_err.filled(0.0)**2, segmask, axes=[[1, 2], [1, 2]]) / good_frac
     zone_error = np.sqrt(zone_error2)
-    zone_flux[bad_zone] = 0.0
+    zone_error[bad_lambdas] = 0.0
     return zone_flux, zone_error, zone_flag
 
 
@@ -88,9 +64,16 @@ def spatialize(x, segmask, extensive=False):
         raise Exception('Segmentation mask has overlapping regions, can not be spatialized.')
     if extensive:
         area = segmask.sum(axis=2).sum(axis=1).astype('float')
-        if x.ndim > 1:
-            area.shape = area.shape + ((1,) * (x.ndim - 1))
+        #if x.ndim > 1:
+            #area.shape = area.shape + ((1,) * (x.ndim - 1))
         x = x / area
-    x_spat = np.tensordot(x, segmask, axes=(0, 0))
-    return np.ma.array(x_spat, mask=sum_segmask < 1)
+    x_spat = np.tensordot(x, segmask, axes=(-1, 0))
+    mask = sum_segmask < 1
+    if x_spat.ndim == mask.ndim:
+        return np.ma.array(x_spat, mask=mask)
+    else:
+        x_spat = np.ma.array(x_spat)
+        x_spat[:, mask] = np.ma.masked
+        return x_spat
+        return
 
