@@ -44,17 +44,27 @@ def aperture_segmentation(shape, x0, y0, pa=0.0, ba=1.0, step=5):
     return segmask
 
 
+def prune_segmask(segmask, spatial_mask):
+    '''
+    Remove zones that have no data.
+    '''
+    segmask[:, spatial_mask] = 0
+    good_zones = segmask.sum(axis=(1, 2)) > 0
+    return segmask[good_zones]
+
+
 def sum_spectra(segmask, f_obs, f_err, f_flag, threshold=0.5):
     N_good = np.tensordot((f_flag == 0).astype('float'), segmask, axes=[[1, 2], [1, 2]])
-    N_pix = segmask.sum(axis=2).sum(axis=1).astype('float')
+    N_pix = segmask.sum(axis=(1, 2)).astype('float')
     good_frac = N_good / N_pix
-    bad_lambdas = good_frac < threshold
-    zone_flag = np.where(bad_lambdas, flags.no_data, 0)
+    flagged = good_frac < threshold
+    zone_flag = np.where(flagged, flags.no_data, 0)
+    zone_flag |= np.where(good_frac < 1.0, flags.seg_has_badpixels, 0)
     zone_flux = np.tensordot(f_obs.filled(0.0), segmask, axes=[[1, 2], [1, 2]]) / good_frac
-    zone_flux[bad_lambdas] = 0.0
+    zone_flux[flagged] = 0.0
     zone_error2 = np.tensordot(f_err.filled(0.0)**2, segmask, axes=[[1, 2], [1, 2]]) / good_frac
     zone_error = np.sqrt(zone_error2)
-    zone_error[bad_lambdas] = 0.0
+    zone_error[flagged] = 0.0
     return zone_flux, zone_error, zone_flag
 
 
@@ -63,7 +73,7 @@ def spatialize(x, segmask, extensive=False):
     if (sum_segmask > 1).any():
         raise Exception('Segmentation mask has overlapping regions, can not be spatialized.')
     if extensive:
-        area = segmask.sum(axis=2).sum(axis=1).astype('float')
+        area = segmask.sum(axis=(1, 2)).astype('float')
         #if x.ndim > 1:
             #area.shape = area.shape + ((1,) * (x.ndim - 1))
         x = x / area
@@ -76,4 +86,10 @@ def spatialize(x, segmask, extensive=False):
         x_spat[:, mask] = np.ma.masked
         return x_spat
         return
+
+
+def read_segmentation_map(fitsfile):
+    from astropy.io import fits
+    # TODO: add support for Capellari and QBICK.
+    return fits.getdata(fitsfile)
 

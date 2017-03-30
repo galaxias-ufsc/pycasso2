@@ -4,33 +4,85 @@ Created on 22 de mar de 2017
 @author: andre
 '''
 
-from pycasso2 import FitsCube
-from pycasso2.segmentation import mosaic_segmentation, spatialize, sum_spectra
+from pycasso2.config import default_config_path
+from pycasso2 import FitsCube, flags
+from pycasso2.segmentation import mosaic_segmentation, ring_segmentation, aperture_segmentation,\
+    prune_segmask
+from pycasso2.segmentation import sum_spectra, read_segmentation_map
 
-from astropy.io import fits
-import matplotlib.pyplot as plt
-import sys
+from astropy import log
+import argparse
 
-def read_segmentation(fitsfile):
-    return fits.getdata(fitsfile)
+###############################################################################
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Create segmented cube from pycasso cube.')
 
-def plot_test(f_obs_orig, f_obs_zone, segmask):
-    f_obs_yx = spatialize(f_obs_zone, segmask, extensive=True)
-    plt.figure()
-    plt.imshow((f_obs_orig[500]))
-    plt.colorbar()
-    plt.figure()
-    plt.imshow((f_obs_yx[500]))
-    plt.colorbar()
+    parser.add_argument('cubeIn', type=str, nargs=1,
+                        help='Cube. Ex.: T001.fits')
+    parser.add_argument('--out', dest='cubeOut', required=True,
+                        help='Output cube.')
+    parser.add_argument('--rename', dest='newName',
+                        help='Rename the output cube.')
+    parser.add_argument('--config', dest='configFile', default=default_config_path,
+                        help='Config file. Default: %s' % default_config_path)
+    parser.add_argument('--config-section', dest='configSection', default='starlight',
+                        help='Config section with starlight settings. Default: starlight')
+    parser.add_argument('--seg', dest='seg',
+                        help='Custom segmentation file or built-in segmentation (mosaic | ring | aperture).')
+    parser.add_argument('--npix', dest='npix', type=float,
+                        help='Scale of segmentation. Zone width for mosaic, radial ' \
+                        'step for ring and aperture.')
+    parser.add_argument('--pa', dest='pa', type=float, default=None,
+                        help='Position angle in degrees. Only used for ring and aperture. '\
+                        'Default: calculate from cube.')
+    parser.add_argument('--ba', dest='ba', type=float, default=None,
+                        help='b/a fraction. Only used for ring and aperture. '\
+                        'Default: Default: calculate from cube.')
+    parser.add_argument('--x0', dest='x0', type=float, default=None,
+                        help='x coordinate of the center. '\
+                        'Only used for ring and aperture. Default: calculate from cube.')
+    parser.add_argument('--y0', dest='y0', type=float, default=None,
+                        help='y coordinate of the center. Only used for ring and aperture. '\
+                        'Default: Default: calculate from cube.')
+    parser.add_argument('--overwrite', dest='overwrite', action='store_true',
+                        help='Overwrite output.')
 
+    return parser.parse_args()
+###############################################################################
 
-c = FitsCube(sys.argv[1])
-#segmask = ring_segmentation((c.Ny, c.Nx), c.x0, c.y0, c.pa, c.ba)
-#segmask = aperture_segmentation((c.Ny, c.Nx), c.x0, c.y0, c.pa, c.ba)
-segmask = mosaic_segmentation((c.Ny, c.Nx), bin_size=25)
+args = parse_args()
+
+c = FitsCube(args.cubeIn[0])
+pa = c.pa if args.pa is None else args.pa
+ba = c.ba if args.ba is None else args.ba
+x0 = c.x0 if args.x0 is None else args.x0
+y0 = c.y0 if args.y0 is None else args.y0
+if args.seg == 'mosaic':
+    npix = int(args.npix)
+    log.info('Creating mosaic with width = %d pix.' % npix)
+    segmask = mosaic_segmentation((c.Ny, c.Nx), bin_size=npix)
+elif args.seg == 'ring':
+    log.info('Creating rings with step = %.1f pix.' % args.npix)
+    segmask = ring_segmentation((c.Ny, c.Nx), x0, y0, pa, ba)
+elif args.seg == 'aperture':
+    log.info('Creating apertures with step = %.1f pix.' % args.npix)
+    segmask = aperture_segmentation((c.Ny, c.Nx), c.x0, c.y0, c.pa, c.ba)
+else:
+    log.info('Loading segmentation from file %s.' % args.seg)
+    segmask = read_segmentation_map(args.seg)
+
+spatial_mask = c.getSpatialMask(flags.no_obs)
+segmask = prune_segmask(segmask, spatial_mask)
+
 f_obs, f_err, f_flag = sum_spectra(segmask, c.f_obs, c.f_err, c.f_flag)
 
 cz = FitsCube()
 cz._initFits(f_obs, f_err, f_flag, c._header, c._wcs, segmask)
-cz.name = sys.argv[2]
-cz.write('test.fits', overwrite=True)
+if args.newName is None:
+    cz.name = c.name
+else:
+    log.debug('Renamed cube to %s' % args.newName)
+    cz.name = args.newName
+print 'Saving cube to %s.' % args.cubeOut
+cz.write(args.cubeOut, overwrite=args.overwrite)
