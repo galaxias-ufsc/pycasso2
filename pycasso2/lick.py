@@ -56,7 +56,12 @@ class IndexEW(object):
         cont_r = flux[l1_r:l2_r].mean(axis=0)
         wave_c_b = (self.wave1_b + self.wave2_b) / 2.0
         wave_c_r = (self.wave1_r + self.wave2_r) / 2.0
-        l_obs = l_obs[l1:l2, np.newaxis, np.newaxis]
+        if flux.ndim == 2:
+            l_obs = l_obs[l1:l2, np.newaxis]
+        elif flux.ndim == 3:
+            l_obs = l_obs[l1:l2, np.newaxis, np.newaxis]
+        else:
+            raise Exception('flux must be 2 or 3-dimensional.')
         flux = flux[l1:l2]
         dl = l_obs[1] - l_obs[0]
 
@@ -104,7 +109,12 @@ class IndexMag(object):
         cont_r = flux[l1_r:l2_r].mean(axis=0)
         wave_c_b = (self.wave1_b + self.wave2_b) / 2.0
         wave_c_r = (self.wave1_r + self.wave2_r) / 2.0
-        l_obs = l_obs[l1:l2, np.newaxis, np.newaxis]
+        if flux.ndim == 2:
+            l_obs = l_obs[l1:l2, np.newaxis]
+        elif flux.ndim == 3:
+            l_obs = l_obs[l1:l2, np.newaxis, np.newaxis]
+        else:
+            raise Exception('flux must be 2 or 3-dimensional.')
         flux = flux[l1:l2]
         dl = l_obs[1] - l_obs[0]
 
