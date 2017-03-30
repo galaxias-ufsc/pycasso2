@@ -105,8 +105,8 @@ class FitsCube(object):
                 image = spatialize(image, self.segmentationMask, extensive=True)
             except:
                 log.debug('Could not calculate ellipse parameters due to segmentation.')
-                self.pa = np.nan
-                self.ba = np.nan
+                self.pa = None
+                self.ba = None
                 return
         self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
 
