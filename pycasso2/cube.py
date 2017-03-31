@@ -277,6 +277,14 @@ class FitsCube(object):
     @lazyproperty
     def segmentationMask(self):
         return self._getExtensionData(self._ext_segmask)
+    
+    @lazyproperty
+    def zoneArea_pix(self):
+        return self.segmentationMask.sum(axis=(1, 2))
+
+    @lazyproperty
+    def zoneArea_pc2(self):
+        return self.zoneArea_pix * self.pixelArea_pc2
 
     @lazyproperty
     def f_obs(self):
@@ -406,19 +414,31 @@ class FitsCube(object):
     def McorSD(self):
         popmu_cor = self.popmu_cor.copy()
         popmu_cor /= popmu_cor.sum(axis=0)[np.newaxis, ...]
-        return popmu_cor * (self.Mcor_tot[np.newaxis, ...] / self.pixelArea_pc2)
+        if self.hasSegmentationMask:
+            area = self.zoneArea_pc2
+        else:
+            area = self.pixelArea_pc2
+        return popmu_cor * (self.Mcor_tot[np.newaxis, ...] / area)
 
     @property
     def MiniSD(self):
         popmu_ini = self.popmu_ini.copy()
         popmu_ini /= popmu_ini.sum(axis=0)[np.newaxis, ...]
-        return popmu_ini * (self.Mini_tot[np.newaxis, ...] / self.pixelArea_pc2)
+        if self.hasSegmentationMask:
+            area = self.zoneArea_pc2
+        else:
+            area = self.pixelArea_pc2
+        return popmu_ini * (self.Mini_tot[np.newaxis, ...] / area)
 
     @property
     def LobnSD(self):
         popx = self.popx.copy()
         popx /= popx.sum(axis=0)[np.newaxis, ...]
-        return popx * (self.Lobs_norm[np.newaxis, ...] / self.pixelArea_pc2)
+        if self.hasSegmentationMask:
+            area = self.zoneArea_pc2
+        else:
+            area = self.pixelArea_pc2
+        return popx * (self.Lobs_norm[np.newaxis, ...] / area)
 
     @property
     def at_flux(self):
