@@ -61,7 +61,7 @@ def rms_box_spectra(ll, flux, width=100.0, threshold=0.5):
             l2 = Nl - 1
         Nbox = l2 - l1
         f = flux[l1:l2]
-        Ngood = (~f.mask).astype('int').sum(axis=0)
+        Ngood = (~np.ma.getmaskarray(f)).astype('int').sum(axis=0)
         rms[l] = np.sqrt((f * f).sum(axis=0) / (Ngood - 1))
         rms[l][Ngood < (threshold * Nbox)] = np.ma.masked
     return rms

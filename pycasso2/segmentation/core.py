@@ -49,7 +49,7 @@ def voronoi_segmentation(signal, noise, targetSN, plot=False, quiet=True):
         from .voronoi_2d_binning import voronoi_2d_binning
     except ImportError:
         raise Exception('Voronoi binning module not installed.')
-    good = ~signal.mask
+    good = ~np.ma.getmaskarray(signal)
     yy, xx = np.indices(signal.shape)
     zone_num, xNode, _, _, _, _, _, _ = voronoi_2d_binning(xx[good], yy[good], signal[good], noise[good],
                                                            targetSN, plot=plot, quiet=quiet)

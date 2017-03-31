@@ -48,7 +48,7 @@ def get_ellipse_params(image, x0, y0):
     r2 = x2 + y2
 
     image = np.ma.array(image)
-    sel = ~image.mask
+    sel = ~np.ma.getmaskarray(image)
     sel[r2 == 0.0] = True
 
     x2 = x2[sel]
@@ -331,7 +331,7 @@ def radial_profile(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0,
     new_shape = prop.shape[:-2] + (nbins,)
     r__yx = get_image_distance(imshape, x0, y0, pa, ba) / rad_scale
 
-    n_bad = prop.mask.astype('int')
+    n_bad = np.ma.getmaskarray(prop).astype('int')
     max_bad = 1.0
     while n_bad.ndim > 2:
         max_bad *= n_bad.shape[0]
