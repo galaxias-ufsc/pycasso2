@@ -6,8 +6,7 @@ Created on 22 de mar de 2017
 
 from pycasso2.config import default_config_path
 from pycasso2 import FitsCube, flags
-from pycasso2.segmentation import mosaic_segmentation, ring_segmentation, aperture_segmentation,\
-    prune_segmask
+import pycasso2.segmentation as seg
 from pycasso2.segmentation import sum_spectra, read_segmentation_map
 
 from astropy import log
@@ -29,10 +28,12 @@ def parse_args():
     parser.add_argument('--config-section', dest='configSection', default='starlight',
                         help='Config section with starlight settings. Default: starlight')
     parser.add_argument('--seg', dest='seg',
-                        help='Custom segmentation file or built-in segmentation (mosaic | ring | aperture).')
+                        help='Custom segmentation file or built-in segmentation (mosaic | ring | aperture | voronoi).')
     parser.add_argument('--npix', dest='npix', type=float,
                         help='Scale of segmentation. Zone width for mosaic, radial ' \
                         'step for ring and aperture.')
+    parser.add_argument('--sn', dest='sn', type=float, default=20,
+                        help='Target S/N when using Voronoi segmentation. Default: 20')
     parser.add_argument('--pa', dest='pa', type=float, default=None,
                         help='Position angle in degrees. Only used for ring and aperture. '\
                         'Default: calculate from cube.')
@@ -61,19 +62,22 @@ y0 = c.y0 if args.y0 is None else args.y0
 if args.seg == 'mosaic':
     npix = int(args.npix)
     log.info('Creating mosaic with width = %d pix.' % npix)
-    segmask = mosaic_segmentation((c.Ny, c.Nx), bin_size=npix)
+    segmask = seg.mosaic_segmentation((c.Ny, c.Nx), bin_size=npix)
 elif args.seg == 'ring':
     log.info('Creating rings with step = %.1f pix.' % args.npix)
-    segmask = ring_segmentation((c.Ny, c.Nx), x0, y0, pa, ba)
+    segmask = seg.ring_segmentation((c.Ny, c.Nx), x0, y0, pa, ba)
 elif args.seg == 'aperture':
     log.info('Creating apertures with step = %.1f pix.' % args.npix)
-    segmask = aperture_segmentation((c.Ny, c.Nx), c.x0, c.y0, c.pa, c.ba)
+    segmask = seg.aperture_segmentation((c.Ny, c.Nx), c.x0, c.y0, c.pa, c.ba)
+elif args.seg == 'voronoi':
+    log.info('Creating voronoi zones with S/N = %.1f.' % args.sn)
+    segmask = seg.voronoi_segmentation(c.flux_norm_window, c.noise_norm_window, args.sn)
 else:
     log.info('Loading segmentation from file %s.' % args.seg)
     segmask = read_segmentation_map(args.seg)
 
 spatial_mask = c.getSpatialMask(flags.no_obs)
-segmask = prune_segmask(segmask, spatial_mask)
+segmask = seg.prune_segmask(segmask, spatial_mask)
 
 f_obs, f_err, f_flag = sum_spectra(segmask, c.f_obs, c.f_err, c.f_flag)
 

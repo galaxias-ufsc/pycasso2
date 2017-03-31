@@ -30,11 +30,6 @@ def safe_getheader(f, ext=0):
         return hdu.header
 
 
-def get_median_flux(wave, flux, wave1, wave2):
-    l1, l2 = find_nearest_index(wave, [wave1, wave2])
-    return np.ma.median(flux[l1:l2], axis=0)
-
-
 class FitsCube(object):
     _ext_f_obs = 'F_OBS'
     _ext_f_err = 'F_ERR'
@@ -396,7 +391,16 @@ class FitsCube(object):
     @lazyproperty
     def flux_norm_window(self):
         norm_lambda = 5635.0
-        return get_median_flux(self.l_obs, self.f_obs, norm_lambda - 45.0, norm_lambda + 45.0)
+        delta_l = 45.0
+        l1, l2 = find_nearest_index(self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
+        return np.ma.median(self.f_obs[l1:l2], axis=0)
+
+    @lazyproperty
+    def noise_norm_window(self):
+        norm_lambda = 5635.0
+        delta_l = 45.0
+        l1, l2 = find_nearest_index(self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
+        return np.ma.std(self.f_obs[l1:l2], axis=0)
 
     @property
     def McorSD(self):

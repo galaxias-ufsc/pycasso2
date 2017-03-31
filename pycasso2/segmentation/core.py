@@ -4,8 +4,8 @@ Created on 23 de mar de 2017
 @author: andre
 '''
 import numpy as np
-from .geometry import get_image_distance
-from . import flags
+from ..geometry import get_image_distance
+from .. import flags
 
 def mosaic_segmentation(shape, bin_size=10):
     Ny, Nx = shape
@@ -44,6 +44,25 @@ def aperture_segmentation(shape, x0, y0, pa=0.0, ba=1.0, step=5):
     return segmask
 
 
+def voronoi_segmentation(signal, noise, targetSN, plot=False, quiet=True):
+    try:
+        from .voronoi_2d_binning import voronoi_2d_binning
+    except ImportError:
+        raise Exception('Voronoi binning module not installed.')
+    good = ~signal.mask
+    yy, xx = np.indices(signal.shape)
+    zone_num, xNode, _, _, _, _, _, _ = voronoi_2d_binning(xx[good], yy[good], signal[good], noise[good],
+                                                           targetSN, plot=plot, quiet=quiet)
+    zones = np.ma.empty(signal.shape)
+    zones[good] = zone_num
+    zones[~good] = -1
+    Nzone = len(xNode)
+    segmask = np.zeros((Nzone,) + signal.shape, dtype='int32')
+    for z in xrange(Nzone):
+        segmask[z, zones == z] = 1
+    return segmask
+
+
 def prune_segmask(segmask, spatial_mask):
     '''
     Remove zones that have no data.
@@ -61,10 +80,10 @@ def sum_spectra(segmask, f_obs, f_err, f_flag, threshold=0.5):
     zone_flag = np.where(flagged, flags.no_data, 0)
     zone_flag |= np.where(good_frac < 1.0, flags.seg_has_badpixels, 0)
     zone_flux = np.tensordot(f_obs.filled(0.0), segmask, axes=[[1, 2], [1, 2]]) / good_frac
-    zone_flux[flagged] = 0.0
+    #zone_flux[flagged] = 0.0
     zone_error2 = np.tensordot(f_err.filled(0.0)**2, segmask, axes=[[1, 2], [1, 2]]) / good_frac
     zone_error = np.sqrt(zone_error2)
-    zone_error[flagged] = 0.0
+    #zone_error[flagged] = 0.0
     return zone_flux, zone_error, zone_flag
 
 
