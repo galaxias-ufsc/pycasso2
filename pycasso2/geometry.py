@@ -48,13 +48,14 @@ def get_ellipse_params(image, x0, y0):
     r2 = x2 + y2
 
     image = np.ma.array(image)
-    image[r2 == 0.0] = np.ma.masked
+    sel = ~image.mask
+    sel[r2 == 0.0] = True
 
-    x2 = np.ma.array(x2, mask=image.mask).compressed()
-    y2 = np.ma.array(y2, mask=image.mask).compressed()
-    xy = np.ma.array(xy, mask=image.mask).compressed()
-    r2 = np.ma.array(r2, mask=image.mask).compressed()
-    image = np.ma.array(image, mask=image.mask).compressed()
+    x2 = x2[sel]
+    y2 = y2[sel]
+    xy = xy[sel]
+    r2 = r2[sel]
+    image = image[sel]
     norm = image.sum()
 
     Mxx = ((x2 / r2) * image).sum() / norm
