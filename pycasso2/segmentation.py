@@ -4,8 +4,8 @@ Created on 23 de mar de 2017
 @author: andre
 '''
 import numpy as np
-from ..geometry import get_image_distance
-from .. import flags
+from .geometry import get_image_distance
+from . import flags
 
 def mosaic_segmentation(shape, bin_size=10):
     Ny, Nx = shape
@@ -46,7 +46,7 @@ def aperture_segmentation(shape, x0, y0, pa=0.0, ba=1.0, step=5):
 
 def voronoi_segmentation(signal, noise, targetSN, plot=False, quiet=True):
     try:
-        from .voronoi_2d_binning import voronoi_2d_binning
+        from voronoi.voronoi_2d_binning import voronoi_2d_binning
     except ImportError:
         raise Exception('Voronoi binning module not installed.')
     good = ~np.ma.getmaskarray(signal)
@@ -108,7 +108,6 @@ def spatialize(x, segmask, extensive=False):
 
 
 def read_segmentation_map(fitsfile):
-    from astropy.io import fits
-    # TODO: add support for Capellari and QBICK.
-    return fits.getdata(fitsfile)
+    # TODO: add support for QBICK and other maps.
+    raise NotImplementedError('Custom segmentation maps not implemented.')
 

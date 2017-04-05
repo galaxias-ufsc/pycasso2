@@ -7,7 +7,6 @@ Created on 22 de mar de 2017
 from pycasso2.config import default_config_path
 from pycasso2 import FitsCube, flags
 import pycasso2.segmentation as seg
-from pycasso2.segmentation import sum_spectra, read_segmentation_map
 
 from astropy import log
 import argparse
@@ -74,12 +73,12 @@ elif args.seg == 'voronoi':
     segmask = seg.voronoi_segmentation(c.flux_norm_window, c.noise_norm_window, args.sn)
 else:
     log.info('Loading segmentation from file %s.' % args.seg)
-    segmask = read_segmentation_map(args.seg)
+    segmask = seg.read_segmentation_map(args.seg)
 
 spatial_mask = c.getSpatialMask(flags.no_obs)
 segmask = seg.prune_segmask(segmask, spatial_mask)
 
-f_obs, f_err, f_flag = sum_spectra(segmask, c.f_obs, c.f_err, c.f_flag)
+f_obs, f_err, f_flag = seg.sum_spectra(segmask, c.f_obs, c.f_err, c.f_flag)
 
 cz = FitsCube()
 cz._initFits(f_obs, f_err, f_flag, c._header, c._wcs, segmask)
