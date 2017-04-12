@@ -108,6 +108,8 @@ def spatialize(x, segmask, extensive=False):
 
 
 def read_segmentation_map(fitsfile):
-    # TODO: add support for QBICK and other maps.
-    raise NotImplementedError('Custom segmentation maps not implemented.')
+    from astropy.io import fits
+    from .cube import FitsCube
 
+    segmask = fits.getdata(fitsfile, extname=FitsCube._ext_segmask)
+    return segmask
