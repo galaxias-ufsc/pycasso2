@@ -80,10 +80,10 @@ def sum_spectra(segmask, f_obs, f_err, f_flag, threshold=0.5):
     zone_flag = np.where(flagged, flags.no_data, 0)
     zone_flag |= np.where(good_frac < 1.0, flags.seg_has_badpixels, 0)
     zone_flux = np.tensordot(f_obs.filled(0.0), segmask, axes=[[1, 2], [1, 2]]) / good_frac
-    #zone_flux[flagged] = 0.0
+    zone_flux[flagged] = 0.0
     zone_error2 = np.tensordot(f_err.filled(0.0)**2, segmask, axes=[[1, 2], [1, 2]]) / good_frac
     zone_error = np.sqrt(zone_error2)
-    #zone_error[flagged] = 0.0
+    zone_error[flagged] = 0.0
     return zone_flux, zone_error, zone_flag
 
 
