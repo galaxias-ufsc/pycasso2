@@ -185,13 +185,9 @@ class IndexFluxRatio(object):
 class IndexMgFe(object):
 
     def fromFlux(self, l_obs, flux, error=None):
-        Mg_b = get_Lick_index('Mg_b', l_obs, flux, error)
-        Fe5270 = get_Lick_index('Fe5270', l_obs, flux, error)
-        Fe5335 = get_Lick_index('Fe5335', l_obs, flux, error)
-        if error is not None:
-            Mg_b, Mg_b_error = Mg_b
-            Fe5270, Fe5270_error = Fe5270
-            Fe5335, Fe5335_error = Fe5335
+        Mg_b, Mg_b_error = get_Lick_index('Mg_b', l_obs, flux, error)
+        Fe5270, Fe5270_error = get_Lick_index('Fe5270', l_obs, flux, error)
+        Fe5335, Fe5335_error = get_Lick_index('Fe5335', l_obs, flux, error)
         MgFe = np.sqrt(Mg_b * (0.72 * Fe5270 + 0.28 * Fe5335))
         if error is not None:
             e1 = 1.0 / \
