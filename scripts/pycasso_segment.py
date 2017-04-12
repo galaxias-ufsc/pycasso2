@@ -26,7 +26,7 @@ def parse_args():
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--config-section', dest='configSection', default='starlight',
                         help='Config section with starlight settings. Default: starlight')
-    parser.add_argument('--seg', dest='seg',
+    parser.add_argument('--seg', dest='seg', required=True,
                         help='Custom segmentation file or built-in segmentation (mosaic | ring | aperture | voronoi).')
     parser.add_argument('--npix', dest='npix', type=float,
                         help='Scale of segmentation. Zone width for mosaic, radial ' \
