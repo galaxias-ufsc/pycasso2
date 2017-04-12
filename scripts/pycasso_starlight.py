@@ -38,8 +38,8 @@ def parse_args():
                         help='Overwrite output.')
     parser.add_argument('--use-custom-masks', dest='useCustomMasks', action='store_true',
                         help='Use Custom per-spaxel emission line masks.')
-    parser.add_argument('--use-error-flag', dest='useErrorFlag', action='store_true',
-                        help='Use errors and flags from the spectra.')
+    parser.add_argument('--no-error-flag', dest='noErrorFlag', action='store_true',
+                        help='Don\' use errors and flags from the spectra.')
     parser.add_argument('--estimate-error', dest='estimateError', action='store_true',
                         help='Calculate errors from residual and update f_err extension.')
     parser.add_argument('--error-smooth-fwhm', dest='errorSmoothFwhm', type=float, default=15.0,
@@ -72,7 +72,7 @@ exec_path = cfg.get(args.configSection, 'exec_path')
 print 'Starting starlight runner (using %s).' % exec_path
 runner = StarlightRunner(
     n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
-for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=args.useErrorFlag,
+for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=not args.noErrorFlag,
                             use_custom_masks=args.useCustomMasks):
     if len(grid.runs) != 0:
         log.info('Dispatching %s.' % grid.name)
