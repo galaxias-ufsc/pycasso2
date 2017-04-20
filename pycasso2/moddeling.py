@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 
 def continuum(x, y, returns='ratio', degr=6, niterate=5,
@@ -53,11 +54,9 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
         if len(x) == 0:
             print('Stopped at iteration: {:d}.'.format(i))
             break
-        sig = np.std(s - f(m))[m]
+        sig = np.std((s - f(m))[m])
         res = s - f(m)
         m = (res < upper_threshold * sig) & (res > -lower_threshold * sig)
-        x = x[m]
-        s = s[m]
 
     npoints = np.sum(m)
 
@@ -65,7 +64,7 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
         print('Final number of points used in the fit: {:d}'
               .format(np.sum(m)))
         print('Rejection ratio: {:.2f}'
-              .format(1. - float(npoints)) / float(len(xfull))))
+              .format(1. - float(npoints) / float(len(xfull))))
 
     p = np.polyfit(x[m], s[m], deg=degr)
 
