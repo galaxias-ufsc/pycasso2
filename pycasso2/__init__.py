@@ -1,1 +1,1 @@
-from cube import *
+from pycasso2.cube import *
