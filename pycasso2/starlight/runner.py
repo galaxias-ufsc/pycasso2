@@ -104,7 +104,7 @@ def run_starlight_and_check(exec_path, grid, timeout, compress=True):
             log.error(
                 '%s hung last time, changing first run\'s random seed.' % grid.name)
             grid.seed()
-        elif result <> 0:
+        elif result != 0:
             log.error(
                 '%s failed with result %d, check your parameters!' % (grid.name, result))
         its += 1
