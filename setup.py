@@ -11,6 +11,7 @@ setup(
         'scripts/pycasso_explorer.py',
         'scripts/pycasso_import.py',
         'scripts/pycasso_starlight.py',
+        'scripts/pycasso_segment.py',
         ],
     description="Pycasso2",
     author="André Amorin",
