@@ -13,6 +13,8 @@ from .geometry import radial_profile, get_ellipse_params, get_image_distance, ge
 from .resampling import find_nearest_index
 from .segmentation import spatialize
 from . import flags
+from pycasso2 import modeling
+
 
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
@@ -401,14 +403,18 @@ class FitsCube(object):
         norm_lambda = 5635.0
         delta_l = 45.0
         l1, l2 = find_nearest_index(self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
-        return np.ma.median(self.f_obs[l1:l2], axis=0)
+        y = modeling.continuum(
+                self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)[1]
+        return np.mean(y, axis=0)
 
     @lazyproperty
     def noise_norm_window(self):
         norm_lambda = 5635.0
         delta_l = 45.0
         l1, l2 = find_nearest_index(self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
-        return np.ma.std(self.f_obs[l1:l2], axis=0)
+        y = modeling.continuum(
+                self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)[1]
+        return np.std(self.f_obs - y, axis=0)
 
     @property
     def McorSD(self):
