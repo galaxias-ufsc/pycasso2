@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+from warnings import warn
 
 
 def continuum(x, y, returns='ratio', degr=6, niterate=5,
@@ -76,3 +77,39 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
 
     if returns == 'function':
         return xfull, np.polyval(p, xfull)
+
+
+def cube_continuum(l_obs, f_obs, fitting_window, **copts):
+        """
+        Evaluates a polynomial continuum for the whole cube.
+        """
+
+        xy = np.column_stack(
+                [np.ravel(i) for i in np.indices(f_obs.shape[1:])])
+
+        fw = fitting_window
+
+        wl = copy.deepcopy(l_obs[fw[0]:fw[1]])
+        data = copy.deepcopy(f_obs[fw[0]:fw[1]])
+
+        c = np.zeros(np.shape(data), dtype='float32')
+
+        for k, h in enumerate(xy):
+            i, j = h
+            s = copy.deepcopy(data[:, i, j])
+            if (any(s[:20]) and any(s[-20:])) or \
+                    (any(np.isnan(s[:20])) and any(np.isnan(s[-20:]))):
+                try:
+                    cont = continuum(wl, s, returns='function', **copts)
+                    c[:, i, j] = cont[1]
+                except TypeError:
+                    warn(
+                        'Could not find a solution for {:d},{:d}.'
+                        .format(i, j))
+                    c[:, i, j] = np.nan
+                except ValueError:
+                    c[:, i, j] = np.nan
+            else:
+                c[:, i, j] = np.nan
+
+        return c
