@@ -402,18 +402,20 @@ class FitsCube(object):
     def flux_norm_window(self):
         norm_lambda = 5635.0
         delta_l = 45.0
-        l1, l2 = find_nearest_index(self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
-        y = modeling.continuum(
-                self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)[1]
+        l1, l2 = find_nearest_index(
+            self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
+        y = modeling.cube_continuum(
+            self.l_obs, self.f_obs, (l1, l2), degr=1, niterate=0)
         return np.mean(y, axis=0)
 
     @lazyproperty
     def noise_norm_window(self):
         norm_lambda = 5635.0
         delta_l = 45.0
-        l1, l2 = find_nearest_index(self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
-        y = modeling.continuum(
-                self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)[1]
+        l1, l2 = find_nearest_index(
+            self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
+        y = modeling.cube_continuum(
+            self.l_obs, self.f_obs, (l1, l2), degr=1, niterate=0)
         return np.std(self.f_obs - y, axis=0)
 
     @property
