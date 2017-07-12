@@ -405,7 +405,7 @@ class FitsCube(object):
         l1, l2 = find_nearest_index(
             self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
         y = modeling.cube_continuum(
-            self.l_obs, self.f_obs, (l1, l2), degr=1, niterate=0)
+            self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)
         return np.mean(y, axis=0)
 
     @lazyproperty
@@ -415,8 +415,8 @@ class FitsCube(object):
         l1, l2 = find_nearest_index(
             self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
         y = modeling.cube_continuum(
-            self.l_obs, self.f_obs, (l1, l2), degr=1, niterate=0)
-        return np.std(self.f_obs - y, axis=0)
+            self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)
+        return np.std(self.f_obs[l1:l2] - y, axis=0)
 
     @property
     def McorSD(self):

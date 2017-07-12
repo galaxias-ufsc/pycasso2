@@ -320,9 +320,19 @@ def gen_rebin(a, e, bin_e, mean=True):
 
     TODO: Add examples for gen_rebin.
     '''
-    a_e = np.histogram(e.ravel(), bin_e, weights=a.ravel())[0]
+    if not isinstance(a, np.ma.MaskedArray):
+        e = np.ma.array(a)
+    if not isinstance(e, np.ma.MaskedArray):
+        e = np.ma.array(e)
+        
+    m = np.ma.getmaskarray(a) | np.ma.getmaskarray(e)
+    a[m] = np.ma.masked
+    e[m] = np.ma.masked
+
+    a_e = np.histogram(e.compressed(), bin_e,
+                       weights=a.compressed())[0]
     if mean:
-        N = np.histogram(e.ravel(), bin_e)[0]
+        N = np.histogram(e.compressed(), bin_e)[0]
         mask = N > 0
         a_e[mask] /= N[mask]
     return a_e

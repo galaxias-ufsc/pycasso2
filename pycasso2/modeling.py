@@ -1,7 +1,6 @@
 import numpy as np
 import copy
-from warnings import warn
-
+from astropy import log
 
 def continuum(x, y, returns='ratio', degr=6, niterate=5,
               lower_threshold=2, upper_threshold=3, verbose=False):
@@ -45,7 +44,11 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
 
     xfull = copy.deepcopy(x)
     s = copy.deepcopy(y)
-    m = np.ones(s.shape, dtype='bool')
+    
+    if isinstance(s, np.ma.MaskedArray):
+        m = ~np.ma.getmaskarray(s)
+    else:
+        m = np.ones(s.shape, dtype='bool')
 
     def f(m):
         return np.polyval(np.polyfit(x[m], s[m], deg=degr), x)
@@ -53,7 +56,7 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
     for i in range(niterate):
 
         if len(x) == 0:
-            print('Stopped at iteration: {:d}.'.format(i))
+            log.debug('Stopped at iteration: {:d}.'.format(i))
             break
         sig = np.std((s - f(m))[m])
         res = s - f(m)
@@ -62,9 +65,9 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
     npoints = np.sum(m)
 
     if verbose:
-        print('Final number of points used in the fit: {:d}'
+        log.debug('Final number of points used in the fit: {:d}'
               .format(np.sum(m)))
-        print('Rejection ratio: {:.2f}'
+        log.debug('Rejection ratio: {:.2f}'
               .format(1. - float(npoints) / float(len(xfull))))
 
     p = np.polyfit(x[m], s[m], deg=degr)
@@ -79,37 +82,28 @@ def continuum(x, y, returns='ratio', degr=6, niterate=5,
         return xfull, np.polyval(p, xfull)
 
 
-def cube_continuum(l_obs, f_obs, fitting_window, **copts):
+def cube_continuum(l_obs, f_obs, **copts):
         """
         Evaluates a polynomial continuum for the whole cube.
         """
+        Nlambda = f_obs.shape[0]
+        data = f_obs.reshape(Nlambda, -1)
+        c = np.ma.zeros(shape=data.shape)
 
-        xy = np.column_stack(
-                [np.ravel(i) for i in np.indices(f_obs.shape[1:])])
-
-        fw = fitting_window
-
-        wl = copy.deepcopy(l_obs[fw[0]:fw[1]])
-        data = copy.deepcopy(f_obs[fw[0]:fw[1]])
-
-        c = np.zeros(np.shape(data), dtype='float32')
-
-        for k, h in enumerate(xy):
-            i, j = h
-            s = copy.deepcopy(data[:, i, j])
-            if (any(s[:20]) and any(s[-20:])) or \
-                    (any(np.isnan(s[:20])) and any(np.isnan(s[-20:]))):
+        for i in range(data.shape[1]):
+            s = data[:, i]
+            wl = np.ma.array(l_obs, mask=s.mask)
+            if s.count() / float(len(wl)) > 0.5:
                 try:
                     cont = continuum(wl, s, returns='function', **copts)
-                    c[:, i, j] = cont[1]
-                except TypeError:
-                    warn(
-                        'Could not find a solution for {:d},{:d}.'
-                        .format(i, j))
-                    c[:, i, j] = np.nan
-                except ValueError:
-                    c[:, i, j] = np.nan
+                    c[:, i] = cont[1]
+                except Exception as e:
+                    y, x = np.unravel_index(i, f_obs.shape)
+                    log.warn(
+                        'Could not find a solution for {:d},{:d}. Exception: {:s}'
+                        .format(y, x, e))
+                    c[:, i] = np.ma.masked
             else:
-                c[:, i, j] = np.nan
+                c[:, i] = np.ma.masked
 
-        return c
+        return c.reshape(f_obs.shape)
