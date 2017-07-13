@@ -97,16 +97,15 @@ def sum_spectra(segmask, f_obs, f_err, f_flag, threshold=0.5):
 
 
 def spatialize(x, segmask, extensive=False):
-    sum_segmask = segmask.sum(axis=0)
+    good_zones = ~np.ma.getmaskarray(x)
+    sum_segmask = segmask[good_zones].sum(axis=0)
     if (sum_segmask > 1).any():
         raise Exception('Segmentation mask has overlapping regions, can not be'
                         ' spatialized.')
     if extensive:
         area = segmask.sum(axis=(1, 2)).astype('float')
-        # if x.ndim > 1:
-        #     area.shape = area.shape + ((1,) * (x.ndim - 1))
         x = x / area
-    x_spat = np.tensordot(x, segmask, axes=(-1, 0))
+    x_spat = np.tensordot(x.filled(0.0), segmask, axes=(-1, 0))
     mask = sum_segmask < 1
     if x_spat.ndim == mask.ndim:
         return np.ma.array(x_spat, mask=mask)
