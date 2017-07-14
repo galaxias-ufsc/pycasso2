@@ -22,7 +22,7 @@ class PycassoExplorer:
         plt.ioff()
         self.fig = plt.figure(figsize=(10, 10))
         gs = GridSpec(3, 2)
-        self.ax_im = self.fig.add_subplot(gs[0, 0])
+        self.ax_im = self.fig.add_subplot(gs[0, 0], projection=self.c._wcs.celestial)
         self.ax_sp = self.fig.add_subplot(gs[1, :])
         self.ax_res = self.fig.add_subplot(gs[2, :], sharex=self.ax_sp)
 
@@ -31,8 +31,11 @@ class PycassoExplorer:
         self.ax_res.set_ylabel('Residual [%]')
         plt.setp(self.ax_sp.get_xticklabels(), visible=False)
         
-        images = {'light': self.c.flux_norm_window,
-                  'A_V': self.c.A_V,
+        c = self.c
+        
+        images = {'light': c.flux_norm_window,
+                  'mass': c.McorSD.sum(axis=0),
+                  'tau_V': self.c.tau_V,
                   'age': self.c.at_flux,
                   'met': self.c.alogZ_flux,
                   'd4000': self.c.LickIndex('D4000'),
@@ -40,8 +43,19 @@ class PycassoExplorer:
                   'v_d': self.c.v_d,
                   }
         
+        label = {'light': r'Image @ $5635 \AA$',
+                 'mass': r'$\Sigma_\star$',
+                 'tau_V': r'$\tau_V$',
+                  'age': r'$\langle \log\,t \rangle_L$',
+                  'met': r'$\langle \log\,Z/Z_\odot \rangle_M$',
+                  'd4000': r'$D(4000)$',
+                  'v_0': r'$v_\star\ [km\,s_{-1}]$',
+                  'v_d': r'$\sigma_\star\ [km\,s_{-1}]$',
+                  }
+
         is_ext = {'light': True,
-                  'A_V': False,
+                  'mass': True,
+                  'tau_V': False,
                   'age': False,
                   'met': False,
                   'd4000': False,
@@ -50,7 +64,8 @@ class PycassoExplorer:
                   }
 
         op = {'light': np.log10,
-              'A_V': lambda x: x,
+              'mass': np.log10,
+              'tau_V': lambda x: x,
               'age': lambda x: x,
               'met': lambda x: x,
               'd4000': lambda x: x,
@@ -58,26 +73,54 @@ class PycassoExplorer:
               'v_d': lambda x: x,
               }
         
-        if self.c.hasSegmentationMask:
-            sm = self.c.segmentationMask
-            images = {k: op[k](spatialize(im, sm, is_ext[k])) for k, im in list(images.items())}
+        vmin = {'light': None,
+              'mass': None,
+              'tau_V': 0.0,
+              'age': 7.0,
+              'met': -0.7,
+              'd4000': 0.9,
+              'v_0': -300.0,
+              'v_d': 0.0,
+              }
+        
+        vmax = {'light': None,
+              'mass': None,
+              'tau_V': 1.5,
+              'age': 10.3,
+              'met': 0.4,
+              'd4000': 2.5,
+              'v_0': 300.0,
+              'v_d': 500.0,
+              }
+        
+        cmap = {'light': 'viridis_r',
+              'mass': 'viridis_r',
+              'tau_V': 'viridis_r',
+              'age': 'viridis_r',
+              'met': 'viridis_r',
+              'd4000': 'viridis_r',
+              'v_0': 'RdBu',
+              'v_d': 'viridis_r',
+              }
+        
+        image_order = ['light',
+                       'mass',
+                       'tau_V',
+                       'age',
+                       'met',
+                       'd4000',
+                       'v_0',
+                       'v_d',
+                       ]
+        
+        for k in image_order:
+            print k
+            im = images[k]
+            if self.c.hasSegmentationMask:
+                im = spatialize(im, self.c.segmentationMask, is_ext[k])
+            im = op[k](im)
+            self.ax_im.imshow(im, cmap=cmap[k], vmin=vmin[k], vmax=vmax[k], label=label[k])
 
-        self.ax_im.imshow(images['light'],
-                          cmap='viridis_r', label=r'Image @ $5635 \AA$')
-        self.ax_im.imshow(images['A_V'],
-                          cmap='viridis_r', vmin=0.0, vmax=1.7, label=r'$A_V$')
-        self.ax_im.imshow(images['age'],
-                          cmap='viridis_r', label=r'$\langle \log\,t \rangle_L$')
-        self.ax_im.imshow(images['met'],
-                          cmap='viridis_r', label=r'$\langle \log\,Z/Z_\odot \rangle_M$')
-        self.ax_im.imshow(images['d4000'],
-                          cmap='viridis_r', vmin=0.9, vmax=2.5, label=r'$D(4000)$')
-        self.ax_im.imshow(images['v_0'],
-                          cmap='RdBu_r', vmin=-300, vmax=300,
-                          label=r'$v_\star\ [km\,s_{-1}]$')
-        self.ax_im.imshow(images['v_d'],
-                          cmap='viridis_r', vmin=0, vmax=500,
-                          label=r'$\sigma_\star\ [km\,s_{-1}]$')
         self.cb = plt.colorbar(self.ax_im.images[0], ax=self.ax_im)
 
         self.cursor = Circle(
@@ -99,7 +142,7 @@ class PycassoExplorer:
             self.redraw()
 
     def onKeyPress(self, ev):
-        if ev.key in ['1', '2', '3', '4', '5', '6', '7']:
+        if ev.key in ['1', '2', '3', '4', '5', '6', '7', '8']:
             self.raiseImage(ev.key)
         elif ev.key in ['up', 'down', 'left', 'right']:
             self.displaceCursor(ev.key)
@@ -163,47 +206,59 @@ class PycassoExplorer:
 
     def selectPixel(self, x, y):
         self.cursor.center = (x, y)
-        print(y, x)
         x = int(x)
         y = int(y)
-        ax = self.ax_sp
         c = self.c
-        ax.lines = []
+        self.ax_sp.lines = []
+        self.ax_res.lines = []
         self.fig.texts = []
         textsize = 'large'
        
-        if self.c.hasSegmentationMask:
-            z = np.where(self.c.segmentationMask[:, y, x])
-            z = np.asscalar(z[0])
-            print(z)
+        self.fig.text(.5, .95, r'%s' % c.name,
+                      size='larger', ha='center')
+
+        if c.hasSegmentationMask:
+            z = np.where(c.segmentationMask[:, y, x])[0]
+            if len(z) == 0:
+                self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no data' % (y, x),
+                              size=textsize)
+                return
+            z = np.asscalar(z)
             f = c.f_obs[:,z] / c.flux_norm_window[z]
             s = c.f_syn[:, z] / c.flux_norm_window[z]
             w = c.f_wei[:, z]
-            chi2 = self.c.chi2[z]
-            adev = self.c.adev[z]
-            A_V = self.c.A_V[z]
-            v_0 = self.c.v_0[z]
-            v_d = self.c.v_d[z]
-            SN = self.c.SN_normwin[z]
+            chi2 = c.chi2[z]
+            adev = c.adev[z]
+            A_V = c.A_V[z]
+            v_0 = c.v_0[z]
+            v_d = c.v_d[z]
+            SN = c.SN_normwin[z]
+            Nclip = c.Nclipped[z]
         else:
             f = c.f_obs[:, y, x] / c.flux_norm_window[y, x]
             s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
             w = c.f_wei[:, y, x]
-            chi2 = self.c.chi2[y, x]
-            adev = self.c.adev[y, x]
-            A_V = self.c.A_V[y, x]
-            v_0 = self.c.v_0[y, x]
-            v_d = self.c.v_d[y, x]
-            SN = self.c.SN_normwin[y, x]
-        r = (f - s) / f * 100.0
+            chi2 = c.chi2[y, x]
+            adev = c.adev[y, x]
+            A_V = c.A_V[y, x]
+            v_0 = c.v_0[y, x]
+            v_d = c.v_d[y, x]
+            SN = c.SN_normwin[y, x]
+            Nclip = c.Nclipped[y, x]
+
+        ax = self.ax_sp
         ax.plot(c.l_obs, f, '-', color='blue')
+        if s.count() == 0:
+            self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no synthesis' % (y, x),
+                          size=textsize)
+            return
         ax.plot(c.l_obs, s, '-', color='red')
         ax.set_ylim(0, 2.5)
 
         ax = self.ax_res
-        ax.lines = []
-        ax.set_ylim(-20, 20)
-        ax.set_xlim(self.c.l_obs[0], self.c.l_obs[-1])
+        r = f - s
+        ax.set_ylim(-2, 2)
+        ax.set_xlim(c.l_obs[0], c.l_obs[-1])
         ax.plot(c.l_obs, np.zeros_like(c.l_obs), 'k:')
         fitted = np.ma.masked_where(w < 0, r)
         ax.plot(c.l_obs, fitted, 'b-')
@@ -221,9 +276,10 @@ class PycassoExplorer:
         self.fig.text(.6, .88, r'$\chi^2 = %3.2f$' % chi2, size=textsize)
         self.fig.text(.6, .84, r'$\mathrm{adev} = %3.2f$' % adev, size=textsize)
         self.fig.text(.6, .80, r'$\mathrm{S/N (norm. window)} = %.1f$' % SN, size=textsize)
-        self.fig.text(.6, .76, r'$A_V = %3.2f$' % A_V, size=textsize)
-        self.fig.text(.6, .72,
-                      r'$\sigma_\star = %3.2f\,\mathrm{km/s} | v_\star = %3.2f\,\mathrm{km/s}$' \
+        self.fig.text(.6, .76, r'$N_\mathrm{clip} = %d$' % Nclip, size=textsize)
+        self.fig.text(.6, .72, r'$A_V = %3.2f$' % A_V, size=textsize)
+        self.fig.text(.6, .68,
+                      r'$\sigma_\star = %3.2f\,\mathrm{km/s}\ |\ v_\star = %3.2f\,\mathrm{km/s}$' \
                       % (v_d, v_0), size=textsize)
 
 ##########################################################################
