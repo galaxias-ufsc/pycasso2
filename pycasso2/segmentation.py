@@ -15,7 +15,7 @@ def mosaic_segmentation(shape, bin_size=10):
     zone_bins = [[y, x] for y in yb for x in xb]
     Nzone = len(zone_bins)
     segmask = np.zeros((Nzone, Ny, Nx), dtype='int32')
-    for z in xrange(Nzone):
+    for z in range(Nzone):
         y1, x1 = zone_bins[z]
         y2 = y1 + bin_size
         x2 = x1 + bin_size
@@ -27,7 +27,7 @@ def ring_segmentation(shape, x0, y0, pa=0.0, ba=1.0, step=5):
     dist = get_image_distance(shape, x0, y0, pa, ba)
     Nzone = int(dist.max() / step)
     segmask = np.zeros((Nzone,) + shape, dtype='int32')
-    for z in xrange(Nzone):
+    for z in range(Nzone):
         r1 = z * step
         r2 = r1 + step
         ring = (dist >= r1) & (dist < r2)
@@ -39,7 +39,7 @@ def aperture_segmentation(shape, x0, y0, pa=0.0, ba=1.0, step=5):
     dist = get_image_distance(shape, x0, y0, pa, ba)
     Nzone = int(dist.max() / step)
     segmask = np.zeros((Nzone,) + shape, dtype='int32')
-    for z in xrange(Nzone):
+    for z in range(Nzone):
         ring = dist < (z + 1) * step
         segmask[z, ring] = 1
     return segmask
@@ -62,7 +62,7 @@ def voronoi_segmentation(signal, noise, targetSN, plot=False, quiet=True):
     zones[~good] = -1
     Nzone = len(xNode)
     segmask = np.zeros((Nzone,) + signal.shape, dtype='int32')
-    for z in xrange(Nzone):
+    for z in range(Nzone):
         segmask[z, zones == z] = 1
     return segmask
 

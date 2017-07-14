@@ -48,9 +48,9 @@ c = FitsCube(cube)
 xx = c.x_coords
 yy = c.y_coords
 
-print 'pixel area: %f pc^2' % c.pixelArea_pc2
-print 'pixel length: %f pc' % c.pixelLength_pc
-print 'pixel length: %f arcsec' % np.abs(xx[0] - xx[1])
+print('pixel area: %f pc^2' % c.pixelArea_pc2)
+print('pixel length: %f pc' % c.pixelLength_pc)
+print('pixel length: %f arcsec' % np.abs(xx[0] - xx[1]))
 
 plot_image(c.McorSD.sum(axis=0), yy, xx, c.name)
 

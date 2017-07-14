@@ -156,7 +156,7 @@ class PycassoExplorer:
             self.changeCLim(dmax=0.05)
         elif ev.key == ' ':
             vmin, vmax = self.curImage.get_clim()
-            print 'vmin=%.2f, vmax=%.2f' % (vmin, vmax)
+            print('vmin=%.2f, vmax=%.2f' % (vmin, vmax))
         self.redraw()
 
     def changeCLim(self, dmin=0.0, dmax=0.0):
@@ -179,7 +179,7 @@ class PycassoExplorer:
             ev_id = int(key) - 1
         except:
             pass
-        for i in xrange(len(self.ax_im.images)):
+        for i in range(len(self.ax_im.images)):
             im = self.ax_im.images[i]
             if i == ev_id:
                 im.set_alpha(1.0)
@@ -200,7 +200,7 @@ class PycassoExplorer:
         elif key == 'left':
             x -= 1
         else:
-            print 'Cant displace cursor with key %s' % key
+            print('Cant displace cursor with key %s' % key)
             return
         self.selectPixel(x, y)
 
@@ -290,9 +290,9 @@ parser.add_argument('cube', type=str, nargs=1,
 
 args = parser.parse_args()
 
-print 'Opening file %s' % args.cube[0]
+print('Opening file %s' % args.cube[0])
 pe = PycassoExplorer(args.cube[0])
-print '''Use the keys 1-5 to cycle between the images.
+print('''Use the keys 1-5 to cycle between the images.
 Left click plots starlight results for the selected pixel.
 
 The keys z, x decrease or increase the vmin of the current image.
@@ -302,5 +302,5 @@ Press <space> to print vmin & vmax of the current image.
 
 
 
-'''
+''')
 pe.run()

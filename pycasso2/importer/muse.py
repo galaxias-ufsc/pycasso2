@@ -49,8 +49,8 @@ def read_muse(cube, name, cfg, sl=None):
     f_err_orig[badpix] = 0.0
 
     if sl is not None:
-        print f_obs_orig.shape
-        print crpix
+        print((f_obs_orig.shape))
+        print(crpix)
         log.debug('Taking a slice of the cube...')
         y_slice, x_slice = sl
         f_obs_orig = f_obs_orig[:, y_slice, x_slice]

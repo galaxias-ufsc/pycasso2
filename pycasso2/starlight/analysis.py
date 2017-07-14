@@ -93,7 +93,7 @@ def SFR(Mini, tb, dt=0.5e9):
     Mini = Mini.reshape(Mini.shape[0], -1)
     sfr_shape = (len(tl) + 2, Mini.shape[1])
     sfr = np.zeros(sfr_shape)
-    for i in xrange(sfr_shape[1]):
+    for i in range(sfr_shape[1]):
         if is_masked and np.ma.getmaskarray(Mini[:, i]).all():
             continue
         Mini_resam = hist_resample(tb_bins, tl_bins, Mini[:, i])

@@ -17,8 +17,8 @@ def smooth_spectra(ll, flux, spatial_mask, fwhm):
 
     flux_filt = np.zeros_like(flux)
     _, Ny, Nx = flux.shape
-    for j in xrange(Ny):
-        for i in xrange(Nx):
+    for j in range(Ny):
+        for i in range(Nx):
             if spatial_mask[j, i]:
                 flux_filt[:, j, i] = np.ma.masked
             else:
@@ -34,8 +34,8 @@ def interp_spectra(ll, flux, spatial_mask):
 
     flux_filt = np.zeros_like(flux)
     _, Ny, Nx = flux.shape
-    for j in xrange(Ny):
-        for i in xrange(Nx):
+    for j in range(Ny):
+        for i in range(Nx):
             if spatial_mask[j, i]:
                 flux_filt[:, j, i] = np.ma.masked
             else:
@@ -52,7 +52,7 @@ def rms_box_spectra(ll, flux, width=100.0, threshold=0.5):
     r = int(np.ceil(width / dl / 2.0))
     Nl = flux.shape[0]
     rms = np.ma.masked_all(flux.shape)
-    for l in xrange(Nl):
+    for l in range(Nl):
         l1 = l - r
         if l1 < 0:
             l1 = 0

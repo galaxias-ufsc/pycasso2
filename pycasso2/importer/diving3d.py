@@ -35,7 +35,7 @@ def read_diving3d(redcube, obscube, name, cfg, sl=None):
     d3d_fix_crpix(header, 2)
     log.debug('Loading header from observed cube %s.' % obscube)
     obs_header = safe_getheader(obscube)
-    for k in obs_header.keys():
+    for k in list(obs_header.keys()):
         if k in header or k == 'COMMENT' or k == '':
             continue
         header[k] = obs_header[k]

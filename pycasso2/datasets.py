@@ -1,4 +1,4 @@
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import time
 from os import listdir
 from termcolor import colored
@@ -14,7 +14,7 @@ def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, ove
     file_name = 'manga-' + plateifu + '-LINCUBE.fits.gz'
 
     if overwrite == False and file_name in listdir(data_dir):
-        print colored('File already downloaded', 'red')
+        print(colored('File already downloaded', 'red'))
 
     else:
 
@@ -22,12 +22,12 @@ def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, ove
             plate
         url += '/stack/manga-' + plateifu + '-LINCUBE.fits.gz'
 
-        u = urllib2.urlopen(url)
+        u = urllib.request.urlopen(url)
 
         f = open(file_name, 'wb')
         meta = u.info()
         file_size = int(meta.getheaders("Content-Length")[0])
-        print "Downloading: %s Bytes: %s" % (file_name, file_size)
+        print("Downloading: %s Bytes: %s" % (file_name, file_size))
 
         file_size_dl = 0
         block_sz = 8192
@@ -41,7 +41,7 @@ def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, ove
             status = r"%10d  [%3.2f%%]" % (
                 file_size_dl, file_size_dl * 100. / file_size)
             status = status + chr(8) * (len(status) + 1)
-            print status,
+            print(status, end=' ')
 
         f.close()
 
@@ -51,11 +51,11 @@ def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, ove
 
 
 def download_manga_image(plate, ifudsgn, objid, imdir):
-    import urllib2
+    import urllib.request, urllib.error, urllib.parse
 
     if str(objid) + '.png' in listdir(imdir):
 
-        print 'Already downloaded'
+        print('Already downloaded')
 
     else:
 
@@ -63,11 +63,11 @@ def download_manga_image(plate, ifudsgn, objid, imdir):
         url += str(plate) + '/stack/images/' + str(ifudsgn) + '.png'
 
         file_name = imdir + str(objid) + '.png'
-        u = urllib2.urlopen(url)
+        u = urllib.request.urlopen(url)
         f = open(file_name, 'wb')
         meta = u.info()
         file_size = int(meta.getheaders("Content-Length")[0])
-        print "Downloading: %s Bytes: %s" % (file_name, file_size)
+        print("Downloading: %s Bytes: %s" % (file_name, file_size))
 
         file_size_dl = 0
         block_sz = 8192
@@ -81,6 +81,6 @@ def download_manga_image(plate, ifudsgn, objid, imdir):
             status = r"%10d  [%3.2f%%]" % (
                 file_size_dl, file_size_dl * 100. / file_size)
             status = status + chr(8) * (len(status) + 1)
-            print status
+            print(status)
 
         f.close()
