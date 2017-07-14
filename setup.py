@@ -13,6 +13,7 @@ setup(
         'scripts/pycasso_starlight.py',
         'scripts/pycasso_segment.py',
         ],
+    package_data={'pycasso2': ['data/pycasso.cfg']},
     description="Pycasso2",
     author="André Amorin",
     author_email="streetomon@gmail.com",
