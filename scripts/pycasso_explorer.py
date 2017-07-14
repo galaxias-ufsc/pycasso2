@@ -60,7 +60,7 @@ class PycassoExplorer:
         
         if self.c.hasSegmentationMask:
             sm = self.c.segmentationMask
-            images = {k: op[k](spatialize(im, sm, is_ext[k])) for k, im in images.items()}
+            images = {k: op[k](spatialize(im, sm, is_ext[k])) for k, im in list(images.items())}
 
         self.ax_im.imshow(images['light'],
                           cmap='viridis_r', label=r'Image @ $5635 \AA$')
@@ -113,7 +113,7 @@ class PycassoExplorer:
             self.changeCLim(dmax=0.05)
         elif ev.key == ' ':
             vmin, vmax = self.curImage.get_clim()
-            print 'vmin=%.2f, vmax=%.2f' % (vmin, vmax)
+            print('vmin=%.2f, vmax=%.2f' % (vmin, vmax))
         self.redraw()
 
     def changeCLim(self, dmin=0.0, dmax=0.0):
@@ -136,7 +136,7 @@ class PycassoExplorer:
             ev_id = int(key) - 1
         except:
             pass
-        for i in xrange(len(self.ax_im.images)):
+        for i in range(len(self.ax_im.images)):
             im = self.ax_im.images[i]
             if i == ev_id:
                 im.set_alpha(1.0)
@@ -157,13 +157,13 @@ class PycassoExplorer:
         elif key == 'left':
             x -= 1
         else:
-            print 'Cant displace cursor with key %s' % key
+            print('Cant displace cursor with key %s' % key)
             return
         self.selectPixel(x, y)
 
     def selectPixel(self, x, y):
         self.cursor.center = (x, y)
-        print y, x
+        print(y, x)
         x = int(x)
         y = int(y)
         ax = self.ax_sp
@@ -175,7 +175,7 @@ class PycassoExplorer:
         if self.c.hasSegmentationMask:
             z = np.where(self.c.segmentationMask[:, y, x])
             z = np.asscalar(z[0])
-            print z
+            print(z)
             f = c.f_obs[:,z] / c.flux_norm_window[z]
             s = c.f_syn[:, z] / c.flux_norm_window[z]
             w = c.f_wei[:, z]
@@ -234,9 +234,9 @@ parser.add_argument('cube', type=str, nargs=1,
 
 args = parser.parse_args()
 
-print 'Opening file %s' % args.cube[0]
+print('Opening file %s' % args.cube[0])
 pe = PycassoExplorer(args.cube[0])
-print '''Use the keys 1-5 to cycle between the images.
+print('''Use the keys 1-5 to cycle between the images.
 Left click plots starlight results for the selected pixel.
 
 The keys z, x decrease or increase the vmin of the current image.
@@ -246,5 +246,5 @@ Press <space> to print vmin & vmax of the current image.
 
 
 
-'''
+''')
 pe.run()

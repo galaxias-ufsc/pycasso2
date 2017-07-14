@@ -87,5 +87,5 @@ if args.newName is None:
 else:
     log.debug('Renamed cube to %s' % args.newName)
     cz.name = args.newName
-print 'Saving cube to %s.' % args.cubeOut
+print('Saving cube to %s.' % args.cubeOut)
 cz.write(args.cubeOut, overwrite=args.overwrite)

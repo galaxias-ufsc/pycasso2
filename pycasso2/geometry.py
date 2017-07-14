@@ -320,7 +320,7 @@ def radial_profile(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0,
                     'var': np.var,
                     'std': np.std,
                     }
-    if not mode in redfunc_mode.keys():
+    if not mode in list(redfunc_mode.keys()):
         raise ValueError('Invalid mode: %s' % mode)
     reduce_func = redfunc_mode[mode]
 

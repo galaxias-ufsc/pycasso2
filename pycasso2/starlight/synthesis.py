@@ -178,7 +178,7 @@ class SynthesisAdapter(object):
             grid.errSpecAvail = 0
             grid.flagSpecAvail = 0
 
-        for x in xrange(x1, x2):
+        for x in range(x1, x2):
             run = self._createRun(x, y, use_errors_flags, use_custom_masks)
             if run is not None:
                 grid.runs.append(run)
@@ -212,8 +212,8 @@ class SynthesisAdapter(object):
     def gridIterator(self, chunk_size, use_errors_flags=True, use_custom_masks=False):
         Nx = self.f_obs.shape[2]
         Ny = self.f_obs.shape[1]
-        for y in xrange(0, Ny, 1):
-            for x1 in xrange(0, Nx, chunk_size):
+        for y in range(0, Ny, 1):
+            for x1 in range(0, Nx, chunk_size):
                 x2 = x1 + chunk_size
                 if x2 > Nx:
                     x2 = Nx

@@ -24,7 +24,7 @@ def get_EBV_map(file_name):
 
 
     '''
-    import urllib
+    import urllib.request, urllib.parse, urllib.error
     import healpy as hp
 
     if not path.exists(file_name):
@@ -32,7 +32,7 @@ def get_EBV_map(file_name):
             'Downloading dust map (1.5GB), this is probably a good time to check XKCD.')
         url = 'http://pla.esac.esa.int/pla/aio/product-action?MAP.MAP_ID=HFI_CompMap_ThermalDustModel_2048_R1.20.fits'
         log.debug('Map: %s' % url)
-        urllib.urlretrieve(url, file_name)
+        urllib.request.urlretrieve(url, file_name)
 
     log.info('Reading E(B-V) map from ' + file_name)
     EBV_map = hp.read_map(file_name, field=2)

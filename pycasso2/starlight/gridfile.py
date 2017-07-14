@@ -395,7 +395,7 @@ class GridFile(object):
         --------
         failRun, clearRuns
         '''
-        for _ in xrange(len(self.runs)):
+        for _ in range(len(self.runs)):
             self.failRun(0)
 
     def clearRuns(self):

@@ -64,9 +64,9 @@ yy = c.y_coords
 sfr, t = c.SFRSD(dt=0.1e9)
 sfr_sm, t_sm = c.SFRSD_smooth(dt=0.1e9, logtc_FWHM=0.25)
 
-print 'total mass density: %.2e M_\odot / pc^2' % c.MiniSD.sum()
-print 'total mass density (integral of SFR): %.2e M_\odot / pc^2' % np.trapz(sfr, t, axis=0).sum()
-print 'total mass density (integral of smooth SFR): %.2e M_\odot / pc^2' % np.trapz(sfr_sm, t_sm, axis=0).sum()
+print('total mass density: %.2e M_\odot / pc^2' % c.MiniSD.sum())
+print('total mass density (integral of SFR): %.2e M_\odot / pc^2' % np.trapz(sfr, t, axis=0).sum())
+print('total mass density (integral of smooth SFR): %.2e M_\odot / pc^2' % np.trapz(sfr_sm, t_sm, axis=0).sum())
 
 plot_sfr(sfr, t, sfr_sm, t_sm, center, yy, xx, c.name)
 

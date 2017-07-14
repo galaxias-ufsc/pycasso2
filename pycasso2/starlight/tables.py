@@ -42,7 +42,7 @@ def read_wavelength_mask(maskfile, wl, z=0.0, dest='rest'):
     '''
     t = _read_mask(maskfile)
     masked_wl = np.zeros(wl.shape, dtype='bool')
-    for i in xrange(len(t)):
+    for i in range(len(t)):
         l_low, l_upp, line_w, _ = t[i]
         if line_w > 0.0:
             continue

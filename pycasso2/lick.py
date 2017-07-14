@@ -21,7 +21,7 @@ def get_Lick_index(index_id, l_obs, flux, error=None):
 
 ##########################################################################
 def list_Lick_indices():
-    indices = Lick_indices.keys()
+    indices = list(Lick_indices.keys())
     indices.sort()
     return indices
 ##########################################################################

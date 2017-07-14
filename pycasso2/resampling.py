@@ -423,7 +423,7 @@ def hist_resample(bins_o, bins_r, v, density=False):
             rbr = bins_r[j + 1]
         last_edge = rbr
 
-    for i in xrange(i_0, len(v)):
+    for i in range(i_0, len(v)):
         rbo = bins_o[i + 1]
         lbo = bins_o[i]
         dbo = rbo - lbo
@@ -523,7 +523,7 @@ def interp_age(prop, log_age_base, log_age_interp):
     n_met = prop.shape[1]
     n_age_interp = len(log_age_interp)
     prop_interp = np.empty((n_age_interp, n_met), dtype='>f8')
-    for z in xrange(n_met):
+    for z in range(n_met):
         prop_interp[:, z] = np.interp(log_age_interp, log_age_base, prop[:, z])
     return prop_interp
 

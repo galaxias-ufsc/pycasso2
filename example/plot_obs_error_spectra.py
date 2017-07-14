@@ -128,7 +128,7 @@ try:
     f_syn = c.f_syn * c.flux_unit
     f_res = f_obs - f_syn
 except:
-    print 'No synthetic spectra found.'
+    print('No synthetic spectra found.')
     f_syn = None
     f_res = None
 

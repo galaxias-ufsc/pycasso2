@@ -64,12 +64,12 @@ args = parse_args()
 cfg = get_config(args.configFile)
 nproc = args.nproc if args.nproc > 1 else 1
 
-print 'Loading cube from %s.' % args.cubeIn[0]
+print('Loading cube from %s.' % args.cubeIn[0])
 sa = SynthesisAdapter(
     args.cubeIn[0], cfg, args.configSection, new_name=args.newName)
 
 exec_path = cfg.get(args.configSection, 'exec_path')
-print 'Starting starlight runner (using %s).' % exec_path
+print('Starting starlight runner (using %s).' % exec_path)
 runner = StarlightRunner(
     n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=not args.noErrorFlag,
@@ -78,11 +78,11 @@ for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=not args
         log.info('Dispatching %s.' % grid.name)
         runner.addGrid(grid)
 
-print 'Waiting jobs completion.'
+print('Waiting jobs completion.')
 runner.wait()
 output_grids = runner.getOutputGrids()
 
-print 'Creating synthesis cubes.'
+print('Creating synthesis cubes.')
 sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
 
 for grid in output_grids:
@@ -90,8 +90,8 @@ for grid in output_grids:
     sa.updateSynthesis(grid)
 
 if args.estimateError:
-    print 'Estimating errors from the starlight residual. Will overwrite the previous error values.'
+    print('Estimating errors from the starlight residual. Will overwrite the previous error values.')
     sa.updateErrorsFromResidual(args.errorSmoothFwhm, args.errorBoxWidth)
 
-print 'Saving cube to %s.' % args.cubeOut
+print('Saving cube to %s.' % args.cubeOut)
 sa.writeCube(args.cubeOut, args.overwrite)
