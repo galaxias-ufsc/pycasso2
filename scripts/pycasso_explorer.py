@@ -19,6 +19,16 @@ class PycassoExplorer:
         self.redraw()
 
     def createUI(self):
+        plotpars = {'legend.fontsize': 8,
+                    'xtick.labelsize': 11,
+                    'ytick.labelsize': 11,
+                    'text.fontsize': 11,
+                    'axes.titlesize': 12,
+                    'lines.linewidth': 0.5,
+                    'font.family': 'Times New Roman',
+                    'image.cmap': 'GnBu',
+                    }
+        plt.rcParams.update(plotpars)
         plt.ioff()
         self.fig = plt.figure(figsize=(10, 10))
         gs = GridSpec(3, 2)
@@ -26,15 +36,17 @@ class PycassoExplorer:
         self.ax_sp = self.fig.add_subplot(gs[1, :])
         self.ax_res = self.fig.add_subplot(gs[2, :], sharex=self.ax_sp)
 
-        self.ax_sp.set_ylabel('$F_\lambda [normalized]$')
-        self.ax_res.set_xlabel('$\lambda [\AA]$')
-        self.ax_res.set_ylabel('Residual [%]')
+        self.ax_sp.set_ylabel(r'$F_\lambda [\mathrm{normalized}]$')
+        self.ax_res.set_xlabel(r'$\lambda [\AA]$')
+        self.ax_res.set_ylabel(r'$O_\lambda - M_\lambda$')
         plt.setp(self.ax_sp.get_xticklabels(), visible=False)
         
         c = self.c
+        t_SF = 32e6
         
         images = {'light': c.flux_norm_window,
                   'mass': c.McorSD.sum(axis=0),
+                  'sfr': c.MiniSD[c.age_base < t_SF].sum(axis=0) / t_SF,
                   'tau_V': self.c.tau_V,
                   'age': self.c.at_flux,
                   'met': self.c.alogZ_flux,
@@ -45,16 +57,18 @@ class PycassoExplorer:
         
         label = {'light': r'Image @ $5635 \AA$',
                  'mass': r'$\Sigma_\star$',
+                 'sfr': r'$\Sigma_\mathrm{SFR}$',
                  'tau_V': r'$\tau_V$',
-                  'age': r'$\langle \log\,t \rangle_L$',
-                  'met': r'$\langle \log\,Z/Z_\odot \rangle_M$',
-                  'd4000': r'$D(4000)$',
-                  'v_0': r'$v_\star\ [km\,s_{-1}]$',
-                  'v_d': r'$\sigma_\star\ [km\,s_{-1}]$',
-                  }
+                 'age': r'$\langle \log\,t \rangle_L$',
+                 'met': r'$\langle \log\,Z/Z_\odot \rangle_M$',
+                 'd4000': r'$D(4000)$',
+                 'v_0': r'$v_\star\ [km\,s_{-1}]$',
+                 'v_d': r'$\sigma_\star\ [km\,s_{-1}]$',
+                 }
 
         is_ext = {'light': True,
                   'mass': True,
+                  'sfr': True,
                   'tau_V': False,
                   'age': False,
                   'met': False,
@@ -65,6 +79,7 @@ class PycassoExplorer:
 
         op = {'light': np.log10,
               'mass': np.log10,
+              'sfr': np.log10,
               'tau_V': lambda x: x,
               'age': lambda x: x,
               'met': lambda x: x,
@@ -74,41 +89,44 @@ class PycassoExplorer:
               }
         
         vmin = {'light': None,
-              'mass': None,
-              'tau_V': 0.0,
-              'age': 7.0,
-              'met': -0.7,
-              'd4000': 0.9,
-              'v_0': -300.0,
-              'v_d': 0.0,
-              }
+                'mass': None,
+                'sfr': None,
+                'tau_V': 0.0,
+                'age': 7.0,
+                'met': -0.7,
+                'd4000': 0.9,
+                'v_0': -300.0,
+                'v_d': 0.0,
+                }
         
         vmax = {'light': None,
-              'mass': None,
-              'tau_V': 1.5,
-              'age': 10.3,
-              'met': 0.4,
-              'd4000': 2.5,
-              'v_0': 300.0,
-              'v_d': 500.0,
-              }
+                'mass': None,
+                'sfr': None,
+                'tau_V': 1.5,
+                'age': 10.3,
+                'met': 0.4,
+                'd4000': 2.5,
+                'v_0': 300.0,
+                'v_d': 500.0,
+                }
         
         cmap = {'light': 'viridis_r',
-              'mass': 'viridis_r',
-              'tau_V': 'viridis_r',
-              'age': 'viridis_r',
-              'met': 'viridis_r',
-              'd4000': 'viridis_r',
-              'v_0': 'RdBu',
-              'v_d': 'viridis_r',
-              }
+                'mass': 'viridis_r',
+                'sfr': 'viridis_r',
+                'tau_V': 'viridis_r',
+                'age': 'viridis_r',
+                'met': 'viridis_r',
+                'd4000': 'viridis_r',
+                'v_0': 'RdBu',
+                'v_d': 'viridis_r',
+                }
         
         image_order = ['light',
                        'mass',
-                       'tau_V',
+                       'sfr',
                        'age',
                        'met',
-                       'd4000',
+                       'tau_V',
                        'v_0',
                        'v_d',
                        ]
@@ -225,7 +243,9 @@ class PycassoExplorer:
                 return
             z = np.asscalar(z)
             f = c.f_obs[:,z] / c.flux_norm_window[z]
+            e = c.f_err[:, z] / c.flux_norm_window[z]
             s = c.f_syn[:, z] / c.flux_norm_window[z]
+
             w = c.f_wei[:, z]
             chi2 = c.chi2[z]
             adev = c.adev[z]
@@ -236,6 +256,7 @@ class PycassoExplorer:
             Nclip = c.Nclipped[z]
         else:
             f = c.f_obs[:, y, x] / c.flux_norm_window[y, x]
+            e = c.f_err[:, y, x] / c.flux_norm_window[y, x]
             s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
             w = c.f_wei[:, y, x]
             chi2 = c.chi2[y, x]
@@ -247,30 +268,35 @@ class PycassoExplorer:
             Nclip = c.Nclipped[y, x]
 
         ax = self.ax_sp
-        ax.plot(c.l_obs, f, '-', color='blue')
+        ax.plot(c.l_obs, f, '-', color='blue', label='observed')
+        err_scale = int(0.2 * f.mean() / e.mean())
+        ax.plot(c.l_obs, e * err_scale, '-', color='k', label='error (x%d)' % err_scale)
         if s.count() == 0:
             self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no synthesis' % (y, x),
                           size=textsize)
             return
-        ax.plot(c.l_obs, s, '-', color='red')
+        ax.plot(c.l_obs, s, '-', color='red', label='model')
         ax.set_ylim(0, 2.5)
+        ax.legend(frameon=False)
 
         ax = self.ax_res
         r = f - s
-        ax.set_ylim(-2, 2)
+        ax.set_ylim(-1.0, 1.0)
         ax.set_xlim(c.l_obs[0], c.l_obs[-1])
+        ax.plot(c.l_obs, e, '-', color='k', label='error')
         ax.plot(c.l_obs, np.zeros_like(c.l_obs), 'k:')
         fitted = np.ma.masked_where(w < 0, r)
-        ax.plot(c.l_obs, fitted, 'b-')
+        ax.plot(c.l_obs, fitted, 'b-', label='fitted')
 
         masked = np.ma.masked_where(w != 0, r)
-        ax.plot(c.l_obs, masked, '-', color='magenta')
+        ax.plot(c.l_obs, masked, '-', color='magenta', label='masked')
 
         clipped = np.ma.masked_where(w != -1, r)
-        ax.plot(c.l_obs, clipped, 'x', color='red')
+        ax.plot(c.l_obs, clipped, 'x-', color='red', label='clipped')
 
         flagged = np.ma.masked_where(w != -2, r)
-        plt.plot(c.l_obs, flagged, 'o', color='green')
+        ax.plot(c.l_obs, flagged, 'o', color='green', label='flagged')
+        ax.legend(frameon=False)
 
         self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$' % (y, x), size=textsize)
         self.fig.text(.6, .88, r'$\chi^2 = %3.2f$' % chi2, size=textsize)
