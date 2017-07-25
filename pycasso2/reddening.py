@@ -40,10 +40,10 @@ def get_EBV_map(file_name):
     return EBV_map
 
 
-def get_EBV(header, file_name):
+def get_EBV(wcs, file_name):
     import healpy as hp
 
-    l, b = get_galactic_coordinates_rad(header)
+    l, b = get_galactic_coordinates_rad(wcs)
     EBV_map = get_EBV_map(file_name)
     # Get the corresponting HEALPix index and the E(B-V) value:
     index = hp.ang2pix(nside=2048, theta=(np.pi / 2) - b, phi=l)

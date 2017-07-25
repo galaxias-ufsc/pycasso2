@@ -140,8 +140,8 @@ def write_WCS(header, w):
     header.extend(w.to_header(), update=True)
 
 
-def update_WCS(header, crpix, crval_wave, cdelt_wave):
-    w = wcs.WCS(header)
+def get_updated_WCS(w, crpix, crval_wave, cdelt_wave):
+    w = w.copy()
     if w.wcs.cunit[2] == 'm':
         crval_wave *= one_angstrom
         cdelt_wave *= one_angstrom
@@ -153,4 +153,9 @@ def update_WCS(header, crpix, crval_wave, cdelt_wave):
         w.wcs.cd[2, 2] = cdelt_wave
     else:
         w.wcs.cdelt[2] = cdelt_wave
+    return w
+
+
+def update_WCS(header, crpix, crval_wave, cdelt_wave):
+    w = get_updated_WCS(wcs.WCS(header), crpix, crval_wave, cdelt_wave)
     header.extend(w.to_header(), update=True)
