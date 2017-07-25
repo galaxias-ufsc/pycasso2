@@ -99,7 +99,7 @@ class FitsCube(object):
         image = self.flux_norm_window
         if self.hasSegmentationMask:
             try:
-                image = spatialize(image, self.segmentationMask, extensive=True)
+                image = self.spatialize(image, extensive=True)
             except:
                 log.debug('Could not calculate ellipse parameters due to segmentation.')
                 self.pa = None
@@ -213,6 +213,12 @@ class FitsCube(object):
         a__Zt.fill_value = fill_value
         a__Zt[self._baseMask, ...] = a
         return np.swapaxes(a__Zt, 0, 1)
+
+    def spatialize(self, a, extensive=False):
+        if not self.hasSegmentationMask:
+            log.warn('Tried to spatialize a non-segmented cube.')
+            return a
+        return spatialize(a, self.segmentationMask, extensive)
 
     def radialProfile(self, prop, bin_r, x0=None, y0=None, pa=None, ba=None,
                       rad_scale=1.0, mode='mean', return_npts=False):
@@ -381,7 +387,7 @@ class FitsCube(object):
     def HLR(self):
         image = self.flux_norm_window
         if self.hasSegmentationMask:
-            image = spatialize(image, self.segmentationMask, extensive=True)
+            image = self.spatialize(image, extensive=True)
         r = get_image_distance(
             (self.Ny, self.Nx), self.x0, self.y0, self.pa, self.ba)
         return get_half_radius(image, r)
