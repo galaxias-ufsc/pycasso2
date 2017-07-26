@@ -5,6 +5,8 @@ Created on 28 de set de 2016
 '''
 
 from .resampling import gen_rebin
+from .external.pylygon import convexhull, Polygon
+
 import numpy as np
 
 __all__ = ['get_ellipse_params', 'get_image_distance',
@@ -398,3 +400,37 @@ def get_half_radius(X, r, r_max=None):
     invX_func = interp1d(cumsum_X, bin_r[1:])
     half_radius_pix = invX_func(cumsum_X.max() / 2.0)
     return float(half_radius_pix)
+
+
+def convex_hull_mask(mask):
+    '''
+    Compute the convex hull of a boolean image mask.
+    
+    Parameters
+    ----------
+    mask : array
+        2-D image where the ``True`` pixels mark the data.
+        
+    Returns
+    -------
+    convex_mask : array
+        2-D image of same shape and type as ``mask``,
+        where the convex hull of ``mask`` is marked as
+        ``True`` values.
+    '''
+    mask_points = np.array(np.where(mask)).T
+    is_hull = convexhull(mask_points)
+    hull_poly = Polygon(mask_points[is_hull], conv=False)
+
+    ny, nx = mask.shape
+    xx, yy = np.meshgrid(np.arange(nx),np.arange(ny))
+    image_points = np.vstack((yy.ravel(), xx.ravel())).T
+    
+    inside_hull_points = [(y,x) for y,x in image_points if hull_poly.collidepoint((y,x))]
+    
+    convex_mask = np.zeros_like(mask)
+    yy_inside, xx_inside = zip(*inside_hull_points)
+    convex_mask[yy_inside, xx_inside] = True
+    return convex_mask
+
+
