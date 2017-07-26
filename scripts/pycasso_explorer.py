@@ -44,16 +44,32 @@ class PycassoExplorer:
         c = self.c
         t_SF = 32e6
         
-        images = {'light': c.flux_norm_window,
-                  'mass': c.McorSD.sum(axis=0),
-                  'sfr': c.MiniSD[c.age_base < t_SF].sum(axis=0) / t_SF,
-                  'tau_V': self.c.tau_V,
-                  'age': self.c.at_flux,
-                  'met': self.c.alogZ_flux,
-                  'd4000': self.c.LickIndex('D4000'),
-                  'v_0': self.c.v_0,
-                  'v_d': self.c.v_d,
-                  }
+        obs_images = {
+                      
+                      }
+
+        if c.hasSynthesis:
+            images = {'light': c.flux_norm_window,
+                      'mass': c.McorSD.sum(axis=0),
+                      'sfr': c.MiniSD[c.age_base < t_SF].sum(axis=0) / t_SF,
+                      'tau_V': self.c.tau_V,
+                      'd4000': self.c.LickIndex('D4000'),
+                      'age': self.c.at_flux,
+                      'met': self.c.alogZ_flux,
+                      'v_0': self.c.v_0,
+                      'v_d': self.c.v_d,
+                      }
+        else:
+            images = {'light': c.flux_norm_window,
+                      'mass': np.zeros_like(c.flux_norm_window),
+                      'sfr':  np.zeros_like(c.flux_norm_window),
+                      'tau_V': np.zeros_like(c.flux_norm_window),
+                      'd4000': self.c.LickIndex('D4000'),
+                      'age':  np.zeros_like(c.flux_norm_window),
+                      'met':  np.zeros_like(c.flux_norm_window),
+                      'v_0':  np.zeros_like(c.flux_norm_window),
+                      'v_d':  np.zeros_like(c.flux_norm_window),
+                      }
         
         label = {'light': r'Image @ $5635 \AA$',
                  'mass': r'$\Sigma_\star$',
@@ -244,34 +260,35 @@ class PycassoExplorer:
             z = np.asscalar(z)
             f = c.f_obs[:,z] / c.flux_norm_window[z]
             e = c.f_err[:, z] / c.flux_norm_window[z]
-            s = c.f_syn[:, z] / c.flux_norm_window[z]
-
-            w = c.f_wei[:, z]
-            chi2 = c.chi2[z]
-            adev = c.adev[z]
-            A_V = c.A_V[z]
-            v_0 = c.v_0[z]
-            v_d = c.v_d[z]
-            SN = c.SN_normwin[z]
-            Nclip = c.Nclipped[z]
+            if c.hasSynthesis:
+                s = c.f_syn[:, z] / c.flux_norm_window[z]
+                w = c.f_wei[:, z]
+                chi2 = c.chi2[z]
+                adev = c.adev[z]
+                A_V = c.A_V[z]
+                v_0 = c.v_0[z]
+                v_d = c.v_d[z]
+                SN = c.SN_normwin[z]
+                Nclip = c.Nclipped[z]
         else:
             f = c.f_obs[:, y, x] / c.flux_norm_window[y, x]
             e = c.f_err[:, y, x] / c.flux_norm_window[y, x]
-            s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
-            w = c.f_wei[:, y, x]
-            chi2 = c.chi2[y, x]
-            adev = c.adev[y, x]
-            A_V = c.A_V[y, x]
-            v_0 = c.v_0[y, x]
-            v_d = c.v_d[y, x]
-            SN = c.SN_normwin[y, x]
-            Nclip = c.Nclipped[y, x]
+            if c.hasSynthesis:
+                s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
+                w = c.f_wei[:, y, x]
+                chi2 = c.chi2[y, x]
+                adev = c.adev[y, x]
+                A_V = c.A_V[y, x]
+                v_0 = c.v_0[y, x]
+                v_d = c.v_d[y, x]
+                SN = c.SN_normwin[y, x]
+                Nclip = c.Nclipped[y, x]
 
         ax = self.ax_sp
         ax.plot(c.l_obs, f, '-', color='blue', label='observed')
         err_scale = int(0.2 * f.mean() / e.mean())
         ax.plot(c.l_obs, e * err_scale, '-', color='k', label='error (x%d)' % err_scale)
-        if s.count() == 0:
+        if not c.hasSynthesis:
             self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no synthesis' % (y, x),
                           size=textsize)
             return

@@ -233,6 +233,10 @@ class FitsCube(object):
         return radial_profile(prop, bin_r, x0, y0, pa, ba, rad_scale, mode, return_npts)
 
     @property
+    def hasSynthesis(self):
+        return self._ext_f_syn in self._HDUList
+
+    @property
     def hasSegmentationMask(self):
         key = self._h_has_segmap
         if not key in self._header:
