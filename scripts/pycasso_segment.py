@@ -78,10 +78,10 @@ else:
 spatial_mask = c.getSpatialMask(flags.no_obs)
 segmask = seg.prune_segmask(segmask, spatial_mask)
 
-f_obs, f_err, f_flag = seg.sum_spectra(segmask, c.f_obs, c.f_err, c.f_flag)
+f_obs, f_err, good_frac = seg.sum_spectra(segmask, c.f_obs, c.f_err, c.f_flag)
 
 cz = FitsCube()
-cz._initFits(f_obs, f_err, f_flag, c._header, c._wcs, segmask)
+cz._initFits(f_obs, f_err, None, c._header, c._wcs, segmask, good_frac)
 if args.newName is None:
     cz.name = c.name
 else:

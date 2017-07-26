@@ -39,7 +39,8 @@ class FitsCube(object):
     _ext_f_wei = 'F_WEI'
     _ext_f_flag = 'F_FLAG'
     _ext_segmask = 'SEGMASK'
-
+    _ext_seg_good_frac = 'SEG_GOOD_FRAC'
+    
     _ext_popZ_base = 'POPZ_BASE'
     _ext_popage_base = 'POPAGE_BASE'
     _ext_popaFe_base = 'POPAFE_BASE'
@@ -71,18 +72,23 @@ class FitsCube(object):
             return
         self._load(cubefile)
 
-    def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None):
+    def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None):
         phdu = fits.PrimaryHDU(header=header)
         phdu.name = 'PRIMARY'
         self._HDUList = fits.HDUList([phdu])
         self._header = phdu.header
         self._wcs = wcs
+        if f_flag is None:
+            f_flag = np.ones_like(f_obs, dtype='int32')
         if segmask is not None:
             self.hasSegmentationMask = True
             f_obs = f_obs.T
             f_err = f_err.T
             f_flag = f_flag.T
+            good_frac = good_frac.T
+            f_flag |= np.where(good_frac == 0, flags.no_data, 0)
             self._addExtension(FitsCube._ext_segmask, data=segmask, wcstype='segmask')
+            self._addExtension(FitsCube._ext_seg_good_frac, data=good_frac, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_obs, data=f_obs, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
