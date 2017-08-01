@@ -1,24 +1,24 @@
-import urllib.request, urllib.error, urllib.parse
 import time
 from os import listdir
-from termcolor import colored
+
 
 
 def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, overwrite=False):
     """
     Downloads MaNGA datacube of given plate and plateifu to data_dir.
     """
+    from six.moves import urllib
 
     plate = str(plate)
 
     file_name = 'manga-' + plateifu + '-LINCUBE.fits.gz'
 
     if overwrite == False and file_name in listdir(data_dir):
-        print(colored('File already downloaded', 'red'))
+        print 'File already downloaded'
 
     else:
 
-        url = 'https://data.sdss.org/sas/dr13/manga/spectro/redux/v1_5_4/' + \
+        url = 'https://data.sdss.org/sas/dr14/manga/spectro/redux/v2_1_2/' + \
             plate
         url += '/stack/manga-' + plateifu + '-LINCUBE.fits.gz'
 
@@ -51,16 +51,17 @@ def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, ove
 
 
 def download_manga_image(plate, ifudsgn, objid, imdir):
-    import urllib.request, urllib.error, urllib.parse
-
+    from six.moves import urllib
+   
     if str(objid) + '.png' in listdir(imdir):
 
         print('Already downloaded')
 
     else:
 
-        url = 'https://data.sdss.org/sas/dr13/manga/spectro/redux/v1_5_4/'
-        url += str(plate) + '/stack/images/' + str(ifudsgn) + '.png'
+        url = 'https://data.sdss.org/sas/dr14/manga/spectro/redux/v2_1_2/'
+        url += str(plate).strip() + '/stack/images/' + str(ifudsgn).strip() + '.png'
+
 
         file_name = imdir + str(objid) + '.png'
         u = urllib.request.urlopen(url)
