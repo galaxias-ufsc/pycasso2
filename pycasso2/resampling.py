@@ -6,7 +6,7 @@ Created on 22/06/2015
 
 from . import flags
 import numpy as np
-
+from astropy import log
 
 __all__ = ['resample_spectra', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
@@ -179,7 +179,7 @@ def extrap_ResampMat(ResampMat__ro, lo_low, lo_upp, lr_low, lr_upp):
         ResampMat__ro[bins_extrapr, io_extrapr] = 1.
 
 
-def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
+def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
     '''
     Resample IFS wavelength-wise.
 
@@ -200,18 +200,32 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix):
     badpix : array(dtype=bool)
         bad pixel spectra to be resampled.
 
+    vectorized : bool, optional
+        Use vectorized code to resample. If disabled, use memory efficient code.
+        Default: False
+
     Returns
     -------
     spectra_resam : array
         Spectra resampled to ``l_resam``.
     '''
-    R = ReSamplingMatrixNonUniform(l_orig, l_resam)
-    f_obs = np.tensordot(R, f_obs, (1, 0))
-    f_err = np.sqrt(np.tensordot(R, f_err**2, (1, 0)))
-    badpix = np.tensordot(R, badpix.astype('float64'), (1, 0)) > 0.0
+    if vectorized:
+        R = ReSamplingMatrixNonUniform(l_orig, l_resam)
+        f_obs = np.tensordot(R, f_obs, (1, 0))
+        f_err = np.sqrt(np.tensordot(R, f_err**2, (1, 0)))
+        badpix = np.tensordot(R, badpix.astype('float64'), (1, 0)) > 0.0
+    else:
+        log.warn('Using memory efficient resampling, this may take a while.')
+        from .resampling_opt import resample_cube
+        f_obs = resample_cube(l_orig, l_resam, f_obs)
+        np.power(f_err, 2, out=f_err)
+        f_err = resample_cube(l_orig, l_resam, f_err)
+        np.sqrt(f_err, out=f_err)
+        badpix = resample_cube(l_orig, l_resam, badpix)
     f_flag = np.zeros_like(f_obs, dtype='int32')
-    out_of_range = (l_resam < l_orig[0]) | (l_resam > l_orig[-1])
-    f_flag[out_of_range] |= flags.no_data
+    l1, l2 = find_nearest_index(l_resam, [l_orig[0], l_orig[-1]])
+    f_flag[:l1] |= flags.no_data
+    f_flag[l2:] |= flags.no_data
     f_flag[badpix] |= flags.bad_pix
     return f_obs, f_err, f_flag
 
