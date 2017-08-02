@@ -92,10 +92,10 @@ def calc_extinction(wave, EBV, Rv=3.1):
     Av = Rv * EBV
     A_lambda = Av * CCM(wave, Rv)
 
-    return A_lambda, EBV
+    return A_lambda
 
 
-def extinction_corr(wave, flux, EBV):
+def extinction_corr(wave, EBV):
     '''
 
     Corrects spectra for the effects of galactic extinction.
@@ -104,9 +104,6 @@ def extinction_corr(wave, flux, EBV):
     Returns: Fluxes corrected for the effects of Milky Way dust.
 
     '''
-    A_lambda, _ = calc_extinction(wave, EBV)
+    A_lambda = calc_extinction(wave, EBV)
     tau_lambda = A_lambda / (2.5 * np.log10(np.exp(1.)))
-    if flux.ndim == 3:
-        tau_lambda = tau_lambda[:, np.newaxis, np.newaxis]
-
-    return flux * np.exp(tau_lambda)
+    return np.exp(tau_lambda)

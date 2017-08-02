@@ -3,11 +3,10 @@ Created on 08/12/2015
 
 @author: andre
 '''
-from ..cube import safe_getheader, FitsCube
-from ..wcs import get_wavelength_coordinates, get_reference_pixel, update_WCS, get_Naxis
-from ..resampling import resample_spectra
-from ..cosmology import redshift2lum_distance, spectra2restframe, velocity2redshift
-from ..reddening import extinction_corr
+from ..wcs import get_wavelength_coordinates, get_Naxis
+from ..cosmology import redshift2lum_distance, velocity2redshift
+from .core import safe_getheader, import_spectra, fill_cube
+
 from astropy import log, wcs
 from astropy.io import fits
 from astropy.table import Table
@@ -18,13 +17,14 @@ __all__ = ['read_muse', 'muse_read_masterlist']
 muse_cfg_sec = 'muse'
 
 
-def read_muse(cube, name, cfg, sl=None):
+def read_muse(cube, name, cfg, sl=None, destcube=None):
     '''
     FIXME: doc me! 
     '''
-    l_ini = cfg.getfloat(muse_cfg_sec, 'import_l_ini')
-    l_fin = cfg.getfloat(muse_cfg_sec, 'import_l_fin')
-    dl = cfg.getfloat(muse_cfg_sec, 'import_dl')
+    if len(cube) != 1:
+        raise Exception('Please specify a single cube.')
+    cube = cube[0]
+
     flux_unit = cfg.getfloat(muse_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
@@ -32,11 +32,10 @@ def read_muse(cube, name, cfg, sl=None):
     header = safe_getheader(cube, ext=1)
     w = wcs.WCS(header)
     l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
-    crpix = get_reference_pixel(w)
 
     log.debug('Loading data from %s.' % cube)
-    f_obs_orig = fits.getdata(cube, extname='DATA')
-    f_err_orig = fits.getdata(cube, extname='STAT')
+    f_obs_orig = fits.getdata(cube, extname='DATA').astype('float64')
+    f_err_orig = fits.getdata(cube, extname='STAT').astype('float64')
 
     # Try to get bad pixel extension. If not, follow the MUSE pipeline manual 1.6.2,
     # > DQ The data quality flags encoded in an integer value according to the Euro3D standard (cf. [RD05]).
@@ -44,57 +43,30 @@ def read_muse(cube, name, cfg, sl=None):
     try:
         badpix = fits.getdata(cube, extname='DQ') != 0
     except:
-        badpix = ~np.isfinite(f_obs_orig) | (f_obs_orig <= 0.0) | (f_err_orig <= 0.0)
+        badpix = ~np.isfinite(f_obs_orig)
+        badpix |= (f_obs_orig <= 0.0)
+        badpix |= (f_err_orig <= 0.0)
     f_obs_orig[badpix] = 0.0
     f_err_orig[badpix] = 0.0
 
-    if sl is not None:
-        print((f_obs_orig.shape))
-        print(crpix)
-        log.debug('Taking a slice of the cube...')
-        y_slice, x_slice = sl
-        f_obs_orig = f_obs_orig[:, y_slice, x_slice]
-        f_err_orig = f_err_orig[:, y_slice, x_slice]
-        badpix = badpix[:, y_slice, x_slice]
-        crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
-        log.debug('New shape: %s.' % str(f_obs_orig.shape))
-
-    # Get distance from master list
+    # Get data from master list
     masterlist = cfg.get(muse_cfg_sec, 'masterlist')
     galaxy_id = name
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = muse_read_masterlist(masterlist, galaxy_id)
+    z = velocity2redshift(ml['V_r [km/s]'])
+    EBV = float(ml['E(B-V)'])
     muse_save_masterlist(header, ml)
     
-    # Correction for galactic extinction
-    ebv = float(ml['E(B-V)'])
-    log.debug('Applying galactic extinction correction: E(B-V) = %.4f.' % ebv)
-    f_obs_orig = extinction_corr(l_obs, f_obs_orig, ebv)
-        
-    z = velocity2redshift(ml['V_r [km/s]'])
-    log.debug('Putting spectra in rest frame (z=%.4f, v=%.1f km/s).' %
-              (z, ml['V_r [km/s]']))
-    _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
-    l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
+    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
+                                                       f_err_orig, badpix,
+                                                       cfg, muse_cfg_sec,
+                                                       w, z, vaccuum_wl=False,
+                                                       sl=sl, EBV=EBV)
 
-    log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
-    l_resam = np.arange(l_ini, l_fin + dl, dl)
-    f_obs, f_err, f_flag = resample_spectra(
-        l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
-    crpix = (0, crpix[1], crpix[2])
-
-    log.debug('Updating WCS.')
-    update_WCS(header, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
-
-    log.debug('Creating pycasso cube.')
-    K = FitsCube()
-    K._initFits(f_obs, f_err, f_flag, header, w)
-    K.flux_unit = flux_unit
-    K.lumDistMpc = redshift2lum_distance(z)
-    K.redshift = z
-    K.name = name
-
-    return K
+    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
+                         flux_unit, redshift2lum_distance(z), z, name, cube=destcube)
+    return destcube
 
 masterlist_dtype = [('Name', '|S05'),
                     ('Galaxy name', '|S12'),

@@ -3,14 +3,12 @@ Created on 08/12/2015
 
 @author: andre
 '''
-from ..cube import safe_getheader, FitsCube
-from ..wcs import update_WCS, get_reference_pixel
-from ..resampling import resample_spectra, vac2air
-from ..cosmology import redshift2lum_distance, spectra2restframe
-from ..reddening import get_EBV, extinction_corr
+from ..cosmology import redshift2lum_distance
+from .core import safe_getheader, fill_cube, import_spectra
 from astropy import log, wcs
 from astropy.io import fits
 import numpy as np
+
 
 __all__ = ['read_manga', 'read_drpall']
 
@@ -28,20 +26,20 @@ def read_drpall(filename, mangaid=None):
     return t
 
 
-def read_manga(cube, name, cfg, sl=None):
+def read_manga(cube, name, cfg, sl=None, destcube=None):
     '''
     FIXME: doc me! 
     '''
-    l_ini = cfg.getfloat(manga_cfg_sec, 'import_l_ini')
-    l_fin = cfg.getfloat(manga_cfg_sec, 'import_l_fin')
-    dl = cfg.getfloat(manga_cfg_sec, 'import_dl')
+    if len(cube) != 1:
+        raise Exception('Please specify a single cube.')
+    cube = cube[0]
+
     flux_unit = cfg.getfloat(manga_cfg_sec, 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
     w = wcs.WCS(header)
-    crpix = get_reference_pixel(w)
     
     drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
@@ -59,49 +57,16 @@ def read_manga(cube, name, cfg, sl=None):
         f_err_orig[goodpix] = f['IVAR'].data[goodpix]**-0.5
         l_obs = f['WAVE'].data
 
-    log.debug('Vacuum to air wavelengths.')
-    l_obs = vac2air(l_obs)
-    
-    if sl is not None:
-        log.debug('Taking a slice of the cube...')
-        y_slice, x_slice = sl
-        f_obs_orig = f_obs_orig[:, y_slice, x_slice]
-        f_err_orig = f_err_orig[:, y_slice, x_slice]
-        badpix = badpix[:, y_slice, x_slice]
-        crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
-        log.debug('New shape: %s.' % str(f_obs_orig.shape))
-
-    # FIXME: Dust maps in air or vacuum?
-    dust_map = cfg.get('tables', 'dust_map')
-    log.debug('Extinction correction (map = %s).' % dust_map)
-    #EBV = get_EBV(header, dust_map)
     EBV = header['EBVGAL']
-    log.debug('    E(B-V) = %f.' % EBV)
-    f_obs_orig = extinction_corr(l_obs, f_obs_orig, EBV)
-    f_err_orig = extinction_corr(l_obs, f_err_orig, EBV)
+    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
+                                                       f_err_orig, badpix,
+                                                       cfg, manga_cfg_sec,
+                                                       w, z, vaccuum_wl=True,
+                                                       sl=sl, EBV=EBV)
 
-    log.debug('Putting spectra in rest frame (z=%.2f).' % z)
-    _, f_obs_rest = spectra2restframe(l_obs, f_obs_orig, z, kcor=1.0)
-    l_rest, f_err_rest = spectra2restframe(l_obs, f_err_orig, z, kcor=1.0)
-
-    log.debug('Resampling spectra in dl=%.2f \AA.' % dl)
-    l_resam = np.arange(l_ini, l_fin + dl, dl)
-    f_obs, f_err, f_flag = resample_spectra(
-        l_rest, l_resam, f_obs_rest, f_err_rest, badpix)
-    crpix = (0, crpix[1], crpix[2])
-
-    log.debug('Updating WCS.')
-    update_WCS(header, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
-
-    log.debug('Creating pycasso cube.')
-    c = FitsCube()
-    c._initFits(f_obs, f_err, f_flag, header, w)
-    c.flux_unit = flux_unit
-    c.lumDistMpc = redshift2lum_distance(z)
-    c.redshift = z
-    c.name = name
-
-    return c
+    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
+                         flux_unit, redshift2lum_distance(z), z, name, cube=destcube)
+    return destcube
 
 
 def get_bitmask_indices(bitmask):

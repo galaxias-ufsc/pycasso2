@@ -12,8 +12,10 @@ from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index
 from .segmentation import spatialize
+from .importer import read_type
+from .config import default_config_path, get_config
 from . import flags
-from pycasso2 import modeling
+from . import modeling
 
 
 from astropy.io import fits
@@ -23,14 +25,6 @@ from astropy import log
 import numpy as np
 
 __all__ = ['FitsCube']
-
-
-def safe_getheader(f, ext=0):
-    with fits.open(f) as hl:
-        hdu = hl[ext]
-        hdu.verify('fix')
-        return hdu.header
-
 
 class FitsCube(object):
     _ext_f_obs = 'F_OBS'
@@ -66,11 +60,25 @@ class FitsCube(object):
                          'A_V', 'q_norm', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
-    def __init__(self, cubefile=None):
+    def __init__(self, cubefile=None, name=None, cube_type='pycasso',
+                 import_cfg=None, import_slice=None):
         self._pop_len = None
         if cubefile is None:
             return
-        self._load(cubefile)
+        if cube_type is 'pycasso':
+            self._load(cubefile)
+            if name is not None:
+                self.name = name
+        else:
+            if cube_type not in read_type.keys():
+                raise Exception('Unknown cube type: %s.' % cube_type)
+            read = read_type[cube_type]
+            if import_cfg is None:
+                import_cfg = get_config(default_config_path)
+            log.info('Importing cube %s, type=%s' % (cubefile, cube_type))
+            if type(cubefile) is not list:
+                cubefile = [cubefile]
+            read(cubefile, name, import_cfg, import_slice, destcube=self)
 
     def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None):
         phdu = fits.PrimaryHDU(header=header)
