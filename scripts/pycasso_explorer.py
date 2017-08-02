@@ -1,4 +1,4 @@
-from pycasso2 import FitsCube
+from pycasso2 import FitsCube, flags
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import numpy as np
@@ -260,6 +260,7 @@ class PycassoExplorer:
             z = np.asscalar(z)
             f = c.f_obs[:,z] / c.flux_norm_window[z]
             e = c.f_err[:, z] / c.flux_norm_window[z]
+            fl = c.f_flag[:,z]
             if c.hasSynthesis:
                 s = c.f_syn[:, z] / c.flux_norm_window[z]
                 w = c.f_wei[:, z]
@@ -273,6 +274,7 @@ class PycassoExplorer:
         else:
             f = c.f_obs[:, y, x] / c.flux_norm_window[y, x]
             e = c.f_err[:, y, x] / c.flux_norm_window[y, x]
+            fl = c.f_flag[:,y, x]
             if c.hasSynthesis:
                 s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
                 w = c.f_wei[:, y, x]
@@ -285,21 +287,29 @@ class PycassoExplorer:
                 Nclip = c.Nclipped[y, x]
 
         ax = self.ax_sp
+        ax.set_ylim(0, 2.5)
+        ax.set_xlim(c.l_obs[0], c.l_obs[-1])
         ax.plot(c.l_obs, f, '-', color='blue', label='observed')
         err_scale = int(0.2 * f.mean() / e.mean())
         ax.plot(c.l_obs, e * err_scale, '-', color='k', label='error (x%d)' % err_scale)
+
+        ax.plot(c.l_obs, np.ma.masked_where((fl & flags.telluric) == 0, f),
+                '-', color='brown', label='telluric')
+
+        ax.plot(c.l_obs, np.ma.masked_where((fl & flags.seg_has_badpixels) == 0, f),
+                '-', color='purple', label='incomplete')
+
         if not c.hasSynthesis:
             self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no synthesis' % (y, x),
                           size=textsize)
+            ax.legend(frameon=False)
             return
         ax.plot(c.l_obs, s, '-', color='red', label='model')
-        ax.set_ylim(0, 2.5)
         ax.legend(frameon=False)
 
         ax = self.ax_res
         r = f - s
         ax.set_ylim(-1.0, 1.0)
-        ax.set_xlim(c.l_obs[0], c.l_obs[-1])
         ax.plot(c.l_obs, e, '-', color='k', label='error')
         ax.plot(c.l_obs, np.zeros_like(c.l_obs), 'k:')
         fitted = np.ma.masked_where(w < 0, r)

@@ -18,5 +18,6 @@ starlight_failed_run = 0x0200
 d3d_screw = 0x1000
 
 # Compound flags
-no_obs = no_data | bad_pix | ccd_gap | telluric | d3d_screw | seg_has_badpixels
+no_obs = no_data | bad_pix | ccd_gap | d3d_screw
+potential_problems = no_obs | telluric | seg_has_badpixels
 no_starlight = starlight_masked_pix | starlight_failed_run
