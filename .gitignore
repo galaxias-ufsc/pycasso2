@@ -3,3 +3,4 @@
 pycasso.cfg
 /data/
 test
+*.c
