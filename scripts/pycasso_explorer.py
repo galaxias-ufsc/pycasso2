@@ -44,10 +44,6 @@ class PycassoExplorer:
         c = self.c
         t_SF = 32e6
         
-        obs_images = {
-                      
-                      }
-
         if c.hasSynthesis:
             images = {'light': c.flux_norm_window,
                       'mass': c.McorSD.sum(axis=0),
@@ -290,7 +286,7 @@ class PycassoExplorer:
         ax.set_ylim(0, 2.5)
         ax.set_xlim(c.l_obs[0], c.l_obs[-1])
         ax.plot(c.l_obs, f, '-', color='blue', label='observed')
-        err_scale = int(0.2 * f.mean() / e.mean())
+        err_scale = np.ceil(0.2 * f.mean() / e.mean())
         ax.plot(c.l_obs, e * err_scale, '-', color='k', label='error (x%d)' % err_scale)
 
         ax.plot(c.l_obs, np.ma.masked_where((fl & flags.telluric) == 0, f),
