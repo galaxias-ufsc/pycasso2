@@ -4,37 +4,13 @@ import numpy as np
 cimport numpy as np
 cimport cython
 
-def resample_cube(l_orig, l_resam, f):
-    Nlo = len(l_orig)
-    Nlr = len(l_resam)
-    spatial_shape = f.shape[1:]
-    f = f.reshape(Nlo, -1)
-    Nspec = f.shape[1]
-    res_shape = (Nlr, Nspec)
-    fr = np.zeros(res_shape, dtype=f.dtype)
-    bins_orig = bin_edges(l_orig)
-    bins_resam = bin_edges(l_resam)
-    buf_in = np.empty(Nlo)
-    buf_out = np.zeros(Nlr)
-    for i in range(Nspec):
-        if (i % 200) == 0:
-            pass
-            log.debug('    Resampled %d of %d' % (i, Nspec))
-        buf_in[:] = f[:, i]
-        _hist_resample(bins_orig, bins_resam, buf_in, buf_out, density=True)
-        fr[:, i] = buf_out[:]
-    new_shape = (Nlr,) + spatial_shape
-    fr.shape = new_shape
-    return fr
-    
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def _hist_resample(np.ndarray[np.double_t, ndim=1, mode='c'] bins_o not None,
-                   np.ndarray[np.double_t, ndim=1, mode='c'] bins_r not None, 
-                   np.ndarray[np.double_t, ndim=1, mode='c'] v not None,
-                   np.ndarray[np.double_t, ndim=1, mode='c'] v_r not None,
-                   int density=0):
+def hist_resample(np.ndarray[np.double_t, ndim=1, mode='c'] bins_o not None,
+                  np.ndarray[np.double_t, ndim=1, mode='c'] bins_r not None, 
+                  np.ndarray[np.double_t, ndim=1, mode='c'] v not None,
+                  np.ndarray[np.double_t, ndim=1, mode='c'] v_r not None,
+                  int density=0):
     '''
     Resample an histogram into another set of bins.
     

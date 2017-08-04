@@ -210,13 +210,12 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
         Spectra resampled to ``l_resam``.
     '''
     if vectorized:
+        log.warn('Using memory-hungry resampling algorith.')
         R = ReSamplingMatrixNonUniform(l_orig, l_resam)
         f_obs = np.tensordot(R, f_obs, (1, 0))
         f_err = np.sqrt(np.tensordot(R, f_err**2, (1, 0)))
         badpix = np.tensordot(R, badpix.astype('float64'), (1, 0)) > 0.0
     else:
-        log.warn('Using memory efficient resampling, this may take a while.')
-        from .resampling_opt import resample_cube
         f_obs = resample_cube(l_orig, l_resam, f_obs)
         np.power(f_err, 2, out=f_err)
         f_err = resample_cube(l_orig, l_resam, f_err)
@@ -229,6 +228,33 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
     f_flag[badpix] |= flags.bad_pix
     return f_obs, f_err, f_flag
 
+
+def resample_cube(l_orig, l_resam, f):
+    try:
+        from .resampling_opt import hist_resample
+    except:
+        log.warn('Could not load optimized hist_resample, falling back to python code.')
+    Nlo = len(l_orig)
+    Nlr = len(l_resam)
+    spatial_shape = f.shape[1:]
+    f = f.reshape(Nlo, -1)
+    Nspec = f.shape[1]
+    res_shape = (Nlr, Nspec)
+    fr = np.zeros(res_shape, dtype=f.dtype)
+    bins_orig = bin_edges(l_orig)
+    bins_resam = bin_edges(l_resam)
+    buf_in = np.empty(Nlo)
+    buf_out = np.zeros(Nlr)
+    for i in range(Nspec):
+        if (i % 200) == 199:
+            log.debug('    Resampled %d of %d' % (i, Nspec))
+        buf_in[:] = f[:, i]
+        hist_resample(bins_orig, bins_resam, buf_in, buf_out, density=True)
+        fr[:, i] = buf_out[:]
+    new_shape = (Nlr,) + spatial_shape
+    fr.shape = new_shape
+    return fr
+    
 
 def fwhm2sigma(fwhm):
     return fwhm / (2 * np.sqrt(2 * np.log(2)))
@@ -374,7 +400,7 @@ def bin_edges(bin_center):
     return bin_edges
 
 
-def hist_resample(bins_o, bins_r, v, density=False):
+def hist_resample(bins_o, bins_r, v, v_r=None, density=False):
     '''
     Resample an histogram into another set of bins.
 
@@ -393,9 +419,7 @@ def hist_resample(bins_o, bins_r, v, density=False):
         ``v`` is a density, not a histogram.
         Default: ``False``.
 
-    Returns
-    -------
-    v_r : array
+    v_r : array, out
         The heights of the resampled histogram
         (or resampled densities if ``density=True``),
         with length ``len(bins_r) - 1``.
@@ -404,7 +428,11 @@ def hist_resample(bins_o, bins_r, v, density=False):
         will be equal (within numeric error).
     '''
     n_v_r = len(bins_r) - 1
-    v_r = np.zeros(n_v_r, dtype=v.dtype)
+    return_v_r = False
+    if v_r is None:
+        return_v_r = True
+        v_r = np.empty(n_v_r, dtype=v.dtype)
+    v_r.fill(0.0)
     i_0 = 0
     j = 0
     lbo = bins_o[i_0]
@@ -476,7 +504,8 @@ def hist_resample(bins_o, bins_r, v, density=False):
         else:
             v_r[j] += frac * v[i]
         last_edge = rbo
-    return v_r
+    if return_v_r:
+        return v_r
 
 
 def age_smoothing_kernel(log_age_base, log_tc, logtc_FWHM=0.1):
