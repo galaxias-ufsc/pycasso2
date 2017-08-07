@@ -36,7 +36,7 @@ def read_muse(cube, name, cfg, sl=None, destcube=None):
     log.debug('Loading data from %s.' % cube)
     f_obs_orig = fits.getdata(cube, extname='DATA').astype('float64')
     f_err_orig = fits.getdata(cube, extname='STAT').astype('float64')
-
+    np.sqrt(f_err_orig, out=f_err_orig)
     # Try to get bad pixel extension. If not, follow the MUSE pipeline manual 1.6.2,
     # > DQ The data quality flags encoded in an integer value according to the Euro3D standard (cf. [RD05]).
     # > However, by default, the data quality extension is not present, instead pixels which do not have a clean data quality status are directly encoded as Not-a-Number (NaN) values in the DATA extension itself.
