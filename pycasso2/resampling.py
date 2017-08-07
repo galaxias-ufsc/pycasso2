@@ -216,10 +216,13 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
         f_err = np.sqrt(np.tensordot(R, f_err**2, (1, 0)))
         badpix = np.tensordot(R, badpix.astype('float64'), (1, 0)) > 0.0
     else:
+        log.debug('Resampling flux.')
         f_obs = resample_cube(l_orig, l_resam, f_obs)
+        log.debug('Resampling error.')
         np.power(f_err, 2, out=f_err)
         f_err = resample_cube(l_orig, l_resam, f_err)
         np.sqrt(f_err, out=f_err)
+        log.debug('Resampling flags.')
         badpix = resample_cube(l_orig, l_resam, badpix)
     f_flag = np.zeros_like(f_obs, dtype='int32')
     l1, l2 = find_nearest_index(l_resam, [l_orig[0], l_orig[-1]])
@@ -231,7 +234,7 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
 
 def resample_cube(l_orig, l_resam, f):
     try:
-        from .resampling_opt import hist_resamplee as hist_resample_opt
+        from .resampling_opt import hist_resample as hist_resample_opt
         resample = hist_resample_opt
     except:
         log.warn('Could not load optimized hist_resample, falling back to python code.')
@@ -248,11 +251,12 @@ def resample_cube(l_orig, l_resam, f):
     buf_in = np.empty(Nlo)
     buf_out = np.zeros(Nlr)
     for i in range(Nspec):
-        if (i % 200) == 199:
-            log.debug('    Resampled %d of %d' % (i, Nspec))
+        if (i % 1000) == 999:
+            log.debug('    Resampled %d of %d...' % (i + 1, Nspec))
         buf_in[:] = f[:, i]
         resample(bins_orig, bins_resam, buf_in, buf_out, density=True)
         fr[:, i] = buf_out[:]
+    log.debug('    Resampled %d spectra.' % Nspec)
     new_shape = (Nlr,) + spatial_shape
     fr.shape = new_shape
     return fr
