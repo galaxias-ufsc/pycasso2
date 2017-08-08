@@ -8,6 +8,7 @@ from ..wcs import get_reference_pixel, get_updated_WCS
 from ..resampling import vac2air, resample_spectra
 from ..reddening import get_EBV, extinction_corr
 from ..config import parse_slice
+from ..segmentation import bin_spectra, get_cov_factor
 
 from astropy import log
 from astropy.io import fits
@@ -65,6 +66,17 @@ def import_spectra(l_obs, f_obs, f_err, badpix, cfg, config_sec, w,
         badpix = badpix[:, y_slice, x_slice]
         crpix = (crpix[0], crpix[1] - y_slice.start, crpix[2] - x_slice.start)
         log.debug('New shape: %s.' % str(f_obs.shape))
+
+    bin_size = cfg.getint(cfg_import_sec, 'binning')
+    if bin_size > 1:
+        log.debug('Binning cube (%d x %d).' % (bin_size, bin_size))
+        A = cfg.getfloat('import', 'spat_cov_a')
+        B = cfg.getfloat('import', 'spat_cov_b')
+        cov_factor = get_cov_factor(bin_size**2, A, B)
+        log.debug('    Covariance factor: %.2f.' % cov_factor)
+        crpix = (crpix[0], crpix[1] / bin_size, crpix[2] / bin_size)
+        f_obs, f_err, good_frac = bin_spectra(f_obs, f_err, badpix, bin_size, cov_factor)
+        badpix = good_frac == 0
 
     if EBV is None:
         # FIXME: Dust maps in air or vacuum?

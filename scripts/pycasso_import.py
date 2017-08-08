@@ -102,7 +102,7 @@ if args.seg:
     spatial_mask = g.getSpatialMask(flags.no_obs)
     segmask = seg.prune_segmask(segmask, spatial_mask)
     
-    f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err, g.f_flag)
+    f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err)
     gs = FitsCube()
     gs._initFits(f_obs, f_err, None, g._header, g._wcs, segmask, good_frac)
     gs.name = g.name
