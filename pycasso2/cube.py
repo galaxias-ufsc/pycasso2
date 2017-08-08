@@ -60,8 +60,7 @@ class FitsCube(object):
                          'A_V', 'q_norm', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
-    def __init__(self, cubefile=None, name=None, cube_type='pycasso',
-                 import_cfg=None, import_slice=None):
+    def __init__(self, cubefile=None, name=None, cube_type='pycasso', import_cfg=None):
         self._pop_len = None
         if cubefile is None:
             return
@@ -78,7 +77,7 @@ class FitsCube(object):
             log.info('Importing cube %s, type=%s' % (cubefile, cube_type))
             if type(cubefile) is not list:
                 cubefile = [cubefile]
-            read(cubefile, name, import_cfg, import_slice, destcube=self)
+            read(cubefile, name, import_cfg, destcube=self)
 
     def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None):
         phdu = fits.PrimaryHDU(header=header)

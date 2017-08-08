@@ -17,7 +17,7 @@ __all__ = ['read_califa', 'califa_read_masterlist']
 califa_cfg_sec = 'califa'
 
 
-def read_califa(cube, name, cfg, sl=None, destcube=None):
+def read_califa(cube, name, cfg, destcube=None):
     '''
     FIXME: doc me!
     '''
@@ -57,7 +57,7 @@ def read_califa(cube, name, cfg, sl=None, destcube=None):
                                                        f_err_orig, badpix,
                                                        cfg, califa_cfg_sec,
                                                        w, z, vaccuum_wl=False,
-                                                       sl=sl, EBV=0.0)
+                                                       EBV=0.0)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,
                          flux_unit, lum_dist_Mpc, z, name, cube=destcube)

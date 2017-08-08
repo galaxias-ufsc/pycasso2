@@ -17,7 +17,7 @@ __all__ = ['read_muse', 'muse_read_masterlist']
 muse_cfg_sec = 'muse'
 
 
-def read_muse(cube, name, cfg, sl=None, destcube=None):
+def read_muse(cube, name, cfg, destcube=None):
     '''
     FIXME: doc me! 
     '''
@@ -62,7 +62,7 @@ def read_muse(cube, name, cfg, sl=None, destcube=None):
                                                        f_err_orig, badpix,
                                                        cfg, muse_cfg_sec,
                                                        w, z, vaccuum_wl=False,
-                                                       sl=sl, EBV=EBV)
+                                                       EBV=EBV)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,
                          flux_unit, redshift2lum_distance(z), z, name, cube=destcube)

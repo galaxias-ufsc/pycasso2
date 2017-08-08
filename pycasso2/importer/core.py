@@ -7,6 +7,7 @@ Created on 24 de jul de 2017
 from ..wcs import get_reference_pixel, get_updated_WCS
 from ..resampling import vac2air, resample_spectra
 from ..reddening import get_EBV, extinction_corr
+from ..config import parse_slice
 
 from astropy import log
 from astropy.io import fits
@@ -36,13 +37,14 @@ def fill_cube(f_obs, f_err, f_flag, header, wcs,
 
 
 def import_spectra(l_obs, f_obs, f_err, badpix, cfg, config_sec, w,
-                   z=None, vaccuum_wl=False, sl=None, EBV=None, vector_resam=False):
+                   z=None, vaccuum_wl=False, EBV=None, vector_resam=False):
     '''
     FIXME: doc me! 
     '''
     l_ini = cfg.getfloat(config_sec, 'import_l_ini')
     l_fin = cfg.getfloat(config_sec, 'import_l_fin')
     dl = cfg.getfloat(config_sec, 'import_dl')
+    cfg_import_sec = 'import'
 
     
     if vaccuum_wl:
@@ -50,6 +52,11 @@ def import_spectra(l_obs, f_obs, f_err, badpix, cfg, config_sec, w,
         l_obs = vac2air(l_obs)
     
     crpix = get_reference_pixel(w)
+    try:
+        sl_string = cfg.get(cfg_import_sec, 'slice')
+    except:
+        sl_string = None
+    sl = parse_slice(sl_string)
     if sl is not None:
         log.debug('Taking a slice of the cube...')
         y_slice, x_slice = sl

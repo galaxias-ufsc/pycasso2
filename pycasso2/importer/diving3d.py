@@ -18,7 +18,7 @@ __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
 d3d_cfg_sec = 'diving3d'
 
 
-def read_diving3d(cubes, name, cfg, sl=None, destcube=None):
+def read_diving3d(cubes, name, cfg, destcube=None):
     '''
     FIXME: doc me! 
     '''
@@ -51,7 +51,7 @@ def read_diving3d(cubes, name, cfg, sl=None, destcube=None):
                                                        f_err_orig, badpix,
                                                        cfg, d3d_cfg_sec,
                                                        w, z=0.0, vaccuum_wl=False,
-                                                       sl=sl, EBV=0.0)
+                                                       EBV=0.0)
 
     masterlist = cfg.get(d3d_cfg_sec, 'masterlist')
     galaxy_id = d3d_get_galaxy_id(redcube)

@@ -7,7 +7,7 @@ Created on 15/06/2015
 
 from pycasso2.importer import read_type
 from pycasso2.starlight.tables import read_wavelength_mask
-from pycasso2.config import get_config, default_config_path, parse_slice
+from pycasso2.config import get_config, default_config_path
 import pycasso2.segmentation as seg
 from pycasso2 import flags
 from pycasso2 import FitsCube
@@ -34,9 +34,6 @@ def parse_args():
                         help='Cube type. Ex.: diving3d, califa')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
-    parser.add_argument('--slice', dest='slice', default=None,
-                        help='Import only a slice of the cube. ' \
-                        'Example: y1:y2,x1:x2. Default: full cube.')
     parser.add_argument('--seg', dest='seg', default=None,
                         help='If specified, segment the cube using a custom ' \
                         'segmentation file or built-in segmentation ' \
@@ -73,18 +70,12 @@ if args.name is None:
 else:
     name = args.name
 
-try:
-    sl = parse_slice(args.slice)
-except:
-    log.error('Error reading or bad slice definition: %s' % sl)
-    sys.exit()
-
 if args.cubeType not in read_type.keys():
     log.error('Unknown cube type %s' % args.cubeType)
     sys.exit()
 
 g = FitsCube(args.cubeIn, cube_type=args.cubeType, name=name,
-             import_cfg=cfg, import_slice=sl)
+             import_cfg=cfg)
 
 if args.seg:
     pa = g.pa if args.pa is None else args.pa

@@ -16,7 +16,7 @@ __all__ = ['read_gmos', 'gmos_read_masterlist']
 gmos_cfg_sec = 'gmos'
 
 
-def read_gmos(cube, name, cfg, sl=None, destcube=None):
+def read_gmos(cube, name, cfg, destcube=None):
     '''
     FIXME: doc me! 
     '''
@@ -47,7 +47,7 @@ def read_gmos(cube, name, cfg, sl=None, destcube=None):
                                                        f_err_orig, badpix,
                                                        cfg, gmos_cfg_sec,
                                                        w, z, vaccuum_wl=False,
-                                                       sl=sl, EBV=EBV)
+                                                       EBV=EBV)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,
                          flux_unit, np.asscalar(ml['DL']), z, name, cube=destcube)

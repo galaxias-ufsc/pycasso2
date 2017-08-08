@@ -26,7 +26,7 @@ def read_drpall(filename, mangaid=None):
     return t
 
 
-def read_manga(cube, name, cfg, sl=None, destcube=None):
+def read_manga(cube, name, cfg, destcube=None):
     '''
     FIXME: doc me! 
     '''
@@ -62,7 +62,7 @@ def read_manga(cube, name, cfg, sl=None, destcube=None):
                                                        f_err_orig, badpix,
                                                        cfg, manga_cfg_sec,
                                                        w, z, vaccuum_wl=True,
-                                                       sl=sl, EBV=EBV)
+                                                       EBV=EBV)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,
                          flux_unit, redshift2lum_distance(z), z, name, cube=destcube)
