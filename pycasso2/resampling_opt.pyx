@@ -125,7 +125,7 @@ def hist_resample(np.ndarray[np.double_t, ndim=1, mode='c'] bins_o not None,
 
     v_r[j] = v_r_j
     while j < n_v_r:
-        j += 1
         v_r[j] = 0.0
+        j += 1
 
 
