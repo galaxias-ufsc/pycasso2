@@ -104,7 +104,33 @@ def import_spectra(l_obs, f_obs, f_err, badpix, cfg, wcs,
         l_obs, l_resam, f_obs, f_err, badpix, vectorized=vector_resam)
     crpix = (0, crpix[1], crpix[2])
 
+    l1 = cfg.getfloat(cfg_starlight_sec, 'llow_SN')
+    l2 = cfg.getfloat(cfg_starlight_sec, 'lupp_SN')
+    sn_min = cfg.getfloat(cfg_import_sec, 'SN_min', fallback=0.0)
+    if sn_min > 0.0:
+        log.debug('Masking pixels with S/N < %.1f (%.1f-%.1f AA)' % (sn_min, l1, l2))
+        sn = _calc_sn(l_resam, f_obs, f_flag, l1, l2)
+        high_sn = (sn > sn_min).filled(False)
+        use_convex_hull = cfg.getboolean(cfg_import_sec, 'convex_hull_mask', fallback=False)
+        if use_convex_hull:
+            log.debug('Calculating convex hull of S/N mask.')
+            high_sn = convex_hull_mask(high_sn)
+        f_flag[:, ~high_sn] |= flags.low_sn
+    
     log.debug('Updating WCS.')
     wcs = get_updated_WCS(wcs, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
 
     return l_resam, f_obs, f_err, f_flag, wcs, EBV
+
+
+def _calc_sn(l_obs, f_obs, f_flag, l1, l2):
+    i1, i2 = find_nearest_index(l_obs, [l1, l2])
+    l_obs = l_obs[i1:i2]
+    f_obs = f_obs[i1:i2]
+    f_flag = f_flag[i1:i2]
+    bad = (f_flag & flags.no_obs) > 0
+    f_obs = np.ma.masked_where(bad, f_obs)
+    y = cube_continuum(l_obs, f_obs, degr=1, niterate=0)
+    signal = y.mean(axis=0)
+    noise = (f_obs - y).std(axis=0)
+    return signal / noise
