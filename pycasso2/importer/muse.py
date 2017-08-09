@@ -14,9 +14,6 @@ import numpy as np
 
 __all__ = ['read_muse', 'muse_read_masterlist']
 
-muse_cfg_sec = 'muse'
-
-
 def read_muse(cube, name, cfg, destcube=None):
     '''
     FIXME: doc me! 
@@ -25,7 +22,7 @@ def read_muse(cube, name, cfg, destcube=None):
         raise Exception('Please specify a single cube.')
     cube = cube[0]
 
-    flux_unit = cfg.getfloat(muse_cfg_sec, 'flux_unit')
+    flux_unit = cfg.getfloat('import', 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
@@ -50,7 +47,7 @@ def read_muse(cube, name, cfg, destcube=None):
     f_err_orig[badpix] = 0.0
 
     # Get data from master list
-    masterlist = cfg.get(muse_cfg_sec, 'masterlist')
+    masterlist = cfg.get('tables', 'master_table')
     galaxy_id = name
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = muse_read_masterlist(masterlist, galaxy_id)
@@ -60,8 +57,7 @@ def read_muse(cube, name, cfg, destcube=None):
     
     l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
                                                        f_err_orig, badpix,
-                                                       cfg, muse_cfg_sec,
-                                                       w, z, vaccuum_wl=False,
+                                                       cfg, w, z, vaccuum_wl=False,
                                                        EBV=EBV)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,

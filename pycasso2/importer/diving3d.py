@@ -17,7 +17,6 @@ __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
 
 d3d_cfg_sec = 'diving3d'
 
-
 def read_diving3d(cubes, name, cfg, destcube=None):
     '''
     FIXME: doc me! 
@@ -26,7 +25,7 @@ def read_diving3d(cubes, name, cfg, destcube=None):
         raise Exception('Please specify the reduced and observed cubes.')
         redcube, obscube = cubes
     
-    flux_unit = cfg.getfloat(d3d_cfg_sec, 'flux_unit')
+    flux_unit = cfg.getfloat('import', 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from reduced cube %s.' % redcube)
@@ -49,11 +48,11 @@ def read_diving3d(cubes, name, cfg, destcube=None):
 
     l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
                                                        f_err_orig, badpix,
-                                                       cfg, d3d_cfg_sec,
-                                                       w, z=0.0, vaccuum_wl=False,
+                                                       cfg, w, z=0.0,
+                                                       vaccuum_wl=False,
                                                        EBV=0.0)
 
-    masterlist = cfg.get(d3d_cfg_sec, 'masterlist')
+    masterlist = cfg.get('tables', 'master_table')
     galaxy_id = d3d_get_galaxy_id(redcube)
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = d3d_read_masterlist(masterlist, galaxy_id)

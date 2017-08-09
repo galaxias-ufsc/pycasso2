@@ -4,7 +4,7 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..wcs import get_wavelength_coordinates, get_Naxis
-from ..cosmology import redshift2lum_distance, velocity2redshift
+from ..cosmology import velocity2redshift
 from .core import import_spectra, safe_getheader, fill_cube
 
 from astropy import log, wcs
@@ -13,8 +13,6 @@ from astropy.table import Table
 import numpy as np
 
 __all__ = ['read_califa', 'califa_read_masterlist']
-
-califa_cfg_sec = 'califa'
 
 
 def read_califa(cube, name, cfg, destcube=None):
@@ -25,8 +23,7 @@ def read_califa(cube, name, cfg, destcube=None):
         raise Exception('Please specify a single cube.')
     cube = cube[0]
 
-    flux_unit = cfg.getfloat(califa_cfg_sec, 'flux_unit')
-    DL_from_masterlist = cfg.getboolean(califa_cfg_sec, 'DL_from_masterlist')
+    flux_unit = cfg.getfloat('import', 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
@@ -42,21 +39,15 @@ def read_califa(cube, name, cfg, destcube=None):
     f_err_orig = fits.getdata(cube, extname='ERROR')
     badpix = fits.getdata(cube, extname='BADPIX') != 0
 
-    # Get luminosity distance from master list
-    if DL_from_masterlist:
-        masterlist = cfg.get(califa_cfg_sec, 'masterlist')
-        galaxy_id = name
-        log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
-        ml = califa_read_masterlist(masterlist, galaxy_id)
-        lum_dist_Mpc = ml['d_Mpc']
-    else:
-        lum_dist_Mpc = redshift2lum_distance(z)
-
+    masterlist = cfg.get('tables', 'master_table')
+    galaxy_id = name
+    log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
+    ml = califa_read_masterlist(masterlist, galaxy_id)
+    lum_dist_Mpc = ml['d_Mpc']
     
     l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
                                                        f_err_orig, badpix,
-                                                       cfg, califa_cfg_sec,
-                                                       w, z, vaccuum_wl=False,
+                                                       cfg, w, z, vaccuum_wl=False,
                                                        EBV=0.0)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,

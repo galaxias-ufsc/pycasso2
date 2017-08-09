@@ -12,8 +12,6 @@ import numpy as np
 
 __all__ = ['read_manga', 'read_drpall']
 
-manga_cfg_sec = 'manga'
-
 CRITICAL_BIT = 1 << 30
 
 
@@ -34,14 +32,14 @@ def read_manga(cube, name, cfg, destcube=None):
         raise Exception('Please specify a single cube.')
     cube = cube[0]
 
-    flux_unit = cfg.getfloat(manga_cfg_sec, 'flux_unit')
+    flux_unit = cfg.getfloat('import', 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
     w = wcs.WCS(header)
     
-    drp = read_drpall(cfg.get(manga_cfg_sec, 'drpall'), header['MANGAID'])
+    drp = read_drpall(cfg.get('tables', 'master_table'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
 
     if header['DRP3QUAL'] & CRITICAL_BIT:
@@ -60,8 +58,8 @@ def read_manga(cube, name, cfg, destcube=None):
     EBV = header['EBVGAL']
     l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
                                                        f_err_orig, badpix,
-                                                       cfg, manga_cfg_sec,
-                                                       w, z, vaccuum_wl=True,
+                                                       cfg, w, z,
+                                                       vaccuum_wl=True,
                                                        EBV=EBV)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,

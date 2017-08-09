@@ -13,8 +13,6 @@ import numpy as np
 
 __all__ = ['read_gmos', 'gmos_read_masterlist']
 
-gmos_cfg_sec = 'gmos'
-
 
 def read_gmos(cube, name, cfg, destcube=None):
     '''
@@ -24,7 +22,7 @@ def read_gmos(cube, name, cfg, destcube=None):
         raise Exception('Please specify a single cube.')
     cube = cube[0]
 
-    flux_unit = cfg.getfloat(gmos_cfg_sec, 'flux_unit')
+    flux_unit = cfg.getfloat('import', 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
@@ -32,7 +30,7 @@ def read_gmos(cube, name, cfg, destcube=None):
     w = wcs.WCS(header)
     l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
     
-    masterlist = cfg.get(gmos_cfg_sec, 'masterlist')
+    masterlist = cfg.get('tables', 'master_table')
     log.debug('Loading masterlist for %s: %s.' % (name, masterlist))
     ml = gmos_read_masterlist(masterlist, name)
     EBV = ml['EBVGAL']
@@ -45,8 +43,8 @@ def read_gmos(cube, name, cfg, destcube=None):
 
     l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
                                                        f_err_orig, badpix,
-                                                       cfg, gmos_cfg_sec,
-                                                       w, z, vaccuum_wl=False,
+                                                       cfg, w, z,
+                                                       vaccuum_wl=False,
                                                        EBV=EBV)
 
     destcube = fill_cube(f_obs, f_err, f_flag, header, w,
