@@ -144,7 +144,7 @@ class PycassoExplorer:
                        ]
         
         for k in image_order:
-            print k
+            print(k)
             im = images[k]
             if self.c.hasSegmentationMask:
                 im = spatialize(im, self.c.segmentationMask, is_ext[k])

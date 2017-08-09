@@ -30,11 +30,11 @@ _E = _MACHEPS * 10
 
 # utility functions
 _clamp = lambda a, v, b: max(a, min(b, v))              # clamp v between a and b
-_perp = lambda (x, y): array([-y, x])                   # perpendicular
+_perp = lambda x: array([-x[1], x[0]])                  # perpendicular
 _prod = lambda X: reduce(mul, X)                        # product
-_mag = lambda (x, y): sqrt(x * x + y * y)               # magnitude, or length
+_mag = lambda x: sqrt(x[0] * x[0] + x[1] * x[1])        # magnitude, or length
 _normalize = lambda V: array([i / _mag(V) for i in V])  # normalize a vector
-_intersect = lambda A, B: (A[1] > B[0] and B[1] > A[0]) # intersection test
+_intersect = lambda X: (X[0][1] > X[1][0] and X[1][1] > X[0][0]) # intersection test
 _unzip = lambda zipped: zip(*zipped)                    # unzip a list of tuples
 
 def _isbetween(o, p, q):
@@ -235,7 +235,7 @@ class Polygon(object):
         self.P = array([(x + p_x, y + p_y) for (p_x, p_y) in self.P])
 
 
-    def collidepoint(self, (x, y)):
+    def collidepoint(self, x_y):
         """
         test if point (x, y) is outside, on the boundary, or inside polygon
         uses raytracing algorithm
@@ -244,6 +244,7 @@ class Polygon(object):
         returns -1 if on boundary
         returns 1 if inside
         """
+        x, y = x_y
         n, P = self.n, self.P
 
         # test if (x, y) on a vertex
@@ -421,7 +422,7 @@ class Polygon(object):
         P = self.P
         X, Y = P[:, 0], P[:, 1]
         return 0.5 * sum(X[i] * Y[(i + 1) % n] - X[(i + 1) % n] * Y[i]
-                         for i in xrange(n))
+                         for i in range(n))
 
 
     @property
@@ -435,7 +436,7 @@ class Polygon(object):
         if n == 2: return array([X[0] + X[1] / 2, Y[0] + Y[1] / 2])
 
         c_x, c_y = 0, 0
-        for i in xrange(n):
+        for i in range(n):
             a_i = X[i] * Y[(i + 1) % n] - X[(i + 1) % n] * Y[i]
             c_x += (X[i] + X[(i + 1) % n]) * a_i
             c_y += (Y[i] + Y[(i + 1) % n]) * a_i
@@ -446,7 +447,8 @@ class Polygon(object):
 
 
     @C.setter
-    def C(self, (x, y)):
+    def C(self, x_y):
+        x, y = x_y
         c_x, c_y = self.C
         x, y = x - c_x, y - c_y
         self.P = array([(p_x + x, p_y + y) for (p_x, p_y) in self.P])
