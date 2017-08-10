@@ -84,13 +84,15 @@ def makedirs(the_path):
 
 
 class SynthesisAdapter(object):
+    
+    cfg_sec = 'starlight'
 
-    def __init__(self, cube, cfg, key='starlight', new_name=None):
+    def __init__(self, cube, cfg, new_name=None):
         from ..cube import FitsCube
-        self.starlightDir = cfg.get(key, 'starlight_dir')
-        self._arqMaskFormat = cfg.get(key, 'arq_mask_format')
-        self._inFileFormat = cfg.get(key, 'arq_obs_format')
-        self._outFileFormat = cfg.get(key, 'arq_out_format')
+        self.starlightDir = cfg.get(self.cfg_sec, 'starlight_dir')
+        self._arqMaskFormat = cfg.get(self.cfg_sec, 'arq_mask_format')
+        self._inFileFormat = cfg.get(self.cfg_sec, 'arq_obs_format')
+        self._outFileFormat = cfg.get(self.cfg_sec, 'arq_out_format')
         self._cube = FitsCube(cube)
         if new_name is None:
             self.name = self._cube.name
@@ -99,7 +101,7 @@ class SynthesisAdapter(object):
             self.name = new_name
             self._cube.name = new_name
         self._readData()
-        self._gridTemplate, self._runTemplate = self._getTemplates(cfg, key)
+        self._gridTemplate, self._runTemplate = self._getTemplates(cfg)
         self._createDirs()
         self._base_data_saved = False
 
@@ -116,39 +118,39 @@ class SynthesisAdapter(object):
             self.f_err = self._cube.f_err
             self.f_flag = self._cube.f_flag
 
-    def _getTemplates(self, cfg, key):
+    def _getTemplates(self, cfg):
         grid = PGridFile(self.starlightDir)
         grid.fluxUnit = self._cube.flux_unit
 
-        grid.setBasesDir(cfg.get(key, 'base_dir'))
-        obs_dir = path.join(cfg.get(key, 'obs_dir'), self.name)
+        grid.setBasesDir(cfg.get(self.cfg_sec, 'base_dir'))
+        obs_dir = path.join(cfg.get(self.cfg_sec, 'obs_dir'), self.name)
         grid.setObsDir(obs_dir)
-        out_dir = path.join(cfg.get(key, 'out_dir'), self.name)
+        out_dir = path.join(cfg.get(self.cfg_sec, 'out_dir'), self.name)
         grid.setOutDir(out_dir)
         grid.setLogDir(path.join(grid.logDir, self.name))
 
-        grid.setMaskDir(cfg.get(key, 'mask_dir'))
-        grid.setEtcDir(cfg.get(key, 'etc_dir'))
-        grid.randPhone = int(cfg.get(key, 'rand_seed'))
-        grid.lLow_SN = float(cfg.get(key, 'llow_SN'))
-        grid.lUpp_SN = float(cfg.get(key, 'lupp_SN'))
-        grid.lLow_Syn = float(cfg.get(key, 'Olsyn_ini'))
-        grid.lUpp_Syn = float(cfg.get(key, 'Olsyn_fin'))
+        grid.setMaskDir(cfg.get(self.cfg_sec, 'mask_dir'))
+        grid.setEtcDir(cfg.get(self.cfg_sec, 'etc_dir'))
+        grid.randPhone = int(cfg.get(self.cfg_sec, 'rand_seed'))
+        grid.lLow_SN = float(cfg.get(self.cfg_sec, 'llow_SN'))
+        grid.lUpp_SN = float(cfg.get(self.cfg_sec, 'lupp_SN'))
+        grid.lLow_Syn = float(cfg.get(self.cfg_sec, 'Olsyn_ini'))
+        grid.lUpp_Syn = float(cfg.get(self.cfg_sec, 'Olsyn_fin'))
         grid.dLambda = self._cube.dl
-        grid.fScale_Chi2 = float(cfg.get(key, 'fscale_chi2'))
-        grid.fitFix = cfg.get(key, 'fit_fix')
-        grid.isPhoEnabled = int(cfg.get(key, 'IsPHOcOn'))
-        grid.isQHREnabled = int(cfg.get(key, 'IsQHRcOn'))
-        grid.isFIREnabled = int(cfg.get(key, 'IsFIRcOn'))
+        grid.fScale_Chi2 = float(cfg.get(self.cfg_sec, 'fscale_chi2'))
+        grid.fitFix = cfg.get(self.cfg_sec, 'fit_fix')
+        grid.isPhoEnabled = int(cfg.get(self.cfg_sec, 'IsPHOcOn'))
+        grid.isQHREnabled = int(cfg.get(self.cfg_sec, 'IsQHRcOn'))
+        grid.isFIREnabled = int(cfg.get(self.cfg_sec, 'IsFIRcOn'))
 
         run = PGridRun()
-        run.configFile = cfg.get(key, 'arq_config')
-        run.baseFile = cfg.get(key, 'arq_base')
-        run.maskFile = cfg.get(key, 'arq_mask')
-        run.reddening = cfg.get(key, 'red_law')
-        run.etcInfoFile = cfg.get(key, 'arq_etc')
-        run.v0_Ini = float(cfg.get(key, 'v0_ini'))
-        run.vd_Ini = float(cfg.get(key, 'vd_ini'))
+        run.configFile = cfg.get(self.cfg_sec, 'arq_config')
+        run.baseFile = cfg.get(self.cfg_sec, 'arq_base')
+        run.maskFile = cfg.get(self.cfg_sec, 'arq_mask')
+        run.reddening = cfg.get(self.cfg_sec, 'red_law')
+        run.etcInfoFile = cfg.get(self.cfg_sec, 'arq_etc')
+        run.v0_Ini = float(cfg.get(self.cfg_sec, 'v0_ini'))
+        run.vd_Ini = float(cfg.get(self.cfg_sec, 'vd_ini'))
         run.lumDistanceMpc = self._cube.lumDistMpc
 
         return grid, run

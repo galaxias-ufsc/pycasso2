@@ -22,16 +22,14 @@ def parse_args():
                         help='Cube. Ex.: T001.fits')
     parser.add_argument('--out', dest='cubeOut', required=True,
                         help='Output cube.')
-    parser.add_argument('--rename', dest='newName',
+    parser.add_argument('--name', dest='newName',
                         help='Rename the output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
-    parser.add_argument('--config-section', dest='configSection', default='starlight',
-                        help='Config section with starlight settings. Default: starlight')
     parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count() - 1,
                         help='Number of worker processes.')
-    parser.add_argument('--chunk-size', dest='chunkSize', type=int, default=5,
-                        help='Grid chunk size, defaults to the same as --nproc.')
+    parser.add_argument('--chunk-size', dest='chunkSize', type=int, default=2,
+                        help='Grid chunk size. Default: 2.')
     parser.add_argument('--timeout', dest='timeout', type=int, default=30,
                         help='Timeout of starlight processes, in minutes.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
@@ -65,10 +63,9 @@ cfg = get_config(args.configFile)
 nproc = args.nproc if args.nproc > 1 else 1
 
 print('Loading cube from %s.' % args.cubeIn[0])
-sa = SynthesisAdapter(
-    args.cubeIn[0], cfg, args.configSection, new_name=args.newName)
+sa = SynthesisAdapter(args.cubeIn[0], cfg, new_name=args.newName)
 
-exec_path = cfg.get(args.configSection, 'exec_path')
+exec_path = cfg.get('starlight', 'exec_path')
 print('Starting starlight runner (using %s).' % exec_path)
 runner = StarlightRunner(
     n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
