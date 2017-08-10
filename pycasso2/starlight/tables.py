@@ -82,12 +82,13 @@ def _read_mask(maskfile):
 
 def write_input(wl, flux, err, flags, filename):
     from astropy.io import ascii
-
-    flags = np.where(flags, 1.0, 0.0)
+    flux = flux.filled(0.0)
+    err = err.filled(0.0)
+    flags = np.where(flags, 2.0, 0.0)
     if flags is not None and err is not None:
-        cols = [wl, flux.data, err.data, flags]
+        cols = [wl, flux, err.filled, flags]
     else:
-        cols = [wl, flux.data]
+        cols = [wl, flux]
     ascii.write(cols, filename, Writer=ascii.NoHeader, overwrite=True)
 
 
