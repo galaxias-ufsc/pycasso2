@@ -86,7 +86,7 @@ def write_input(wl, flux, err, flags, filename):
     err = err.filled(0.0)
     flags = np.where(flags, 2.0, 0.0)
     if flags is not None and err is not None:
-        cols = [wl, flux, err.filled, flags]
+        cols = [wl, flux, err, flags]
     else:
         cols = [wl, flux]
     ascii.write(cols, filename, Writer=ascii.NoHeader, overwrite=True)
