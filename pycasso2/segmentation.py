@@ -80,18 +80,22 @@ def sum_spectra(segmask, f_obs, f_err, badpix=None, cov_factor=None):
     if not isinstance(f_obs, np.ma.MaskedArray):
         if badpix is None:
             raise Exception('badpix must be specified if f_obs is not a masked array.')
-        f_obs = np.ma.array(f_obs, mask=badpix)
-        f_err = np.ma.array(f_err, mask=badpix)
-    good = ~np.ma.getmaskarray(f_obs)
+        good = ~badpix
+    else:
+        good = ~np.ma.getmaskarray(f_obs)
+        f_obs = f_obs.filled(0.0)
+        f_err = f_err.filled(0.0)
+
     N_good = np.tensordot(good.astype('float'), segmask, axes=[[1, 2], [1, 2]])
 
     N_pix = segmask.sum(axis=(1, 2)).astype('float')
     good_frac = N_good / N_pix
-    zone_flux = np.tensordot(
-            f_obs.filled(0.0), segmask, axes=[[1, 2], [1, 2]]) / good_frac
-    zone_error2 = np.tensordot(
-            f_err.filled(0.0)**2, segmask, axes=[[1, 2], [1, 2]]) / good_frac
-    zone_error = np.sqrt(zone_error2)
+    zone_flux = np.tensordot(f_obs, segmask, axes=[[1, 2], [1, 2]])
+    valid = N_good > 0
+    zone_flux[valid] /= good_frac[valid]
+    zone_error = np.tensordot(f_err**2, segmask, axes=[[1, 2], [1, 2]])
+    zone_error[valid] /= good_frac[valid]
+    np.sqrt(zone_error, out=zone_error)
     if cov_factor is not None:
         zone_error *= cov_factor
     return zone_flux, zone_error, good_frac
