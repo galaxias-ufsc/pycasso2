@@ -34,6 +34,8 @@ def parse_args():
                         help='Timeout of starlight processes, in minutes.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
+    parser.add_argument('--synth-sn', dest='synthSN', type=float,
+                        help='Synthetic spectra signal to noise.')
     parser.add_argument('--use-custom-masks', dest='useCustomMasks', action='store_true',
                         help='Use Custom per-spaxel emission line masks.')
     parser.add_argument('--no-error-flag', dest='noErrorFlag', action='store_true',
@@ -70,7 +72,7 @@ print('Starting starlight runner (using %s).' % exec_path)
 runner = StarlightRunner(
     n_workers=nproc, timeout=args.timeout * 60.0, compress=True, exec_path=exec_path)
 for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=not args.noErrorFlag,
-                            use_custom_masks=args.useCustomMasks):
+                            use_custom_masks=args.useCustomMasks, synth_sn=args.synthSN):
     if len(grid.runs) != 0:
         log.info('Dispatching %s.' % grid.name)
         runner.addGrid(grid)

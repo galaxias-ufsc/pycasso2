@@ -165,7 +165,7 @@ class SynthesisAdapter(object):
         makedirs(out_dir)
         makedirs(log_dir)
 
-    def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks):
+    def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks, synth_sn):
         grid = self._gridTemplate.copy()
         if x1 != x2:
             grid.name = 'grid_%s_%04d_%04d-%04d' % (self.name, y, x1, x2)
@@ -181,14 +181,14 @@ class SynthesisAdapter(object):
             grid.flagSpecAvail = 0
 
         for x in range(x1, x2):
-            run = self._createRun(x, y, use_errors_flags, use_custom_masks)
+            run = self._createRun(x, y, use_errors_flags, use_custom_masks, synth_sn)
             if run is not None:
                 grid.runs.append(run)
             else:
                 log.debug('Skipping masked spaxel (%d,%d)' % (x, y))
         return grid
 
-    def _createRun(self, x, y, use_errors_flags, use_custom_masks):
+    def _createRun(self, x, y, use_errors_flags, use_custom_masks, synth_sn):
         if self.spatialMask[y, x]:
             self.f_flag[:, y, x] |= flags.starlight_masked_pix
             return None
@@ -205,13 +205,16 @@ class SynthesisAdapter(object):
         if use_errors_flags:
             f_err = self.f_err[:, y, x]
             f_flag = self.f_flag[:, y, x]
+            if synth_sn is not None:
+                f_err = np.sqrt(f_err**2 + (f_obs / synth_sn)**2)
         else:
             f_err = None
             f_flag = None
         write_input(self.l_obs, f_obs, f_err, f_flag, path.join(self.obsDir, new_run.inFile))
         return new_run
 
-    def gridIterator(self, chunk_size, use_errors_flags=True, use_custom_masks=False):
+    def gridIterator(self, chunk_size, use_errors_flags=True,
+                     use_custom_masks=False, synth_sn=None):
         Nx = self.f_obs.shape[2]
         Ny = self.f_obs.shape[1]
         for y in range(0, Ny, 1):
@@ -219,7 +222,7 @@ class SynthesisAdapter(object):
                 x2 = x1 + chunk_size
                 if x2 > Nx:
                     x2 = Nx
-                yield self._getGrid(y, x1, x2, use_errors_flags, use_custom_masks)
+                yield self._getGrid(y, x1, x2, use_errors_flags, use_custom_masks, synth_sn)
 
     def createSynthesisCubes(self, pop_len):
         self._cube.createSynthesisCubes(pop_len)
