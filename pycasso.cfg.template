@@ -43,14 +43,14 @@ spat_cov_b = 1.0
 
 [tables]
 data_dir = /Users/andre/astro/pycasso2/data
-master_table = %(data_dir)s/tables/drpall-v1_5_4.fits
-dust_map =  %(data_dir)s/tables/planck_dust_maps.fits
-telluric_mask = %(data_dir)s/starlight/masks/Masks.telluric.MaNGA
+master_table = ${data_dir}/tables/drpall-v1_5_4.fits
+dust_map =  ${data_dir}/tables/planck_dust_maps.fits
+telluric_mask = ${data_dir}/starlight/masks/Masks.telluric.MaNGA
 
 [starlight]
 # grid config
-starlight_dir = %(data_dir)s/starlight
-exec_path = %(starlight_dir)s/PANcMEx_StarlightChains_v03b.exe
+starlight_dir = ${tables:data_dir}/starlight
+exec_path = ${starlight_dir}/PANcMEx_StarlightChains_v03b.exe
 
 # These are relative to starlight_dir 
 base_dir = bc2003
