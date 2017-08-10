@@ -7,11 +7,7 @@ Created on Jun 17, 2013
 from astropy import log
 from os import path
 import subprocess
-import sys
-if sys.version[0] == '2':
-    from Queue import Queue
-else:
-    from queue import Queue
+from queue import Queue
 from threading import Thread
 from collections import deque
 import time
@@ -51,7 +47,7 @@ def run_starlight(exec_path, starlight_dir, grid_data, timeout, logfile=None):
     log.debug('Running %s' % exec_path)
     slProc = subprocess.Popen(exec_path, cwd=starlight_dir,
                               stdin=subprocess.PIPE, stdout=logfile, stderr=logfile)
-    slProc.stdin.write(grid_data)
+    slProc.stdin.write(grid_data.encode())
     slProc.stdin.close()
     t0 = time.time()
     while (time.time() - t0) < timeout:

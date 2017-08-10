@@ -52,7 +52,7 @@ def bz2_file(filename):
         return
     filename_bz2 = filename + '.bz2'
     try:
-        with open(filename, 'r') as fd:
+        with open(filename, 'rb') as fd:
             with BZ2File(filename_bz2, 'wb') as bzfd:
                 copyfileobj(fd, bzfd)
         unlink(filename)
