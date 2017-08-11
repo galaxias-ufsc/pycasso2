@@ -11,6 +11,7 @@ import gzip
 import bz2
 import numpy as np
 from astropy.table import Table
+from pycasso2 import flags
 __all__ = ['read_wavelength_mask', 'write_input', 'read_output_tables']
 
 
@@ -80,15 +81,16 @@ def _read_mask(maskfile):
     return Table(cols, names=names)
 
 
-def write_input(wl, flux, err, flags, filename):
+def write_input(l_obs, f_obs, f_err, f_flag, filename):
     from astropy.io import ascii
-    flux = flux.filled(0.0)
-    err = err.filled(0.0)
-    flags = np.where(flags, 2.0, 0.0)
-    if flags is not None and err is not None:
-        cols = [wl, flux, err, flags]
+    f_obs = f_obs.filled(0.0)
+    f_err = f_err.filled(0.0)
+    bad = (f_flag & flags.before_starlight) > 0
+    f_flag = np.where(bad, 2.0, 0.0)
+    if f_flag is not None and f_err is not None:
+        cols = [l_obs, f_obs, f_err, f_flag]
     else:
-        cols = [wl, flux]
+        cols = [l_obs, f_obs]
     ascii.write(cols, filename, Writer=ascii.NoHeader, overwrite=True)
 
 

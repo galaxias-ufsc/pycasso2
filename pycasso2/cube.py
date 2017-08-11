@@ -618,7 +618,7 @@ class FitsCube(object):
         key = 'HIERARCH %s' % self._h_name
         self._header[key] = value
 
-    def getSpatialMask(self, flags, threshold=0.5):
+    def getSpatialMask(self, flags, threshold=0.8):
         '''
         Return a spatial mask containing spaxels that have less than
         a given fraction of masked spectral pixels.
@@ -631,7 +631,7 @@ class FitsCube(object):
         threshold : float, optional
             Fraction of spectral pixels that must be flagged
             in the spaxel for it to be masked.
-            Default: ``0.5``
+            Default: ``0.8``
 
         Returns
         -------

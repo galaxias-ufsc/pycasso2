@@ -5,7 +5,7 @@ Created on 26/06/2015
 '''
 from .tables import write_input, read_output_tables
 from .gridfile import GridRun, GridFile
-from ..resampling import get_subset_slices
+from ..resampling import get_subset_slices, find_nearest_index
 from ..error import estimate_error
 from .. import flags
 
@@ -100,23 +100,33 @@ class SynthesisAdapter(object):
             log.debug('Renamed cube to %s' % new_name)
             self.name = new_name
             self._cube.name = new_name
-        self._readData()
         self._gridTemplate, self._runTemplate = self._getTemplates(cfg)
+        self._readData()
         self._createDirs()
         self._base_data_saved = False
+        
+    def getSpatialMask(self):
+        mask = self._cube.getSpatialMask(flags.before_starlight)
+        l1 = self._gridTemplate.lLow_SN
+        l2 = self._gridTemplate.lUpp_SN
+        i1, i2 = find_nearest_index(self.l_obs, [l1, l2])
+        bad_snwin = (self.f_flag[i1:i2] & flags.before_starlight) > 0
+        mask |= bad_snwin.all(axis=0)
+        if self.isSegmented:
+            mask = mask[np.newaxis, :]
+        return mask
 
     def _readData(self):
         self.l_obs = self._cube.l_obs
-        self.spatialMask = self._cube.getSpatialMask(flags.no_obs)
         if self.isSegmented:
             self.f_obs = self._cube.f_obs[:, np.newaxis, :]
             self.f_err = self._cube.f_err[:, np.newaxis, :]
             self.f_flag = self._cube.f_flag[:, np.newaxis, :]
-            self.spatialMask = self.spatialMask[np.newaxis, :]
         else:
             self.f_obs = self._cube.f_obs
             self.f_err = self._cube.f_err
             self.f_flag = self._cube.f_flag
+        self.spatialMask = self.getSpatialMask()
 
     def _getTemplates(self, cfg):
         grid = PGridFile(self.starlightDir)
