@@ -420,6 +420,8 @@ def convex_hull_mask(mask):
     '''
     mask_points = np.array(np.where(mask)).T
     is_hull = convexhull(mask_points)
+    if len(is_hull) == 0:
+        raise Exception('No data points found.')
     hull_poly = Polygon(mask_points[is_hull], conv=False)
 
     ny, nx = mask.shape
