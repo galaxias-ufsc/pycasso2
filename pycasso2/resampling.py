@@ -443,6 +443,7 @@ def hist_resample(bins_o, bins_r, v, v_r=None, density=False):
     j = 0
     lbo = bins_o[i_0]
     rbo = bins_o[i_0 + 1]
+    dbo = rbo - lbo
     lbr = bins_r[j]
     rbr = bins_r[j + 1]
     dbr = rbr - lbr
