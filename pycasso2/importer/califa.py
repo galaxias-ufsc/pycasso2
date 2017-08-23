@@ -90,16 +90,16 @@ def califa_read_masterlist(filename, galaxy_id=None):
 
 
 _dtype = np.dtype([
-         ('CALIFA_ID', 'S20'),
-         ('ned_name', 'S20'),
-         ('ppak_file', 'S40'),
+         ('CALIFA_ID', 'U20'),
+         ('ned_name', 'U20'),
+         ('ppak_file', 'U40'),
          ('ra', np.float64),
          ('dec', np.float64),
          ('b', np.float64),
          ('l', np.float64),
          ('d_Mpc', np.float64),
          ('modz', np.float64),
-         ('INFOmodz', 'S1'),
+         ('INFOmodz', 'U1'),
          ('IRSA_E(B-V)', np.float64),
          ('e_IRSA_E(B-V)', np.float64),
          ('Mr', np.float64),
@@ -155,7 +155,7 @@ _dtype = np.dtype([
          ('Fnu_25', np.float64),
          ('Fnu_60', np.float64),
          ('Fnu_100', np.float64),
-         ('NEDNAME', 'S20'),
+         ('NEDNAME', 'U20'),
          ('CHANDRA_flux_aper_b', np.float64),
          ('CHANDRA_hard_hs', np.float64),
          ('mjd', np.int),
@@ -189,8 +189,8 @@ _dtype = np.dtype([
          ('SERSIC_N', np.float64),
          ('SERSIC_TH50', np.float64),
          ('SERSIC_FLUX', np.float64),
-         ('CLASS', 'S20'),
-         ('SUBCLASS', 'S20'),
+         ('CLASS', 'U20'),
+         ('SUBCLASS', 'U20'),
          ('int_r_mag', np.float64),
          ('_PA', np.float64),       # Original name: 'PA'
          ('_PA_align', np.float64), # Original name: 'PA_align'
