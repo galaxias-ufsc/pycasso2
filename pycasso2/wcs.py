@@ -7,7 +7,7 @@ Created on 26/06/2015
 from astropy import log, wcs
 import numpy as np
 
-__all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'write_WCS', 'update_WCS',
+__all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'write_WCS',
            'get_reference_pixel', 'get_galactic_coordinates_rad',
            'get_pixel_area', 'get_pixel_area_srad', 'get_pixel_scale', 'get_pixel_scale_rad',
            'get_Naxis']
@@ -96,8 +96,10 @@ def get_galactic_coordinates_rad(w):
     return l, b
 
 
-def get_reference_pixel(w):
-    crpix = np.rint(w.wcs.crpix).astype('int') - 1
+def get_reference_pixel(w, as_int=False):
+    crpix = w.wcs.crpix - 1
+    if as_int:
+        crpix = np.rint(crpix).astype('int')
     return (crpix[2], crpix[1], crpix[0])
 
 
@@ -140,7 +142,7 @@ def write_WCS(header, w):
     header.extend(w.to_header(), update=True)
 
 
-def get_updated_WCS(w, crpix, crval_wave, cdelt_wave):
+def get_updated_WCS(w, crpix, celestial_scaling, crval_wave, cdelt_wave):
     w = w.copy()
     if w.wcs.cunit[2] == 'm':
         crval_wave *= one_angstrom
@@ -150,12 +152,9 @@ def get_updated_WCS(w, crpix, crval_wave, cdelt_wave):
     crval_orig = w.wcs.crval
     w.wcs.crval = crval_orig[0], crval_orig[1], crval_wave
     if w.wcs.has_cd():
+        w.wcs.cd[0:2, 0:2] *= celestial_scaling
         w.wcs.cd[2, 2] = cdelt_wave
     else:
+        w.wcs.cdelt[0:2] *= celestial_scaling
         w.wcs.cdelt[2] = cdelt_wave
     return w
-
-
-def update_WCS(header, crpix, crval_wave, cdelt_wave):
-    w = get_updated_WCS(wcs.WCS(header), crpix, crval_wave, cdelt_wave)
-    header.extend(w.to_header(), update=True)

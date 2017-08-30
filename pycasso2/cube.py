@@ -567,7 +567,7 @@ class FitsCube(object):
 
     @lazyproperty
     def center(self):
-        return get_reference_pixel(self._wcs)
+        return get_reference_pixel(self._wcs, as_int=True)
 
     @property
     def flux_unit(self):

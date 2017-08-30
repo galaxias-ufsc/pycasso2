@@ -76,7 +76,7 @@ def import_spectra(l_obs, f_obs, f_err, badpix, cfg, wcs,
         B = cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
         cov_factor = get_cov_factor(bin_size**2, A, B)
         log.debug('    Covariance factor: %.2f.' % cov_factor)
-        crpix = (crpix[0], crpix[1] / bin_size, crpix[2] / bin_size)
+        crpix = (crpix[0], (crpix[1] - 1) / bin_size, (crpix[2] - 1) / bin_size)
         f_obs, f_err, good_frac = bin_spectra(f_obs, f_err, badpix, bin_size, cov_factor)
         badpix = good_frac == 0
 
@@ -118,7 +118,8 @@ def import_spectra(l_obs, f_obs, f_err, badpix, cfg, wcs,
         f_flag[:, ~high_sn] |= flags.low_sn
     
     log.debug('Updating WCS.')
-    wcs = get_updated_WCS(wcs, crpix=crpix, crval_wave=l_resam[0], cdelt_wave=dl)
+    wcs = get_updated_WCS(wcs, crpix=crpix, celestial_scaling=bin_size,
+                          crval_wave=l_resam[0], cdelt_wave=dl)
 
     return l_resam, f_obs, f_err, f_flag, wcs, EBV
 
