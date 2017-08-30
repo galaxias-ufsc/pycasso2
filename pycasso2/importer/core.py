@@ -76,7 +76,7 @@ def import_spectra(l_obs, f_obs, f_err, badpix, cfg, wcs,
         B = cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
         cov_factor = get_cov_factor(bin_size**2, A, B)
         log.debug('    Covariance factor: %.2f.' % cov_factor)
-        crpix = (crpix[0], (crpix[1] - 1) / bin_size, (crpix[2] - 1) / bin_size)
+        crpix = (crpix[0], (crpix[1] + 0.5) / bin_size - 0.5, (crpix[2] + 0.5) / bin_size - 0.5)
         f_obs, f_err, good_frac = bin_spectra(f_obs, f_err, badpix, bin_size, cov_factor)
         badpix = good_frac == 0
 
