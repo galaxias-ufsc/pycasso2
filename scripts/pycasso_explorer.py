@@ -268,11 +268,14 @@ class PycassoExplorer:
                 SN = c.SN_normwin[z]
                 Nclip = c.Nclipped[z]
         else:
-            f = c.f_obs[:, y, x] / c.flux_norm_window[y, x]
-            e = c.f_err[:, y, x] / c.flux_norm_window[y, x]
+            norm = c.flux_norm_window[y, x]
+            if norm is np.ma.masked or not np.isfinite(norm):
+                norm = np.ma.median(c.f_obs[:, y, x])
+            f = c.f_obs[:, y, x] / norm
+            e = c.f_err[:, y, x] / norm
             fl = c.f_flag[:,y, x]
             if c.hasSynthesis:
-                s = c.f_syn[:, y, x] / c.flux_norm_window[y, x]
+                s = c.f_syn[:, y, x] / norm
                 w = c.f_wei[:, y, x]
                 chi2 = c.chi2[y, x]
                 adev = c.adev[y, x]
