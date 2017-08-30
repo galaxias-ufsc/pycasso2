@@ -81,6 +81,8 @@ def sum_spectra(segmask, f_obs, f_err, badpix=None, cov_factor=None):
         if badpix is None:
             raise Exception('badpix must be specified if f_obs is not a masked array.')
         good = ~badpix
+        f_obs = np.where(good, f_obs, 0.0)
+        f_err = np.where(good, f_err, 0.0)
     else:
         good = ~np.ma.getmaskarray(f_obs)
         f_obs = f_obs.filled(0.0)
