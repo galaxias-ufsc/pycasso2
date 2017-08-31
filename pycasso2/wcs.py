@@ -10,7 +10,7 @@ import numpy as np
 __all__ = ['get_axis_coordinates', 'get_wavelength_coordinates', 'write_WCS',
            'get_reference_pixel', 'get_galactic_coordinates_rad',
            'get_pixel_area', 'get_pixel_area_srad', 'get_pixel_scale', 'get_pixel_scale_rad',
-           'get_Naxis']
+           'get_Naxis', 'replace_wave_WCS', 'shift_celestial_WCS', 'scale_celestial_WCS']
 
 
 rad_per_deg = np.pi / 180.0
@@ -142,19 +142,35 @@ def write_WCS(header, w):
     header.extend(w.to_header(), update=True)
 
 
-def get_updated_WCS(w, crpix, celestial_scaling, crval_wave, cdelt_wave):
+def replace_wave_WCS(w, crpix_wave, crval_wave, cdelt_wave):
     w = w.copy()
     if w.wcs.cunit[2] == 'm':
         crval_wave *= one_angstrom
         cdelt_wave *= one_angstrom
-    crpix = np.array([crpix[2], crpix[1], crpix[0]]) + 1
-    w.wcs.crpix = crpix
-    crval_orig = w.wcs.crval
-    w.wcs.crval = crval_orig[0], crval_orig[1], crval_wave
+    crpix = w.wcs.crpix
+    w.wcs.crpix = (crpix[0], crpix[1], crpix_wave + 1)
+    crval = w.wcs.crval
+    w.wcs.crval = crval[0], crval[1], crval_wave
     if w.wcs.has_cd():
-        w.wcs.cd[0:2, 0:2] *= celestial_scaling
         w.wcs.cd[2, 2] = cdelt_wave
     else:
-        w.wcs.cdelt[0:2] *= celestial_scaling
         w.wcs.cdelt[2] = cdelt_wave
+    return w
+
+def shift_celestial_WCS(w, dx, dy):
+    w = w.copy()
+    crpix = w.wcs.crpix
+    crpix = (crpix[0] - dx, crpix[1] - dy, crpix[2])
+    w.wcs.crpix = crpix
+    return w
+
+def scale_celestial_WCS(w, scaling):
+    w = w.copy()
+    crpix = w.wcs.crpix
+    transform = lambda p: (p - 0.5) / scaling + 0.5
+    w.wcs.crpix = (transform(crpix[0]), transform(crpix[1]), crpix[2])
+    if w.wcs.has_cd():
+        w.wcs.cd[0:2, 0:2] *= scaling
+    else:
+        w.wcs.cdelt[0:2] *= scaling
     return w

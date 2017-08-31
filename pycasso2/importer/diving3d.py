@@ -7,7 +7,7 @@ from ..wcs import get_wavelength_coordinates, get_Naxis
 from ..cosmology import velocity2redshift
 from ..starlight.tables import read_wavelength_mask
 from .. import flags
-from .core import import_spectra, safe_getheader, fill_cube
+from .core import safe_getheader, ObservedCube
 
 from astropy import log, wcs
 from astropy.io import fits
@@ -17,7 +17,7 @@ __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
 
 d3d_cfg_sec = 'diving3d'
 
-def read_diving3d(cubes, name, cfg, destcube=None):
+def read_diving3d(cubes, name, cfg):
     '''
     FIXME: doc me! 
     '''
@@ -42,15 +42,10 @@ def read_diving3d(cubes, name, cfg, destcube=None):
     l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
 
     log.debug('Loading data from reduced cube %s.' % redcube)
-    f_obs_orig = fits.getdata(redcube)
-    f_err_orig = np.zeros_like(f_obs_orig)
-    badpix = np.zeros(f_obs_orig.shape, dtype='bool')
-
-    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
-                                                       f_err_orig, badpix,
-                                                       cfg, w, z=0.0,
-                                                       vaccuum_wl=False,
-                                                       EBV=0.0)
+    f_obs = fits.getdata(redcube)
+    f_err = np.zeros_like(f_obs)
+    badpix = np.zeros(f_obs.shape, dtype='bool')
+    f_flag = np.where(badpix, flags.no_data, 0)
 
     masterlist = cfg.get('tables', 'master_table')
     galaxy_id = d3d_get_galaxy_id(redcube)
@@ -65,9 +60,11 @@ def read_diving3d(cubes, name, cfg, destcube=None):
     gap_mask = read_wavelength_mask(gap_mask_file, l_obs, z, dest='rest')
     f_flag[gap_mask] |= flags.ccd_gap
 
-    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
-                         flux_unit, ml['DL'], z, name, cube=destcube)
-    return destcube
+    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
+    obs.EBV = 0.0
+    obs.lumDist_Mpc = ml['DL']
+    obs.inRestFrame = True
+    return obs
 
 
 masterlist_dtype = [('id', '|S05'),

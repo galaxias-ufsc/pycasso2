@@ -12,7 +12,7 @@ from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index
 from .segmentation import spatialize
-from .importer import read_type
+from .importer import read_type, preprocess_obs
 from .config import default_config_path, get_config
 from . import flags
 from . import modeling
@@ -74,10 +74,11 @@ class FitsCube(object):
             read = read_type[cube_type]
             if import_cfg is None:
                 import_cfg = get_config(default_config_path)
-            log.info('Importing cube %s, type=%s' % (cubefile, cube_type))
+            log.info('Importing %s, type=%s' % (cubefile, cube_type))
             if type(cubefile) is not list:
                 cubefile = [cubefile]
-            read(cubefile, name, import_cfg, destcube=self)
+            obs = read(cubefile, name, import_cfg)
+            self._fromObs(obs, import_cfg)
 
     def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None):
         phdu = fits.PrimaryHDU(header=header)
@@ -126,6 +127,14 @@ class FitsCube(object):
         self._wcs = WCS(self._header)
         self._initMasks()
         self._calcEllipseParams()
+
+    def _fromObs(self, obs, cfg):
+        preprocess_obs(obs, cfg)
+        self._initFits(obs.f_obs, obs.f_err, obs.f_flag, obs.header, obs.wcs, segmask=None)
+        self.flux_unit = obs.flux_unit
+        self.lumDistMpc = obs.lumDist_Mpc
+        self.redshift = obs.redshift
+        self.name = obs.name
 
     def write(self, filename, overwrite=False):
         self._HDUList.writeto(filename, clobber=overwrite, output_verify='fix')

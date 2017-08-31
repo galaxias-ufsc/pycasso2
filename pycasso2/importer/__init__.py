@@ -3,6 +3,7 @@ from .califa import *
 from .manga import *
 from .muse import *
 from .gmos import *
+from .core import *
 
 read_type = {'diving3d': read_diving3d,
              'califa': read_califa,

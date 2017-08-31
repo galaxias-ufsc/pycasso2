@@ -3,9 +3,10 @@ Created on 08/12/2015
 
 @author: andre
 '''
-from ..cosmology import redshift2lum_distance
-from .core import safe_getheader, fill_cube, import_spectra
-from astropy import log, wcs
+from .. import flags
+from .core import safe_getheader, ObservedCube
+
+from astropy import log
 from astropy.io import fits
 import numpy as np
 
@@ -24,7 +25,7 @@ def read_drpall(filename, mangaid=None):
     return t
 
 
-def read_manga(cube, name, cfg, destcube=None):
+def read_manga(cube, name, cfg):
     '''
     FIXME: doc me! 
     '''
@@ -37,7 +38,6 @@ def read_manga(cube, name, cfg, destcube=None):
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
-    w = wcs.WCS(header)
     
     drp = read_drpall(cfg.get('tables', 'master_table'), header['MANGAID'])
     z = np.asscalar(drp['nsa_z'])
@@ -47,24 +47,19 @@ def read_manga(cube, name, cfg, destcube=None):
 
     log.debug('Loading data from %s.' % cube)
     with fits.open(cube) as f:
-        f_obs_orig = f['FLUX'].data
+        f_obs = f['FLUX'].data
         # FIXME: Check mask bits.
         badpix = f['MASK'].data > 0
         goodpix = ~badpix
-        f_err_orig = np.zeros_like(f_obs_orig)
-        f_err_orig[goodpix] = f['IVAR'].data[goodpix]**-0.5
+        f_err = np.zeros_like(f_obs)
+        f_err[goodpix] = f['IVAR'].data[goodpix]**-0.5
+        f_flag = np.where(badpix, flags.no_data, 0)
         l_obs = f['WAVE'].data
 
-    EBV = header['EBVGAL']
-    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
-                                                       f_err_orig, badpix,
-                                                       cfg, w, z,
-                                                       vaccuum_wl=True,
-                                                       EBV=EBV)
-
-    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
-                         flux_unit, redshift2lum_distance(z), z, name, cube=destcube)
-    return destcube
+    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
+    obs.EBV = header['EBVGAL']
+    obs.vaccuum_wl = True
+    return obs
 
 
 def get_bitmask_indices(bitmask):

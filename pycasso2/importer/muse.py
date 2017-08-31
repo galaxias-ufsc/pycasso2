@@ -4,8 +4,9 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..wcs import get_wavelength_coordinates, get_Naxis
-from ..cosmology import redshift2lum_distance, velocity2redshift
-from .core import safe_getheader, import_spectra, fill_cube
+from ..cosmology import velocity2redshift
+from .. import flags
+from .core import safe_getheader,  ObservedCube
 
 from astropy import log, wcs
 from astropy.io import fits
@@ -14,7 +15,7 @@ import numpy as np
 
 __all__ = ['read_muse', 'muse_read_masterlist']
 
-def read_muse(cube, name, cfg, destcube=None):
+def read_muse(cube, name, cfg):
     '''
     FIXME: doc me! 
     '''
@@ -31,20 +32,20 @@ def read_muse(cube, name, cfg, destcube=None):
     l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
 
     log.debug('Loading data from %s.' % cube)
-    f_obs_orig = fits.getdata(cube, extname='DATA').astype('float64')
-    f_err_orig = fits.getdata(cube, extname='STAT').astype('float64')
-    np.sqrt(f_err_orig, out=f_err_orig)
+    f_obs = fits.getdata(cube, extname='DATA').astype('float64')
+    f_err = fits.getdata(cube, extname='STAT').astype('float64')
+    np.sqrt(f_err, out=f_err)
     # Try to get bad pixel extension. If not, follow the MUSE pipeline manual 1.6.2,
     # > DQ The data quality flags encoded in an integer value according to the Euro3D standard (cf. [RD05]).
     # > However, by default, the data quality extension is not present, instead pixels which do not have a clean data quality status are directly encoded as Not-a-Number (NaN) values in the DATA extension itself.
     try:
         badpix = fits.getdata(cube, extname='DQ') != 0
     except:
-        badpix = ~np.isfinite(f_obs_orig)
-        badpix |= (f_obs_orig <= 0.0)
-        badpix |= (f_err_orig <= 0.0)
-    f_obs_orig[badpix] = 0.0
-    f_err_orig[badpix] = 0.0
+        badpix = ~np.isfinite(f_obs)
+        badpix |= (f_obs <= 0.0)
+        badpix |= (f_err <= 0.0)
+    f_obs[badpix] = 0.0
+    f_err[badpix] = 0.0
 
     # Get data from master list
     masterlist = cfg.get('tables', 'master_table')
@@ -52,17 +53,13 @@ def read_muse(cube, name, cfg, destcube=None):
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = muse_read_masterlist(masterlist, galaxy_id)
     z = velocity2redshift(ml['V_r [km/s]'])
-    EBV = float(ml['E(B-V)'])
     muse_save_masterlist(header, ml)
-    
-    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
-                                                       f_err_orig, badpix,
-                                                       cfg, w, z, vaccuum_wl=False,
-                                                       EBV=EBV)
+    f_flag = np.where(badpix, flags.no_data, 0)
+ 
+    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
+    obs.EBV = float(ml['E(B-V)'])
+    return obs
 
-    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
-                         flux_unit, redshift2lum_distance(z), z, name, cube=destcube)
-    return destcube
 
 masterlist_dtype = [('Name', '|S05'),
                     ('Galaxy name', '|S12'),

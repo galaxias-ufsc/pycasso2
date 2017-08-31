@@ -5,7 +5,8 @@ Created on 08/12/2015
 '''
 from ..wcs import get_wavelength_coordinates, get_Naxis
 from ..cosmology import velocity2redshift
-from .core import import_spectra, safe_getheader, fill_cube
+from .. import flags
+from .core import safe_getheader, ObservedCube
 
 from astropy import log, wcs
 from astropy.io import fits
@@ -15,7 +16,7 @@ import numpy as np
 __all__ = ['read_califa', 'califa_read_masterlist']
 
 
-def read_califa(cube, name, cfg, destcube=None):
+def read_califa(cube, name, cfg):
     '''
     FIXME: doc me!
     '''
@@ -35,24 +36,21 @@ def read_califa(cube, name, cfg, destcube=None):
     z = velocity2redshift(med_vel)
 
     log.debug('Loading data from %s.' % cube)
-    f_obs_orig = fits.getdata(cube, extname='PRIMARY')
-    f_err_orig = fits.getdata(cube, extname='ERROR')
+    f_obs = fits.getdata(cube, extname='PRIMARY')
+    f_err = fits.getdata(cube, extname='ERROR')
     badpix = fits.getdata(cube, extname='BADPIX') != 0
+    f_flag = np.where(badpix, flags.no_data, 0)
 
     masterlist = cfg.get('tables', 'master_table')
     galaxy_id = name
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = califa_read_masterlist(masterlist, galaxy_id)
-    lum_dist_Mpc = ml['d_Mpc']
     
-    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
-                                                       f_err_orig, badpix,
-                                                       cfg, w, z, vaccuum_wl=False,
-                                                       EBV=0.0)
+    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
+    obs.EBV = 0.0
+    obs.lumDist_Mpc = ml['d_Mpc']
+    return obs
 
-    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
-                         flux_unit, lum_dist_Mpc, z, name, cube=destcube)
-    return destcube
 
 def califa_read_masterlist(filename, galaxy_id=None):
     '''

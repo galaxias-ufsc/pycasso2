@@ -5,7 +5,8 @@ Created on 08/12/2015
 '''
 from ..wcs import get_wavelength_coordinates, get_Naxis
 from ..cosmology import velocity2redshift
-from .core import import_spectra, safe_getheader, fill_cube
+from .. import flags
+from .core import safe_getheader, ObservedCube
 
 from astropy import log, wcs
 from astropy.io import fits
@@ -14,7 +15,7 @@ import numpy as np
 __all__ = ['read_gmos', 'gmos_read_masterlist']
 
 
-def read_gmos(cube, name, cfg, destcube=None):
+def read_gmos(cube, name, cfg):
     '''
     FIXME: doc me! 
     '''
@@ -33,23 +34,18 @@ def read_gmos(cube, name, cfg, destcube=None):
     masterlist = cfg.get('tables', 'master_table')
     log.debug('Loading masterlist for %s: %s.' % (name, masterlist))
     ml = gmos_read_masterlist(masterlist, name)
-    EBV = ml['EBVGAL']
     z = velocity2redshift(ml['V_hel'])
         
     log.debug('Loading data from cube %s.' % cube)
-    f_obs_orig = fits.getdata(cube, extname='SCI') / flux_unit
-    f_err_orig = fits.getdata(cube, extname='ERR') / flux_unit
+    f_obs = fits.getdata(cube, extname='SCI') / flux_unit
+    f_err = fits.getdata(cube, extname='ERR') / flux_unit
     badpix = fits.getdata(cube, extname='NCUBE') < 1
+    f_flag = np.where(badpix, flags.no_data, 0)
 
-    l_obs, f_obs, f_err, f_flag, w, _ = import_spectra(l_obs, f_obs_orig,
-                                                       f_err_orig, badpix,
-                                                       cfg, w, z,
-                                                       vaccuum_wl=False,
-                                                       EBV=EBV)
-
-    destcube = fill_cube(f_obs, f_err, f_flag, header, w,
-                         flux_unit, np.asscalar(ml['DL']), z, name, cube=destcube)
-    return destcube
+    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
+    obs.EBV = header['EBVGAL']
+    obs.lumDist_Mpc = np.asscalar(ml['DL'])
+    return obs
 
 
 masterlist_dtype = [('id', '|S08'),
