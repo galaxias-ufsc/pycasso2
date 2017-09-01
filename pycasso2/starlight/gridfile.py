@@ -6,7 +6,6 @@ Created on Aug 21, 2012
 
 from .tables import read_output_tables
 from os import path, unlink
-import sys
 import copy
 from numpy import random, iinfo
 from string import Template
@@ -193,14 +192,16 @@ class GridFile(object):
         self.lLow_Syn = 3650.0   # [Olsyn_ini] lower-lambda for fit
         self.lUpp_Syn = 6850.0   # [Olsyn_fin] upper-lambda for fit
         self.dLambda = 1.0       # [Odlsyn]    delta-lambda for fit
-        self.fScale_Chi2 = 1.0   # [fscale_chi2] fudge-factor for chi2
         self.fitFix = 'FIT'      # [FIT/FXK] Fit or Fix kinematics
         self.errSpecAvail = 1  # [IsErrSpecAvailable]  1/0 = Yes/No
         self.flagSpecAvail = 1   # [IsFlagSpecAvailable] 1/0 = Yes/No
-        # [IsPHOcOn] 1/0 = Yes/No  <=== !PHO! ATT: still needs coding + testing!
+
         self.isPhoEnabled = 0
         self.isQHREnabled = 0    # [IsQHRcOn] 1/0 = Yes/No  <=== !QHR!
         self.isFIREnabled = 0    # [IsFIRcOn] 1/0 = Yes/No  <=== !FIR!
+        self.EtcESM = 'WbC'
+        self.EtcGamma = 1.0
+
         # [flux_unit] multiply spectrum in arq_obs by this value to obtain ergs/s/cm2/Angs
         self.fluxUnit = 1e-16
 
@@ -319,28 +320,29 @@ class GridFile(object):
         self.randPhone = random.randint(iinfo('int32').max, dtype='int32')
 
     def _load(self, grid_data):
-        l = grid_data.splitlines()
-        self.setBasesDir(l[1].split()[0])
-        self.setObsDir(l[2].split()[0])
-        self.setMaskDir(l[3].split()[0])
-        self.setEtcDir(l[4].split()[0])
-        self.setOutDir(l[5].split()[0])
-        self.randPhone = int(l[6].split()[0])
-        self.lLow_SN = float(l[7].split()[0])
-        self.lUpp_SN = float(l[8].split()[0])
-        self.lLow_Syn = float(l[9].split()[0])
-        self.lUpp_Syn = float(l[10].split()[0])
-        self.dLambda = float(l[11].split()[0])
-        self.fScale_Chi2 = float(l[12].split()[0])
-        self.fitFix = l[13].split()[0]
-        self.errSpecAvail = int(l[14].split()[0])
-        self.flagSpecAvail = int(l[15].split()[0])
-        self.isPhoEnabled = int(l[16].split()[0])
-        self.isQHREnabled = int(l[17].split()[0])
-        self.isFIREnabled = int(l[18].split()[0])
-        self.fluxUnit = float(l[19].split()[0])
-        for runs in l[20:]:
-            rr = runs.split()
+        data = [l.split() for l in grid_data.splitlines()]
+        self.setBasesDir(data[1][0])
+        self.setObsDir(data[2][0])
+        self.setMaskDir(data[3][0])
+        self.setEtcDir(data[4][0])
+        self.setOutDir(data[5][0])
+        self.randPhone = int(data[6][0])
+        self.lLow_SN = float(data[7][0])
+        self.lUpp_SN = float(data[8][0])
+        self.lLow_Syn = float(data[9][0])
+        self.lUpp_Syn = float(data[10][0])
+        self.dLambda = float(data[11][0])
+        self.fitFix = data[12][0]
+        self.errSpecAvail = int(data[13][0])
+        self.flagSpecAvail = int(data[14][0])
+        self.fluxUnit = float(data[15][0])
+        self.isFIREnabled = int(data[16][0])
+        self.isQHREnabled = int(data[16][1])
+        self.isPhoEnabled = int(data[16][2])
+        self.EtcESM = data[16][3]
+        self.EtcGamma = float(data[16][4])
+        
+        for rr in data[17:]:
             self.runs.append(GridRun(rr[0], rr[1], float(rr[2]), rr[3], rr[4], rr[5],
                                      rr[6], float(rr[7]), float(rr[8]), rr[9]))
 
@@ -353,8 +355,10 @@ class GridFile(object):
         tpl = Template(open(tplFile).read())
         attrs = ['runsCount', 'basesDirSL', 'obsDirSL', 'maskDirSL', 'etcDirSL', 'outDirSL',
                  'randPhone', 'lLow_SN', 'lUpp_SN', 'lLow_Syn', 'lUpp_Syn', 'dLambda',
-                 'fScale_Chi2', 'fitFix', 'errSpecAvail', 'flagSpecAvail',
+                 'fitFix', 'errSpecAvail', 'flagSpecAvail',
                  'isPhoEnabled', 'isQHREnabled', 'isFIREnabled', 'fluxUnit',
+                 'EtcESM', 'EtcGamma',
+                 
                  ]
 
         mapping = {k: str(getattr(self, k)) for k in attrs}

@@ -9,7 +9,7 @@ dl = 1.0
 # Flux unit, usually listed in the header in a non-standard way.
 flux_unit = 1e-17
 
-# Pre-mask spaxels with S/N < SN_min.
+# Mask spaxels with S/N < SN_min (after binning).
 SN_min = 3.0
 
 # Create a convex spatial mask to avoid "island spaxels".
@@ -50,7 +50,7 @@ telluric_mask = ${data_dir}/starlight/masks/Masks.telluric.MaNGA
 [starlight]
 # grid config
 starlight_dir = ${tables:data_dir}/starlight
-exec_path = ${starlight_dir}/PANcMEx_StarlightChains_v03b.exe
+exec_path = ${starlight_dir}/Starlight_v06r01.exe
 
 # These are relative to starlight_dir 
 base_dir = bc2003
@@ -79,11 +79,14 @@ Olsyn_fin =  8900.0
 # delta-lambda for fit
 Odlsyn = 1.0
 
-# fudge-factor for chi2
-fscale_chi2 = 1.0
-
 # FIT/FXK - Fit or Fix kinematics
 fit_fix = FIT
+
+# ETC ESM
+ETC_ESM = WbC
+
+# ETC gamma exponent.
+ETC_gamma = 1.0
 
 # 1/0 = Yes/No  <=== !PHO! ATT: still needs coding + testing!
 IsPHOcOn = 0
@@ -103,8 +106,8 @@ arq_out_format = %s_%04d_%04d.out
 # Note: the %s, %d and %d will be replaced by the galaxy ID, y, x.
 arq_mask_format = %s/Masks_%04d_%04d
 
-arq_config = PMSv03.NR2.OPT.config
-arq_base = Base.BC03.N
+arq_config = S6.A.config
+arq_base = cbase.Ca0c_4x16
 arq_mask = Masks.EmLines.MaNGA
 
 arq_etc = nodata

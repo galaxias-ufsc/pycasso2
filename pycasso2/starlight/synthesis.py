@@ -147,11 +147,12 @@ class SynthesisAdapter(object):
         grid.lLow_Syn = cfg.getfloat(self.cfg_sec, 'Olsyn_ini')
         grid.lUpp_Syn = cfg.getfloat(self.cfg_sec, 'Olsyn_fin')
         grid.dLambda = self._cube.dl
-        grid.fScale_Chi2 = cfg.getfloat(self.cfg_sec, 'fscale_chi2')
         grid.fitFix = cfg.get(self.cfg_sec, 'fit_fix')
         grid.isPhoEnabled = cfg.getint(self.cfg_sec, 'IsPHOcOn')
         grid.isQHREnabled = cfg.getint(self.cfg_sec, 'IsQHRcOn')
         grid.isFIREnabled = cfg.getint(self.cfg_sec, 'IsFIRcOn')
+        grid.EtcESM = cfg.get(self.cfg_sec, 'ETC_ESM')
+        grid.EtcGamma = cfg.getfloat(self.cfg_sec, 'ETC_gamma')
 
         run = PGridRun()
         run.configFile = cfg.get(self.cfg_sec, 'arq_config')

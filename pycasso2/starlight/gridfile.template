@@ -5,16 +5,13 @@ $maskDirSL        [mask_dir]
 $etcDirSL         [etc_dir]
 $outDirSL         [out_dir]
 $randPhone        [random phone number]
-$lLow_SN          [llow_SN]   lower-lambda of S/N window <-- Not relevant when error-spectrum is provided
-$lUpp_SN          [lupp_SN]   upper-lambda of S/N window <-- Not relevant when error-spectrum is provided
+$lLow_SN          [llow_SN]   lower-lambda of S/N window
+$lUpp_SN          [lupp_SN]   upper-lambda of S/N window
 $lLow_Syn         [Olsyn_ini] lower-lambda for fit
 $lUpp_Syn         [Olsyn_fin] upper-lambda for fit
 $dLambda          [Odlsyn]    delta-lambda for fit
-$fScale_Chi2      [fscale_chi2] fudge-factor for chi2
 $fitFix           [FIT/FXK] Fit or Fix kinematics
 $errSpecAvail     [IsErrSpecAvailable]  1/0 = Yes/No
 $flagSpecAvail    [IsFlagSpecAvailable] 1/0 = Yes/No
-$isPhoEnabled     [IsPHOcOn] 1/0 = Yes/No  <=== !PHO! ATT: still needs coding + testing!
-$isQHREnabled     [IsQHRcOn] 1/0 = Yes/No  <=== !QHR!
-$isFIREnabled     [IsFIRcOn] 1/0 = Yes/No  <=== !FIR!
 $fluxUnit         [flux_unit] multiply spectrum in arq_obs by this value to obtain ergs/s/cm2/Angs
+$isFIREnabled $isQHREnabled $isPhoEnabled $EtcESM $EtcGamma    [IsFIRcOn IsQHRcOn IsPHOcOn ETC_ESM & ETC_gamma] FIR/QHR/PHO switches + ESM options for ETC fits
