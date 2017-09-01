@@ -83,7 +83,7 @@ class ObservedCube(object):
         self.f_obs = self.f_obs[:, y_slice, x_slice].copy()
         self.f_err = self.f_err[:, y_slice, x_slice].copy()
         self.f_flag = self.f_flag[:, y_slice, x_slice].copy()
-        self.wcs = shift_celestial_WCS(dx=x_slice.start, dy=y_slice.start)
+        self.wcs = shift_celestial_WCS(self.wcs, dx=x_slice.start, dy=y_slice.start)
         log.debug('New shape: %s.' % str(self.f_obs.shape))
 
     def bin(self, bin_size, cov_factor=None):
