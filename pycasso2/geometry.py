@@ -51,7 +51,7 @@ def get_ellipse_params(image, x0, y0):
 
     image = np.ma.array(image)
     sel = ~np.ma.getmaskarray(image)
-    sel[r2 == 0.0] = True
+    sel[r2 == 0.0] = False
 
     x2 = x2[sel]
     y2 = y2[sel]
