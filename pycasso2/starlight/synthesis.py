@@ -141,17 +141,17 @@ class SynthesisAdapter(object):
 
         grid.setMaskDir(cfg.get(self.cfg_sec, 'mask_dir'))
         grid.setEtcDir(cfg.get(self.cfg_sec, 'etc_dir'))
-        grid.randPhone = int(cfg.get(self.cfg_sec, 'rand_seed'))
-        grid.lLow_SN = float(cfg.get(self.cfg_sec, 'llow_SN'))
-        grid.lUpp_SN = float(cfg.get(self.cfg_sec, 'lupp_SN'))
-        grid.lLow_Syn = float(cfg.get(self.cfg_sec, 'Olsyn_ini'))
-        grid.lUpp_Syn = float(cfg.get(self.cfg_sec, 'Olsyn_fin'))
+        grid.randPhone = cfg.getint(self.cfg_sec, 'rand_seed')
+        grid.lLow_SN = cfg.getfloat(self.cfg_sec, 'llow_SN')
+        grid.lUpp_SN = cfg.getfloat(self.cfg_sec, 'lupp_SN')
+        grid.lLow_Syn = cfg.getfloat(self.cfg_sec, 'Olsyn_ini')
+        grid.lUpp_Syn = cfg.getfloat(self.cfg_sec, 'Olsyn_fin')
         grid.dLambda = self._cube.dl
-        grid.fScale_Chi2 = float(cfg.get(self.cfg_sec, 'fscale_chi2'))
+        grid.fScale_Chi2 = cfg.getfloat(self.cfg_sec, 'fscale_chi2')
         grid.fitFix = cfg.get(self.cfg_sec, 'fit_fix')
-        grid.isPhoEnabled = int(cfg.get(self.cfg_sec, 'IsPHOcOn'))
-        grid.isQHREnabled = int(cfg.get(self.cfg_sec, 'IsQHRcOn'))
-        grid.isFIREnabled = int(cfg.get(self.cfg_sec, 'IsFIRcOn'))
+        grid.isPhoEnabled = cfg.getint(self.cfg_sec, 'IsPHOcOn')
+        grid.isQHREnabled = cfg.getint(self.cfg_sec, 'IsQHRcOn')
+        grid.isFIREnabled = cfg.getint(self.cfg_sec, 'IsFIRcOn')
 
         run = PGridRun()
         run.configFile = cfg.get(self.cfg_sec, 'arq_config')
@@ -159,8 +159,8 @@ class SynthesisAdapter(object):
         run.maskFile = cfg.get(self.cfg_sec, 'arq_mask')
         run.reddening = cfg.get(self.cfg_sec, 'red_law')
         run.etcInfoFile = cfg.get(self.cfg_sec, 'arq_etc')
-        run.v0_Ini = float(cfg.get(self.cfg_sec, 'v0_ini'))
-        run.vd_Ini = float(cfg.get(self.cfg_sec, 'vd_ini'))
+        run.v0_Ini = cfg.getfloat(self.cfg_sec, 'v0_ini')
+        run.vd_Ini = cfg.getfloat(self.cfg_sec, 'vd_ini')
         run.lumDistanceMpc = self._cube.lumDistMpc
 
         return grid, run
