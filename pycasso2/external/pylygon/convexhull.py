@@ -14,24 +14,18 @@
 from numpy import array, lexsort
 from functools import reduce
 
-def _cmp(a, b):
-    return (a > b) - (a < b)
-
-
-TURN_LEFT, TURN_RIGHT, TURN_NONE = (1, -1, 0)
-
-
-
-
-def _turn(i, j, k):
+def _ccw(i, j, k):
     global P
     _P = P
-    (p_x, p_y), (q_x, q_y), (r_x, r_y) = _P[i], _P[j], _P[k]
-    return _cmp((q_x - p_x) * (r_y - p_y) - (r_x - p_x) * (q_y - p_y), 0)
+    p_x, p_y = _P[i]
+    q_x, q_y = _P[j]
+    r_x, r_y = _P[k]
+    det = (q_x - p_x) * (r_y - p_y) - (r_x - p_x) * (q_y - p_y)
+    return det > 0
 
 
 def _keep_left(hull, r):
-    while len(hull) > 1 and _turn(hull[-2], hull[-1], r) != TURN_LEFT: hull.pop()
+    while len(hull) > 1 and not _ccw(hull[-2], hull[-1], r): hull.pop()
     if not len(hull) or not (hull[-1] == r).all(): hull.append(r)
     return hull
 
