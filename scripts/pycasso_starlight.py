@@ -50,21 +50,23 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
-
-def get_pop_len(grids):
+def get_first_output(grids):
     for g in grids:
         if len(g.completed) == 0:
             continue
         ts = g.getTables()[0][2]
-        return len(ts['population']['popx'])
+        return ts
     raise Exception('No output found in grids.')
+
+def get_pop_len(ts):
+    return len(ts['population']['popx'])
 
 log.setLevel('DEBUG')
 args = parse_args()
 cfg = get_config(args.configFile)
 nproc = args.nproc if args.nproc > 1 else 1
 
-print('Loading cube from %s.' % args.cubeIn[0])
+log.info('Loading cube from %s.' % args.cubeIn[0])
 sa = SynthesisAdapter(args.cubeIn[0], cfg, new_name=args.newName)
 
 exec_path = cfg.get('starlight', 'exec_path')
@@ -77,12 +79,16 @@ for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=not args
         log.info('Dispatching %s.' % grid.name)
         runner.addGrid(grid)
 
-print('Waiting jobs completion.')
+log.info('Waiting jobs completion.')
 runner.wait()
 output_grids = runner.getOutputGrids()
+first_ts = get_first_output(output_grids)
+log.info('Creating synthesis cubes.')
+sa.createSynthesisCubes(pop_len=get_pop_len(first_ts))
 
-print('Creating synthesis cubes.')
-sa.createSynthesisCubes(pop_len=get_pop_len(output_grids))
+log.info('Writing synthesis headers.')
+sa.writeSynthesisHeaders(first_ts)
+
 
 for grid in output_grids:
     log.debug('Reading results of %s.' % grid.name)

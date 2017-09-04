@@ -44,20 +44,16 @@ class FitsCube(object):
     _ext_mstars = 'MSTARS'
     _ext_fbase_norm = 'FBASE_NORM'
 
-    _h_lum_dist_Mpc = 'PIPE LUM_DIST_MPC'
-    _h_redshift = 'PIPE REDSHIFT'
-    _h_flux_unit = 'PIPE FLUX_UNIT'
-    _h_name = 'PIPE CUBE_NAME'
-    _h_has_segmap = 'PIPE HAS_SEGMAP'
-
-    # FIXME: remove legacy code
-    _ext_old_f_obs = 'PRIMARY'
-    _h_old_name = 'PIPE OBJECT_NAME'
+    _h_lum_dist_Mpc = 'PYCASSO LUM_DIST_MPC'
+    _h_redshift = 'PYCASSO REDSHIFT'
+    _h_flux_unit = 'PYCASSO FLUX_UNIT'
+    _h_name = 'PYCASSO CUBE_NAME'
+    _h_has_segmap = 'PYCASSO HAS_SEGMAP'
 
     _Z_sun = 0.019
 
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
-                         'Av', 'q_norm', 'v0', 'vd', 'adev', 'Ntot_clipped',
+                         'Av', 'v0', 'vd', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
     def __init__(self, cubefile=None, name=None, cube_type='pycasso', import_cfg=None):

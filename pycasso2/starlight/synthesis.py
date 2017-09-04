@@ -85,14 +85,21 @@ def makedirs(the_path):
 
 class SynthesisAdapter(object):
     
-    cfg_sec = 'starlight'
+    _cfg_sec = 'starlight'
+
+    _global_keyword_list = ['arq_config', 'N_chains', 'l_norm', 'q_norm',
+                            'llow_norm', 'lupp_norm', 'i_SaveBestSingleCompFit', 'IsFIRcOn' ,
+                            'IsPHOcOn', 'IsQHRcOn' , 'llow_SN', 'lupp_SN', 'q_norm',
+                            'red_law_option', 'flux_unit' , 'l_ini', 'l_fin',
+                            'dl', 'Nl_obs', 'arq_base', 'N_base', 'N_exAV', 'LumDistInMpc']
+
 
     def __init__(self, cube, cfg, new_name=None):
         from ..cube import FitsCube
-        self.starlightDir = cfg.get(self.cfg_sec, 'starlight_dir')
-        self._arqMaskFormat = cfg.get(self.cfg_sec, 'arq_mask_format')
-        self._inFileFormat = cfg.get(self.cfg_sec, 'arq_obs_format')
-        self._outFileFormat = cfg.get(self.cfg_sec, 'arq_out_format')
+        self.starlightDir = cfg.get(self._cfg_sec, 'starlight_dir')
+        self._arqMaskFormat = cfg.get(self._cfg_sec, 'arq_mask_format')
+        self._inFileFormat = cfg.get(self._cfg_sec, 'arq_obs_format')
+        self._outFileFormat = cfg.get(self._cfg_sec, 'arq_out_format')
         self._cube = FitsCube(cube)
         if new_name is None:
             self.name = self._cube.name
@@ -132,36 +139,36 @@ class SynthesisAdapter(object):
         grid = PGridFile(self.starlightDir)
         grid.fluxUnit = self._cube.flux_unit
 
-        grid.setBasesDir(cfg.get(self.cfg_sec, 'base_dir'))
-        obs_dir = path.join(cfg.get(self.cfg_sec, 'obs_dir'), self.name)
+        grid.setBasesDir(cfg.get(self._cfg_sec, 'base_dir'))
+        obs_dir = path.join(cfg.get(self._cfg_sec, 'obs_dir'), self.name)
         grid.setObsDir(obs_dir)
-        out_dir = path.join(cfg.get(self.cfg_sec, 'out_dir'), self.name)
+        out_dir = path.join(cfg.get(self._cfg_sec, 'out_dir'), self.name)
         grid.setOutDir(out_dir)
         grid.setLogDir(path.join(grid.logDir, self.name))
 
-        grid.setMaskDir(cfg.get(self.cfg_sec, 'mask_dir'))
-        grid.setEtcDir(cfg.get(self.cfg_sec, 'etc_dir'))
-        grid.randPhone = cfg.getint(self.cfg_sec, 'rand_seed')
-        grid.lLow_SN = cfg.getfloat(self.cfg_sec, 'llow_SN')
-        grid.lUpp_SN = cfg.getfloat(self.cfg_sec, 'lupp_SN')
-        grid.lLow_Syn = cfg.getfloat(self.cfg_sec, 'Olsyn_ini')
-        grid.lUpp_Syn = cfg.getfloat(self.cfg_sec, 'Olsyn_fin')
+        grid.setMaskDir(cfg.get(self._cfg_sec, 'mask_dir'))
+        grid.setEtcDir(cfg.get(self._cfg_sec, 'etc_dir'))
+        grid.randPhone = cfg.getint(self._cfg_sec, 'rand_seed')
+        grid.lLow_SN = cfg.getfloat(self._cfg_sec, 'llow_SN')
+        grid.lUpp_SN = cfg.getfloat(self._cfg_sec, 'lupp_SN')
+        grid.lLow_Syn = cfg.getfloat(self._cfg_sec, 'Olsyn_ini')
+        grid.lUpp_Syn = cfg.getfloat(self._cfg_sec, 'Olsyn_fin')
         grid.dLambda = self._cube.dl
-        grid.fitFix = cfg.get(self.cfg_sec, 'fit_fix')
-        grid.isPhoEnabled = cfg.getint(self.cfg_sec, 'IsPHOcOn')
-        grid.isQHREnabled = cfg.getint(self.cfg_sec, 'IsQHRcOn')
-        grid.isFIREnabled = cfg.getint(self.cfg_sec, 'IsFIRcOn')
-        grid.EtcESM = cfg.get(self.cfg_sec, 'ETC_ESM')
-        grid.EtcGamma = cfg.getfloat(self.cfg_sec, 'ETC_gamma')
+        grid.fitFix = cfg.get(self._cfg_sec, 'fit_fix')
+        grid.isPhoEnabled = cfg.getint(self._cfg_sec, 'IsPHOcOn')
+        grid.isQHREnabled = cfg.getint(self._cfg_sec, 'IsQHRcOn')
+        grid.isFIREnabled = cfg.getint(self._cfg_sec, 'IsFIRcOn')
+        grid.EtcESM = cfg.get(self._cfg_sec, 'ETC_ESM')
+        grid.EtcGamma = cfg.getfloat(self._cfg_sec, 'ETC_gamma')
 
         run = PGridRun()
-        run.configFile = cfg.get(self.cfg_sec, 'arq_config')
-        run.baseFile = cfg.get(self.cfg_sec, 'arq_base')
-        run.maskFile = cfg.get(self.cfg_sec, 'arq_mask')
-        run.reddening = cfg.get(self.cfg_sec, 'red_law')
-        run.etcInfoFile = cfg.get(self.cfg_sec, 'arq_etc')
-        run.v0_Ini = cfg.getfloat(self.cfg_sec, 'v0_ini')
-        run.vd_Ini = cfg.getfloat(self.cfg_sec, 'vd_ini')
+        run.configFile = cfg.get(self._cfg_sec, 'arq_config')
+        run.baseFile = cfg.get(self._cfg_sec, 'arq_base')
+        run.maskFile = cfg.get(self._cfg_sec, 'arq_mask')
+        run.reddening = cfg.get(self._cfg_sec, 'red_law')
+        run.etcInfoFile = cfg.get(self._cfg_sec, 'arq_etc')
+        run.v0_Ini = cfg.getfloat(self._cfg_sec, 'v0_ini')
+        run.vd_Ini = cfg.getfloat(self._cfg_sec, 'vd_ini')
         run.lumDistanceMpc = self._cube.lumDistMpc
 
         return grid, run
@@ -295,6 +302,11 @@ class SynthesisAdapter(object):
                 else:
                     keyword_data[k][y, x] = keywords[k]
 
+    def writeSynthesisHeaders(self, ts):
+        keywords = ts['keywords']
+        for k in self._global_keyword_list:
+            self._cube._header['HIERARCH STARLIGHT ' + k] = keywords[k]
+    
     def updateErrorsFromResidual(self, smooth_fwhm=15.0, box_width=100.0):
         f_res = np.ma.array(self.f_obs - self.f_syn, mask=self.f_wei <= 0)
         self.f_err[...] = estimate_error(
