@@ -133,7 +133,7 @@ class FitsCube(object):
         self.name = obs.name
 
     def write(self, filename, overwrite=False):
-        self._HDUList.writeto(filename, clobber=overwrite, output_verify='fix')
+        self._HDUList.writeto(filename, overwrite=overwrite, output_verify='fix')
 
     def createSynthesisCubes(self, pop_len):
         self._pop_len = pop_len
