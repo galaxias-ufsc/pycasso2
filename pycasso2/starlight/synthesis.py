@@ -208,7 +208,7 @@ class SynthesisAdapter(object):
 
     def _createRun(self, x, y, use_errors_flags, use_custom_masks, synth_sn):
         if self.spatialMask[y, x]:
-            self.f_flag[:, y, x] |= flags.starlight_masked_pix
+            self.f_flag[:, y, x] |= flags.starlight_no_data
             return None
 
         log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
@@ -288,10 +288,14 @@ class SynthesisAdapter(object):
             f_obs_norm = keywords['fobs_norm']
             slice_d, slice_o = get_subset_slices(self.l_obs, spectra['l_obs'])
             self.f_syn[slice_d, y, x] = spectra['f_syn'][slice_o] * (f_obs_norm / grid.fluxUnit)
-            self.f_wei[slice_d, y, x] = spectra['f_wei'][slice_o]
-            # TODO: update flags with starlight clipped, etc.
-            self.f_flag[:slice_d.start] |= flags.no_starlight
-            self.f_flag[slice_d.stop:] |= flags.no_starlight
+
+            f_wei = spectra['f_wei'][slice_o]
+            self.f_wei[slice_d, y, x] = f_wei
+            self.f_flag[slice_d, y, x] |= np.where(f_wei == -1.0, flags.starlight_clipped, 0)
+            self.f_flag[slice_d, y, x] |= np.where(f_wei == 0.0, flags.starlight_masked, 0)
+            
+            self.f_flag[:slice_d.start] |= flags.starlight_no_data
+            self.f_flag[slice_d.stop:] |= flags.starlight_no_data
 
             self.popx[:, y, x] = population['popx']
             self.popmu_ini[:, y, x] = population['popmu_ini']

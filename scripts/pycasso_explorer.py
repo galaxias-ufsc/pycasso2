@@ -259,7 +259,6 @@ class PycassoExplorer:
             fl = c.f_flag[:,z]
             if c.hasSynthesis:
                 s = c.f_syn[:, z] / c.flux_norm_window[z]
-                w = c.f_wei[:, z]
                 chi2 = c.chi2[z]
                 adev = c.adev[z]
                 A_V = c.A_V[z]
@@ -276,7 +275,6 @@ class PycassoExplorer:
             fl = c.f_flag[:,y, x]
             if c.hasSynthesis:
                 s = c.f_syn[:, y, x] / norm
-                w = c.f_wei[:, y, x]
                 chi2 = c.chi2[y, x]
                 adev = c.adev[y, x]
                 A_V = c.A_V[y, x]
@@ -288,7 +286,8 @@ class PycassoExplorer:
         ax = self.ax_sp
         ax.set_ylim(0, 2.5)
         ax.set_xlim(c.l_obs[0], c.l_obs[-1])
-        ax.plot(c.l_obs, f, '-', color='blue', label='observed')
+        ax.plot(c.l_obs, np.ma.masked_where(fl & (flags.telluric | flags.seg_has_badpixels) > 0, f),
+                '-', color='blue', label='observed')
         err_scale = np.ceil(0.2 * f.mean() / e.mean())
         ax.plot(c.l_obs, e * err_scale, '-', color='k', label='error (x%d)' % err_scale)
 
@@ -298,7 +297,8 @@ class PycassoExplorer:
         ax.plot(c.l_obs, np.ma.masked_where((fl & flags.seg_has_badpixels) == 0, f),
                 '-', color='purple', label='incomplete')
 
-        if not c.hasSynthesis:
+        masked_pix = (fl & flags.no_starlight > 0).all()
+        if not c.hasSynthesis or masked_pix:
             self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no synthesis' % (y, x),
                           size=textsize)
             ax.legend(frameon=False)
@@ -311,17 +311,17 @@ class PycassoExplorer:
         ax.set_ylim(-1.0, 1.0)
         ax.plot(c.l_obs, e, '-', color='k', label='error')
         ax.plot(c.l_obs, np.zeros_like(c.l_obs), 'k:')
-        fitted = np.ma.masked_where(w < 0, r)
+        fitted = np.ma.masked_where(fl & (flags.starlight_clipped | flags.starlight_masked | flags.before_starlight) > 0, r)
         ax.plot(c.l_obs, fitted, 'b-', label='fitted')
 
-        masked = np.ma.masked_where(w != 0, r)
+        masked = np.ma.masked_where(fl & flags.starlight_masked == 0, r)
         ax.plot(c.l_obs, masked, '-', color='magenta', label='masked')
 
-        clipped = np.ma.masked_where(w != -1, r)
+        clipped = np.ma.masked_where(fl & flags.starlight_clipped == 0, r)
         ax.plot(c.l_obs, clipped, 'x-', color='red', label='clipped')
 
-        flagged = np.ma.masked_where(w != -2, r)
-        ax.plot(c.l_obs, flagged, 'o', color='green', label='flagged')
+        flagged = np.ma.masked_where(fl & flags.before_starlight == 0, r)
+        ax.plot(c.l_obs, flagged, 'o-', mec='green', mfc='none', label='flagged')
         ax.legend(frameon=False)
 
         self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$' % (y, x), size=textsize)
