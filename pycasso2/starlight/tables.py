@@ -91,7 +91,8 @@ def write_input(l_obs, f_obs, f_err, f_flag, filename):
         cols = [l_obs, f_obs, f_err, f_flag]
     else:
         cols = [l_obs, f_obs]
-    ascii.write(cols, filename, Writer=ascii.NoHeader, overwrite=True)
+    formats = {'col0': lambda x: '%.1f' % round(x, 1)}
+    ascii.write(cols, filename, Writer=ascii.NoHeader, formats=formats, overwrite=True)
 
 
 def read_output_tables(filename, read_chains=False):
