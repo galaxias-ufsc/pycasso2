@@ -37,6 +37,7 @@ class FitsCube(object):
     
     _ext_popZ_base = 'POPZ_BASE'
     _ext_popage_base = 'POPAGE_BASE'
+    _ext_popage_base_t2 = 'POPAGE_BASE_T2'
     _ext_popaFe_base = 'POPAFE_BASE'
     _ext_popx = 'POPX'
     _ext_popmu_ini = 'POPMU_INI'
@@ -152,6 +153,7 @@ class FitsCube(object):
         self._addExtension(self._ext_popmu_ini, wcstype='image', shape=pop_shape, overwrite=True)
         self._addExtension(self._ext_popmu_cor, wcstype='image', shape=pop_shape, overwrite=True)
         self._addExtension(self._ext_popage_base, wcstype='image', shape=base_shape, overwrite=True)
+        self._addExtension(self._ext_popage_base_t2, wcstype='image', shape=base_shape, overwrite=True)
         self._addExtension(self._ext_popZ_base, wcstype='image', shape=base_shape, overwrite=True)
         self._addExtension(self._ext_popaFe_base, wcstype='image', shape=base_shape, overwrite=True)
         self._addExtension(self._ext_mstars, wcstype='image', shape=base_shape, overwrite=True)
@@ -349,6 +351,10 @@ class FitsCube(object):
         return self._getExtensionData(self._ext_popage_base)
 
     @lazyproperty
+    def popage_base_t2(self):
+        return self._getExtensionData(self._ext_popage_base_t2)
+
+    @lazyproperty
     def age_base(self):
         return np.unique(self.popage_base)
 
@@ -479,12 +485,18 @@ class FitsCube(object):
     @property
     def at_flux(self):
         popx = np.moveaxis(self.popx, 0, -1)
-        return (popx * np.log10(self.popage_base)).sum(axis=-1) / popx.sum(axis=-1)
+        log_t1 = np.log10(self.popage_base)
+        log_t2 = np.log10(self.popage_base_t2)
+        log_t = (log_t1 + log_t2) / 2.0
+        return (popx * log_t).sum(axis=-1) / popx.sum(axis=-1)
 
     @property
     def at_mass(self):
         mu = np.moveaxis(self.popmu_cor, 0, -1)
-        return (mu * np.log10(self.popage_base)).sum(axis=-1) / mu.sum(axis=-1)
+        log_t1 = np.log10(self.popage_base)
+        log_t2 = np.log10(self.popage_base_t2)
+        log_t = (log_t1 + log_t2) / 2.0
+        return (mu * log_t).sum(axis=-1) / mu.sum(axis=-1)
 
     @property
     def alogZ_flux(self):
@@ -507,10 +519,12 @@ class FitsCube(object):
         return (mu * self.popaFe_base).sum(axis=-1) / mu.sum(axis=-1)
 
     def SFRSD(self, dt=0.5e9):
+        log.warn('SFR not implemented correctly for CSP!')
         Mini = self.toRectBase(self.MiniSD).sum(axis=1)
         return SFR(Mini, self.age_base, dt)
 
     def SFRSD_smooth(self,  logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
+        log.warn('Smooth SFR not implemented correctly for CSP!')
         logtb = np.log10(self.age_base)
         logtc = np.arange(logtb.min(), logtb.max() + logtc_step, logtc_step)
         popx = self.toRectBase(self.popx)

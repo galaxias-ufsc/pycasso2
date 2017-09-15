@@ -273,6 +273,7 @@ def read_output_tables(filename, read_chains=False):
     popfbase_norm = []    # column 7
     popexAV_flag = []    # column 8
     popMstars = []    # column 9
+    component = []    # column 10
     aFe = []    # column 11
     SSP_chi2r = []    # column 12
     SSP_adev = []    # column 13
@@ -294,6 +295,7 @@ def read_output_tables(filename, read_chains=False):
         popfbase_norm.append(float(data[i].split()[6]))
         popexAV_flag.append(float(data[i].split()[7]))
         popMstars.append(float(data[i].split()[8]))
+        component.append(data[i].split()[9])
         aFe.append(float(data[i].split()[10]))
         SSP_chi2r.append(float(data[i].split()[11]))
         SSP_adev.append(float(data[i].split()[12]))
@@ -312,6 +314,7 @@ def read_output_tables(filename, read_chains=False):
             popfbase_norm,
             popexAV_flag,
             popMstars,
+            component,
             aFe,
             SSP_chi2r,
             SSP_adev,
@@ -327,6 +330,7 @@ def read_output_tables(filename, read_chains=False):
              'popfbase_norm',
              'popexAV_flag',
              'popMstars',
+             'component',
              'aFe',
              'p_chi2r',
              'p_adev',
