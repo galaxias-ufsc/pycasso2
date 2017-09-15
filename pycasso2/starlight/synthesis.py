@@ -112,13 +112,17 @@ class SynthesisAdapter(object):
         self._createDirs()
         self._base_data_saved = False
         
-    def getSpatialMask(self):
+    def getSpatialMask(self, snwin_max_bad_fraction=0.5):
+        # FIXME: Starlight has a bug when calculating the fllux normalization factor.
+        #        It uses the median, but does net take flags into account.
+        #        That means, if more than half the flux is zero, the median is zero.
         mask = self._cube.getSpatialMask(flags.before_starlight)
         l1 = self._gridTemplate.lLow_SN
         l2 = self._gridTemplate.lUpp_SN
         i1, i2 = find_nearest_index(self.l_obs, [l1, l2])
+        N = i2 - i1
         bad_snwin = (self.f_flag[i1:i2] & flags.before_starlight) > 0
-        mask |= bad_snwin.all(axis=0)
+        mask |= bad_snwin.sum(axis=0) > (snwin_max_bad_fraction * N)
         if self.isSegmented:
             mask = mask[np.newaxis, :]
         return mask
