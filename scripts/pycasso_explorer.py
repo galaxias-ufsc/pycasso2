@@ -47,7 +47,7 @@ class PycassoExplorer:
         if c.hasSynthesis:
             images = {'light': c.flux_norm_window,
                       'mass': c.McorSD.sum(axis=0),
-                      'sfr': c.MiniSD[c.age_base < t_SF].sum(axis=0) / t_SF,
+                      'sfr': c.MiniSD[c.popage_base < t_SF].sum(axis=0) / t_SF,
                       'tau_V': self.c.tau_V,
                       'd4000': self.c.LickIndex('D4000'),
                       'age': self.c.at_flux,
