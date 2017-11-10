@@ -15,7 +15,15 @@ class PycassoExplorer:
         self.c = FitsCube(cube)
         self.createUI()
         self.raiseImage('1')
-        self.selectPixel(self.c.x0, self.c.y0)
+        if self.c.x0 >= self.c.Nx or self.c.x0 < 0:
+            x0 = int(self.c.Nx / 2)
+        else:
+            x0 = self.c.x0
+        if self.c.y0 >= self.c.Ny or self.c.y0 < 0:
+            y0 = int(self.c.Ny / 2)
+        else:
+            y0 = self.c.y0
+        self.selectPixel(x0, y0)
         self.redraw()
 
     def createUI(self):
