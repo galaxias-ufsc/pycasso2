@@ -11,9 +11,9 @@ from pycasso2.segmentation import spatialize
 
 class PycassoExplorer:
 
-    def __init__(self, cube, figsize=(7, 7)):
+    def __init__(self, cube, figsize=(8, 8)):
         self.c = FitsCube(cube)
-        self.createUI()
+        self.createUI(figsize)
         self.raiseImage('1')
         if self.c.x0 >= self.c.Nx or self.c.x0 < 0:
             x0 = int(self.c.Nx / 2)
@@ -26,7 +26,7 @@ class PycassoExplorer:
         self.selectPixel(x0, y0)
         self.redraw()
 
-    def createUI(self):
+    def createUI(self, figsize):
         plotpars = {'legend.fontsize': 8,
                     'xtick.labelsize': 11,
                     'ytick.labelsize': 11,
@@ -38,7 +38,7 @@ class PycassoExplorer:
                     }
         plt.rcParams.update(plotpars)
         plt.ioff()
-        self.fig = plt.figure(figsize=(10, 10))
+        self.fig = plt.figure(figsize=figsize)
         gs = GridSpec(3, 2)
         self.ax_im = self.fig.add_subplot(gs[0, 0], projection=self.c._wcs.celestial)
         self.ax_sp = self.fig.add_subplot(gs[1, :])
@@ -250,7 +250,7 @@ class PycassoExplorer:
         self.ax_sp.lines = []
         self.ax_res.lines = []
         self.fig.texts = []
-        textsize = 'large'
+        textsize = 'medium'
        
         self.fig.text(.5, .95, r'%s' % c.name,
                       size='larger', ha='center')
@@ -262,33 +262,36 @@ class PycassoExplorer:
                               size=textsize)
                 return
             z = np.asscalar(z)
-            f = c.f_obs[:,z] / c.flux_norm_window[z]
-            e = c.f_err[:, z] / c.flux_norm_window[z]
+            f_norm = c.flux_norm_window[z]
+            e_norm = c.noise_norm_window[z]
+            f = c.f_obs[:,z] / f_norm
+            e = c.f_err[:, z] / f_norm
             fl = c.f_flag[:,z]
+            SN = f_norm / e_norm
             if c.hasSynthesis:
-                s = c.f_syn[:, z] / c.flux_norm_window[z]
+                s = c.f_syn[:, z] / f_norm
                 chi2 = c.chi2[z]
                 adev = c.adev[z]
                 A_V = c.A_V[z]
                 v_0 = c.v_0[z]
                 v_d = c.v_d[z]
-                SN = c.SN_normwin[z]
                 Nclip = c.Nclipped[z]
         else:
-            norm = c.flux_norm_window[y, x]
-            if norm is np.ma.masked or not np.isfinite(norm):
-                norm = np.ma.median(c.f_obs[:, y, x])
-            f = c.f_obs[:, y, x] / norm
-            e = c.f_err[:, y, x] / norm
+            f_norm = c.flux_norm_window[y, x]
+            e_norm = c.noise_norm_window[y, x]
+            if f_norm is np.ma.masked or not np.isfinite(f_norm):
+                f_norm = np.ma.median(c.f_obs[:, y, x])
+            f = c.f_obs[:, y, x] / f_norm
+            e = c.f_err[:, y, x] / f_norm
             fl = c.f_flag[:,y, x]
+            SN = f_norm / e_norm
             if c.hasSynthesis:
-                s = c.f_syn[:, y, x] / norm
+                s = c.f_syn[:, y, x] / f_norm
                 chi2 = c.chi2[y, x]
                 adev = c.adev[y, x]
                 A_V = c.A_V[y, x]
                 v_0 = c.v_0[y, x]
                 v_d = c.v_d[y, x]
-                SN = c.SN_normwin[y, x]
                 Nclip = c.Nclipped[y, x]
 
         ax = self.ax_sp
@@ -306,11 +309,15 @@ class PycassoExplorer:
                 '-', color='purple', label='incomplete')
 
         masked_pix = (fl & flags.no_starlight > 0).all()
+
+        self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$' % (y, x), size=textsize)
+        self.fig.text(.6, .88, r'$\mathrm{S/N (norm. window)} = %.1f$' % SN, size=textsize)
+
         if not c.hasSynthesis or masked_pix:
-            self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$ - no synthesis' % (y, x),
-                          size=textsize)
+            self.fig.text(.6, .84, r'No synthesis', size=textsize)
             ax.legend(frameon=False)
             return
+
         ax.plot(c.l_obs, s, '-', color='red', label='model')
         ax.legend(frameon=False)
 
@@ -332,10 +339,8 @@ class PycassoExplorer:
         ax.plot(c.l_obs, flagged, 'o-', mec='green', mfc='none', label='flagged')
         ax.legend(frameon=False)
 
-        self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$' % (y, x), size=textsize)
-        self.fig.text(.6, .88, r'$\chi^2 = %3.2f$' % chi2, size=textsize)
-        self.fig.text(.6, .84, r'$\mathrm{adev} = %3.2f$' % adev, size=textsize)
-        self.fig.text(.6, .80, r'$\mathrm{S/N (norm. window)} = %.1f$' % SN, size=textsize)
+        self.fig.text(.6, .84, r'$\chi^2 = %3.2f$' % chi2, size=textsize)
+        self.fig.text(.6, .80, r'$\mathrm{adev} = %3.2f$' % adev, size=textsize)
         self.fig.text(.6, .76, r'$N_\mathrm{clip} = %d$' % Nclip, size=textsize)
         self.fig.text(.6, .72, r'$A_V = %3.2f$' % A_V, size=textsize)
         self.fig.text(.6, .68,
