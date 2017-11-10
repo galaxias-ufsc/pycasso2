@@ -59,17 +59,23 @@ def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FW
     return Mini_sm
 
 
-def SFR(Mini, tb, dt=0.5e9):
+def SFR(Mini, tb1, tb2=None, dt=0.5e9):
     '''
     Calculate the star formation rate (SFR) resampling the initial mass.
+    If tb1 is the same as tb2, the base is SSP. The base is expanded
+    into a CSP with bins of constant SFR, assuming equally spaced bins
+    in log space.
 
     Parameters
     ----------
     Mini: array
         The initial mass. The age axis must be the leftmost (axis=0).
 
-    tb : array 
-        Original time base.
+    tb1 : array 
+        Original age bin left edge.
+
+    tb2 : array 
+        Original age bin right edge.
 
     dt : float 
         Sampling size of the SFR output.
@@ -84,9 +90,14 @@ def SFR(Mini, tb, dt=0.5e9):
 
     '''
     is_masked = isinstance(Mini, np.ma.MaskedArray)
-    logtb = np.log10(tb)
-    logtb_bins = bin_edges(logtb)
-    tb_bins = 10**logtb_bins
+    if tb2 is None or np.allclose(tb1, tb2):
+        logtb = np.log10(tb1)
+        logtb_bins = bin_edges(logtb)
+        tb_bins = 10**logtb_bins
+    else:
+        tb_bins = np.zeros(len(tb1) + 1)
+        tb_bins[0] = tb1[0]
+        tb_bins[1:] = tb2[:]
     tl = np.arange(tb_bins.min(), tb_bins.max() + dt, dt)
     tl_bins = bin_edges(tl)
     spatial_shape = Mini.shape[1:]

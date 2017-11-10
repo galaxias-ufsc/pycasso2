@@ -527,13 +527,14 @@ class FitsCube(object):
         return (mu * self.popaFe_base).sum(axis=-1) / mu.sum(axis=-1)
 
     def SFRSD(self, dt=0.5e9):
-        log.warn('SFR not implemented correctly for CSP!')
         Mini = self.toRectBase(self.MiniSD).sum(axis=1)
-        return SFR(Mini, self.age_base, dt)
+        return SFR(Mini, tb1=self.age_base, tb2=self.age_base_t2, dt=dt)
 
     def SFRSD_smooth(self,  logtc_step=0.05, logtc_FWHM=0.5, dt=0.5e9):
-        log.warn('Smooth SFR not implemented correctly for CSP!')
-        logtb = np.log10(self.age_base)
+        if not np.allclose(self.popage_base, self.popage_base_t2):
+            log.warn('Smooth SFR not implemented properly for CSP. '
+                     'Converting to SSP (deltas) and hoping for the best!')
+        logtb = (np.log10(self.age_base) + np.log10(self.age_base_t2)) / 2
         logtc = np.arange(logtb.min(), logtb.max() + logtc_step, logtc_step)
         popx = self.toRectBase(self.popx)
         fbase_norm = self.toRectBase(self.fbase_norm)
@@ -542,7 +543,7 @@ class FitsCube(object):
                            logtb, logtc, logtc_FWHM)
         Mini = Mini.sum(axis=1) / self.pixelArea_pc2
         tc = 10.0**logtc
-        return SFR(Mini, tc, dt)
+        return SFR(Mini, tc, dt=dt)
 
     @lazyproperty
     def A_V(self):
