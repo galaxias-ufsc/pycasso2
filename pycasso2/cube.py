@@ -59,7 +59,10 @@ class FitsCube(object):
 
     def __init__(self, cubefile=None, name=None, cube_type='pycasso', import_cfg=None):
         self._pop_len = None
+        self.ba = 1.0
+        self.pa = 0.0
         if cubefile is None:
+            # FIXME: needed by segmentation code, which should moved here.
             return
         if cube_type is 'pycasso':
             self._load(cubefile)
@@ -98,7 +101,7 @@ class FitsCube(object):
         self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
         self._initMasks()
-        self._calcEllipseParams()
+        self._readKeywords()
 
     def _initMasks(self):
         self.synthImageMask = self.getSpatialMask(
@@ -123,7 +126,7 @@ class FitsCube(object):
         self._header = self._HDUList[0].header
         self._wcs = WCS(self._header)
         self._initMasks()
-        self._calcEllipseParams()
+        self._readKeywords()
 
     def _fromObs(self, obs, cfg):
         preprocess_obs(obs, cfg)
@@ -132,6 +135,11 @@ class FitsCube(object):
         self.lumDistMpc = obs.lumDist_Mpc
         self.redshift = obs.redshift
         self.name = obs.name
+
+
+    def _readKeywords(self):
+        self.keywords = {k.split()[1]: v for k, v in self._header.items() if 'PYCASSO' in k}
+        self.synthKeywords = {k.split()[1]: v for k, v in self._header.items() if 'STARLIGHT' in k}
 
     def write(self, filename, overwrite=False):
         self._HDUList.writeto(filename, overwrite=overwrite, output_verify='fix')
