@@ -202,9 +202,9 @@ class FitsCube(object):
                 w = self._wcs
         elif wcstype == 'image':
             if self.hasSegmentationMask:
-                w = self._wcs.celestial
-            else:
                 w = None
+            else:
+                w = self._wcs.celestial
         elif wcstype == 'segmask':
             w = self._wcs.celestial
         else:
