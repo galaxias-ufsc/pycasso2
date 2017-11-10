@@ -526,6 +526,13 @@ class FitsCube(object):
         mu = np.moveaxis(self.popmu_cor, 0, -1)
         return (mu * self.popaFe_base).sum(axis=-1) / mu.sum(axis=-1)
 
+    def recentSFRSD(self, t_SF=32e6, xY_min=0.03):
+        young_pop = self.popage_base_t2 < t_SF
+        sfr = self.MiniSD[young_pop].sum(axis=0) / t_SF
+        xY = self.popx[young_pop].sum(axis=0)
+        sfr[xY < xY_min] = np.ma.masked
+        return sfr
+
     def SFRSD(self, dt=0.5e9):
         Mini = self.toRectBase(self.MiniSD).sum(axis=1)
         return SFR(Mini, tb1=self.age_base, tb2=self.age_base_t2, dt=dt)
