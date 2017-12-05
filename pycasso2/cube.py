@@ -679,8 +679,8 @@ class FitsCube(object):
 
     def LickIndex(self, index_id, calc_error=False):
         if calc_error:
-            return get_Lick_index(index_id, self.l_obs, self.f_obs, self.f_err)
+            return get_Lick_index(index_id, self.l_obs, self.f_syn, self.f_err)
         else:
             idx, _ = get_Lick_index(
-                index_id, self.l_obs, self.f_obs, error=None)
+                index_id, self.l_obs, self.f_syn, error=None)
             return idx
