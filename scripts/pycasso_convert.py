@@ -7,6 +7,7 @@ Created on 10/11/2017
 from pycasso2 import FitsCube, flags, __version__
 from pycasso2.importer.core import get_git_hash
 from pycasso2.wcs import replace_wave_WCS, write_WCS
+from pycasso2.legacy import qplane_map, qzones2segmask
 
 from astropy.io import fits
 from astropy.wcs.wcs import WCS
@@ -17,8 +18,6 @@ import numpy as np
 import argparse
 
 ###############################################################################
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Convert old CALIFA cubes to new format.')
@@ -35,35 +34,6 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
-def qplane_map(header):
-    '''
-    Create a dictionary of plane names to index in image.
-    '''   
-    nplanes = header['NAXIS3']
-    plane_index = {}
-    for pid in range(nplanes):
-        key = 'PLANE_%d' % pid
-        pname = header[key].split(':')[0]
-        plane_index[pname] = pid
-    return plane_index
-
-
-def qzones2segmask(qZones):
-    Nzone = int(qZones.max()) + 1
-    segmask = np.zeros((Nzone,) + qZones.shape, dtype='int32')
-    for z in range(Nzone):
-        this_zone = (qZones == z)
-        segmask[z, this_zone] = 1
-    return segmask
-
-
-def l_obs(header):
-    l_ini = header['SYN L_INI']
-    l_fin = header['SYN L_FIN']
-    dl = header['SYN DL']
-    return np.arange(l_ini, l_fin + dl, dl)
-
-    
 log.setLevel('DEBUG')
 args = parse_args()
 
@@ -148,7 +118,17 @@ g.chi2[...] = f['chi2'].data
 
 sn_image = f['primary'].data[qp_map['ZonesSn']]
 sn_zones = (sn_image * segmask).sum(axis=(1, 2)) / segmask.sum(axis=(1, 2))
-g.SN_normwin[...] = sn_zones 
+g.SN_normwin[...] = sn_zones
+
+syn_keyword_list = ['arq_config', 'N_chains', 'l_norm', 'q_norm',
+                    'llow_norm', 'lupp_norm', 'i_SaveBestSingleCompFit', 'IsFIRcOn' ,
+                    'IsPHOcOn', 'IsQHRcOn' , 'llow_SN', 'lupp_SN', 'q_norm',
+                    'red_law_option', 'flux_unit' , 'l_ini', 'l_fin',
+                    'dl', 'Nl_obs', 'arq_base', 'N_base', 'N_exAV', 'LumDistInMpc']
+for k in syn_keyword_list:
+    g._header['HIERARCH STARLIGHT ' + k.upper()] = header['SYN ' + k.upper()]
+
+g._HDUList.append(fits.ImageHDU(f[0].data, f[0].header, 'qPlanes'))
 
 # Testing at_flux
 
