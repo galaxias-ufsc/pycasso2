@@ -558,7 +558,7 @@ class FitsCube(object):
 
     @lazyproperty
     def q_norm(self):
-        return self._getSynthExtension('q_norm')
+        return self.synthKeywords['Q_NORM']
 
     @property
     def tau_V(self):
@@ -579,6 +579,14 @@ class FitsCube(object):
     @lazyproperty
     def adev(self):
         return self._getSynthExtension('ADEV')
+
+    @lazyproperty
+    def Nglobal_steps(self):
+        return self._getSynthExtension('Nglobal_steps')
+
+    @lazyproperty
+    def Ntot_clipped(self):
+        return self._getSynthExtension('Ntot_clipped')
 
     @lazyproperty
     def SN_normwin(self):
