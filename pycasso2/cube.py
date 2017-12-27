@@ -463,7 +463,7 @@ class FitsCube(object):
     @property
     def McorSD(self):
         popmu_cor = self.popmu_cor.copy()
-        popmu_cor /= popmu_cor.sum(axis=0)[np.newaxis, ...]
+        popmu_cor /= 100.0
         if self.hasSegmentationMask:
             area = self.zoneArea_pc2
         else:
@@ -473,7 +473,7 @@ class FitsCube(object):
     @property
     def MiniSD(self):
         popmu_ini = self.popmu_ini.copy()
-        popmu_ini /= popmu_ini.sum(axis=0)[np.newaxis, ...]
+        popmu_ini /= 100.0
         if self.hasSegmentationMask:
             area = self.zoneArea_pc2
         else:
@@ -483,7 +483,7 @@ class FitsCube(object):
     @property
     def LobnSD(self):
         popx = self.popx.copy()
-        popx /= popx.sum(axis=0)[np.newaxis, ...]
+        popx /= 100.0
         if self.hasSegmentationMask:
             area = self.zoneArea_pc2
         else:
