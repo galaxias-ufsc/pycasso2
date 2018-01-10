@@ -183,6 +183,72 @@ class fitsQ3DataCube(FitsCube):
         return self.toRectBase(fbn, 0.0)
 
     @property
+    def at_flux(self):
+        popx = super(fitsQ3DataCube, self).popx
+        popx = np.moveaxis(popx, 0, -1)
+        log_t1 = np.log10(self.popage_base)
+        log_t2 = np.log10(self.popage_base_t2)
+        log_t = (log_t1 + log_t2) / 2.0
+        return (popx * log_t).sum(axis=-1) / popx.sum(axis=-1)
+
+    @property
+    def at_flux__yx(self):
+        return self.spatialize(self.at_flux, extensive=False)
+    
+    @property
+    def at_mass(self):
+        mu = super(fitsQ3DataCube, self).popmu_cor
+        mu = np.moveaxis(mu, 0, -1)
+        log_t1 = np.log10(self.popage_base)
+        log_t2 = np.log10(self.popage_base_t2)
+        log_t = (log_t1 + log_t2) / 2.0
+        return (mu * log_t).sum(axis=-1) / mu.sum(axis=-1)
+
+    @property
+    def at_mass__yx(self):
+        return self.spatialize(self.at_mass, extensive=False)
+    
+    @property
+    def alogZ_flux(self):
+        popx = super(fitsQ3DataCube, self).popx
+        popx = np.moveaxis(popx, 0, -1)
+        return (popx * np.log10(self.popZ_base / self._Z_sun)).sum(axis=-1) / popx.sum(axis=-1)
+
+    @property
+    def alogZ_flux__yx(self):
+        return self.spatialize(self.alogZ_flux, extensive=False)
+    
+    @property
+    def alogZ_mass(self):
+        mu = super(fitsQ3DataCube, self).popmu_cor
+        mu = np.moveaxis(mu, 0, -1)
+        return (mu * np.log10(self.popZ_base / self._Z_sun)).sum(axis=-1) / mu.sum(axis=-1)
+
+    @property
+    def alogZ_mass__yx(self):
+        return self.spatialize(self.alogZ_mass, extensive=False)
+    
+    @property
+    def aaFe_flux(self):
+        popx = super(fitsQ3DataCube, self).popx
+        popx = np.moveaxis(popx, 0, -1)
+        return (popx * self.popaFe_base).sum(axis=-1) / popx.sum(axis=-1)
+
+    @property
+    def aaFe_flux__yx(self):
+        return self.spatialize(self.aaFe_flux, extensive=False)
+    
+    @property
+    def aaFe_mass(self):
+        mu = super(fitsQ3DataCube, self).popmu_cor
+        mu = np.moveaxis(mu, 0, -1)
+        return (mu * self.popaFe_base).sum(axis=-1) / mu.sum(axis=-1)
+
+    @property
+    def aaFe_mass__yx(self):
+        return self.spatialize(self.aaFe_mass, extensive=False)
+    
+    @property
     def adevS(self):
         return self.adev
     

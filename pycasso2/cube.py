@@ -367,6 +367,10 @@ class FitsCube(object):
         return np.unique(self.popage_base)
 
     @lazyproperty
+    def age_base_t2(self):
+        return np.unique(self.popage_base_t2)
+
+    @lazyproperty
     def popZ_base(self):
         return self._getExtensionData(self._ext_popZ_base)
 
