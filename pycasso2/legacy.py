@@ -62,8 +62,14 @@ class fitsQ3DataCube(FitsCube):
     def __init__(self, filename):
         FitsCube.__init__(self, filename)
         self.keywords.update(self.synthKeywords)
-        self._pmap = qplane_map(self._HDUList['qPlanes'].header)
-        y0, x0 = np.where(self.segmentationMask[0])
+        if 'qPlanes' in self._HDUList:
+            self._pmap = qplane_map(self._HDUList['qPlanes'].header)
+        else:
+            self._pmap = {}
+        if self.hasSegmentationMask:
+            y0, x0 = np.where(self.segmentationMask[0])
+        else:
+            y0, x0 = self.center[1:]
         self._x0 = np.asscalar(x0)
         self._y0 = np.asscalar(y0)
         
