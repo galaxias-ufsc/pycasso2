@@ -7,7 +7,6 @@ Created on Jun 17, 2013
 from astropy import log
 from os import path
 import subprocess
-from queue import Queue
 from threading import Thread
 from collections import deque
 import time
@@ -191,6 +190,8 @@ class StarlightRunner(object):
     '''
 
     def __init__(self, n_workers=1, timeout=1200.0, compress=True, exec_path='starlight'):
+        from queue import Queue
+        
         self._inputGrids = Queue(maxsize=2 * n_workers)
         self._outputGrids = deque()
         log.debug('starlight executable is %s' % exec_path)
