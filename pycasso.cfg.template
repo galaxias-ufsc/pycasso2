@@ -98,10 +98,10 @@ IsQHRcOn = 0
 IsFIRcOn = 0
 
 # Note: the %s, %d and %d will be replaced by the galaxy ID, y, x.
-arq_obs_format = %s_%04d_%04d.in
+arq_obs_format = %04d_%04d.in
 
 # Note: the %s, %d and %d will be replaced by the galaxy ID, y, x.
-arq_out_format = %s_%04d_%04d.out
+arq_out_format = %04d_%04d.out
 
 # Note: the %s, %d and %d will be replaced by the galaxy ID, y, x.
 arq_mask_format = %s/Masks_%04d_%04d

@@ -190,9 +190,9 @@ class SynthesisAdapter(object):
     def _getGrid(self, y, x1, x2, use_errors_flags, use_custom_masks, synth_sn):
         grid = self._gridTemplate.copy()
         if x1 != x2:
-            grid.name = 'grid_%s_%04d_%04d-%04d' % (self.name, y, x1, x2)
+            grid.name = 'grid_%04d_%04d-%04d' % (y, x1, x2)
         else:
-            grid.name = 'grid_%04d_%04d' % (self.name, y, x1)
+            grid.name = 'grid_%04d_%04d' % (y, x1)
         grid.randPhone = -958089828
         # grid.seed()
         if use_errors_flags:
@@ -217,8 +217,8 @@ class SynthesisAdapter(object):
 
         log.debug('Creating inputs for spaxel (%d,%d)' % (x, y))
         new_run = self._runTemplate.copy()
-        new_run.inFile = self._inFileFormat % (self.name, y, x)
-        new_run.outFile = self._outFileFormat % (self.name, y, x)
+        new_run.inFile = self._inFileFormat % (y, x)
+        new_run.outFile = self._outFileFormat % (y, x)
         if use_custom_masks:
             new_run.maskFile = self._arqMaskFormat % (self.name, y, x)
         new_run.x = x
