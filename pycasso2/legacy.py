@@ -10,6 +10,7 @@ from .resampling import age_smoothing_kernel, interp_age
 from .starlight.analysis import calc_popmu, MStarsEvolution
 from astropy.utils.decorators import lazyproperty
 import numpy as np
+from pycasso2.resampling import get_dezonification_weight
 
 
 def MStars(ageBase, metBase, Mstars):
@@ -59,7 +60,7 @@ def l_obs_from_header(header):
     
 class fitsQ3DataCube(FitsCube):
 
-    def __init__(self, filename):
+    def __init__(self, filename, smooth=True):
         FitsCube.__init__(self, filename)
         self.keywords.update(self.synthKeywords)
         if 'qPlanes' in self._HDUList:
@@ -72,6 +73,8 @@ class fitsQ3DataCube(FitsCube):
             y0, x0 = self.center[1:]
         self._x0 = np.asscalar(x0)
         self._y0 = np.asscalar(y0)
+        if self.hasSegmentationMask:
+            self.setSmoothDezonification(smooth, self.qSignal)
         
     @property
     def header(self):
@@ -100,7 +103,7 @@ class fitsQ3DataCube(FitsCube):
 
     @property
     def LobnSD__tZyx(self):
-        return self.spatialize(self.LobnSD, extensive=False)
+        return self.zoneToYX(self.LobnSD * self.zoneArea_pc2, extensive=True)
     
     @property
     def LobnSD__yx(self):
@@ -109,7 +112,7 @@ class fitsQ3DataCube(FitsCube):
     @property
     def DeRed_LobnSD__tZyx(self):
         der_LobnSD = self.LobnSD * 10.0**(0.4 * self.q_norm * self.A_V)
-        return self.spatialize(der_LobnSD, extensive=False)
+        return self.zoneToYX(der_LobnSD * self.zoneArea_pc2, extensive=True)
     
     @property
     def DeRed_LobnSD__yx(self):
@@ -121,11 +124,15 @@ class fitsQ3DataCube(FitsCube):
 
     @property
     def MiniSD__tZyx(self):
-        return self.spatialize(self.MiniSD, extensive=False)
+        return self.zoneToYX(self.MiniSD * self.zoneArea_pc2, extensive=True)
+    
+    @property
+    def MiniSD__yx(self):
+        return self.MiniSD__tZyx.sum(axis=(0, 1))
     
     @property
     def McorSD__tZyx(self):
-        return self.spatialize(self.McorSD, extensive=False)
+        return self.zoneToYX(self.McorSD * self.zoneArea_pc2, extensive=True)
     
     @property
     def McorSD__yx(self):
@@ -278,9 +285,28 @@ class fitsQ3DataCube(FitsCube):
     def N_zone(self):
         return self.Nzone
     
-    def zoneToYX(self, a, extensive=False):
-        a = self.spatialize(a, extensive)
-        if extensive:
+    def setSmoothDezonification(self, smooth=True, prop=None):
+        self._smooth = smooth
+        self._dezonificationWeight = self.getDezonificationWeight(smooth, prop)
+
+    def getDezonificationWeight(self, smooth, prop=None):
+        if prop is None:
+            prop = self.qSignal
+        if smooth:
+            w = get_dezonification_weight(prop, self.segmentationMask, alpha=1.0)
+        else:
+            w = 1.0 / self.spatialize(self.zoneArea_pix, extensive=False)
+        return w
+    
+    def zoneToYX(self, a, extensive=False, surface_density=True, fill_value=None):
+        if self.hasSegmentationMask:
+            if self._smooth:
+                a = self.spatialize(a, extensive=extensive)
+            else:
+                a = self.spatialize(a, extensive=False)
+            a = a * self._dezonificationWeight
+
+        if surface_density:
             a = a / self.pixelArea_pc2
         return a
 

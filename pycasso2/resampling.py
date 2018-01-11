@@ -662,3 +662,42 @@ def get_subset_slices(l_obs_d, l_obs_o):
         l2_d = find_nearest_index(l_obs_d, l_obs_o[-1]) + 1
         l2_o = len(l_obs_o)
     return slice(l1_d, l2_d), slice(l1_o, l2_o)
+
+
+################################################################################
+def get_dezonification_weight(light, segmask, alpha=1.0):
+    '''
+    Create the weight image for dezonification. If smooth is True, 
+    use ``prop`` image to weight the pixels in each zone. Otherwise
+    use the zone area. If ``prop`` is not set, use :attr:`qSignal`.
+    
+    Here we use a scheme similar to :meth:`zoneToYX`, when using smooth
+    dezonification, except that we use :func:`numpy.histogram` to calculate
+    the weight of the pixels.
+    
+    Parameters
+    ----------
+    light : array
+        Image to use as dezonification weights.
+
+    segmask : array
+        Segmentation mask.
+
+    alpha : float, optional
+        Exponent for the x-to-light relation of the property
+        to which the dezonification will be applied.
+
+    '''
+    from pycasso2.segmentation import spatialize
+
+    light = (light / np.mean(light))**alpha
+    if isinstance(light, np.ma.MaskedArray):
+        light = light.filled(0.0)
+    seg_area = segmask.sum(axis=(1, 2))
+    light_mean = np.tensordot(light, segmask, axes=[[0, 1], [1, 2]]) / seg_area
+    light_mean = spatialize(light_mean, segmask, extensive=False)
+    mask = segmask.sum(axis=0) > 0
+    weight = np.zeros_like(light)
+    weight[mask] = light[mask] / light_mean[mask]
+    return weight
+################################################################################
