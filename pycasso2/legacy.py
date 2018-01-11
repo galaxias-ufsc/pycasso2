@@ -11,6 +11,7 @@ from .starlight.analysis import calc_popmu, MStarsEvolution
 from astropy.utils.decorators import lazyproperty
 import numpy as np
 from pycasso2.resampling import get_dezonification_weight
+from pycasso2.geometry import convex_hull_mask, get_ellipse_params
 
 
 def MStars(ageBase, metBase, Mstars):
@@ -334,10 +335,118 @@ class fitsQ3DataCube(FitsCube):
             
         return radprof
 
-    def getPixelDistance(self):
-        dist = get_image_distance((self.Ny, self.Nx), self.x0, self.y0, self.pa, self.ba)
-        return dist / self.HLR_pix
+    def fillImage(self, prop, prop__r=None, r=None, r__yx=None, mode='convex'):
+        '''
+        Fill a 2-D the masked pixels of an image of a property
+        using the values of a radial profile. The pixels to fill
+        are chosen by ``mode``.
+        
+        Parameters
+        ----------
+        prop : array
+            Property (2-D) to fill the hollow pixels.
+            
+        prop__r : the radial profile to use to fill the data.
+            If not set, calculate from prop.
+
+        r : array
+            The radial distances for ``prop__r`` values.
+            If not set (or ``prop__r`` is not set), use
+            a 1 pixel step.
+            
+        r__yx : array
+            A 2-D image containing the geometry of the image.
+            If not set, use :attr:`pixelDistance__yx`.
+            
+        mode : {'convex', 'hollow'}, string
+            If mode is ``'convex'``, fill entire convex hull.
+            If mode is ``'hollow'``, fill only hollow pixels.
+            Default is ``'convex'``.
+                
+        Returns
+        -------
+        prop_fill : array
+            A 2-D image of ``prop``, with the missing pixels filled.
+            
+        mask : array
+            The effective mask for the filled image.
+            
+        '''
+        if r__yx is None:
+            r__yx = self.getPixelDistance(use_HLR_units=False)
+        mask = self.spatialize(~self.synthImageMask, extensive=False).filled(0)
+        if not isinstance(prop, np.ma.MaskedArray):
+            input_masked = False
+            prop = np.ma.masked_where(~mask, prop)
+        else:
+            input_masked = True
+        if prop__r is None or r is None:
+            max_r = r__yx.max()
+            bin_r = np.arange(0, max_r+1, 1)
+            r = (bin_r[:-1] + bin_r[1:]) / 2.0
+            prop__r = self.radialProfile(prop, bin_r, rad_scale=1.0, mode='mean')
+        if mode == 'convex':
+            to_fill = convex_hull_mask(mask).astype('bool') & prop.mask
+        elif mode == 'hollow': 
+            raise Exception('Unsupported mode: hollow')
+        else:
+            raise ValueError('%s is not a valid mode.' % mode)
+        
+        _prop = prop.copy()
+        _prop[to_fill] = np.interp(r__yx[to_fill], r[~prop__r.mask], prop__r.compressed())
+        
+        if input_masked:
+            return _prop
+        else:
+            return _prop.data, ~_prop.mask
+
+    def getPixelDistance(self, use_HLR_units=True, pixel_scale=None, x=None, y=None, pa=None, ba=None):
+        if x is not None or y is not None:
+            raise Exception('Distance for x and y positions not supported.')
+        if pa is None:
+            pa = self.pa
+        if ba is None:
+            ba = self.ba
+        dist = get_image_distance((self.Ny, self.Nx), self.x0, self.y0, pa, ba)
+        if use_HLR_units:
+            return dist / self.HLR_pix
+        if pixel_scale is not None:
+            return dist / pixel_scale
+        return dist
     
+    def getEllipseParams(self, prop=None, mask=None):
+        '''
+        Estimate ellipticity and orientation of the galaxy using the
+        "Stokes parameters", as described in:
+        http://adsabs.harvard.edu/abs/2002AJ....123..485S
+        The image used is ``qSignal``.
+        
+        Parameters
+        ----------
+        prop : array, optional
+            Image to use when calculating the ellipse parameters.
+            If not set, :attr:`qSignal` will be used.
+
+        mask : array, optional
+            Mask containing the pixels to take into account.
+            If not set, :attr:`qMask` will be used.
+        
+        Returns
+        -------
+        pa : float
+            Position angle in radians, counter-clockwise relative
+            to the positive X axis.
+        
+        ba : float
+            Ellipticity, defined as the ratio between the semiminor
+            axis and the semimajor axis (:math:`b/a`).
+        '''
+        if prop is None:
+            prop = self.qSignal
+        if mask is None:
+            mask = self.qMask.copy()
+        return get_ellipse_params(np.ma.array(prop, mask=~mask), self.x0, self.y0)
+
     @property
     def qPlanes(self):
         return self._HDUList['qPlanes'].data
