@@ -320,7 +320,10 @@ class FitsCube(object):
     
     @lazyproperty
     def zoneArea_pix(self):
-        return self.segmentationMask.sum(axis=(1, 2))
+        if self.hasSegmentationMask:
+            return self.segmentationMask.sum(axis=(1, 2))
+        else:
+            return 1
 
     @lazyproperty
     def zoneArea_pc2(self):
@@ -468,31 +471,19 @@ class FitsCube(object):
     def McorSD(self):
         popmu_cor = self.popmu_cor.copy()
         popmu_cor /= 100.0
-        if self.hasSegmentationMask:
-            area = self.zoneArea_pc2
-        else:
-            area = self.pixelArea_pc2
-        return popmu_cor * (self.Mcor_tot[np.newaxis, ...] / area)
+        return popmu_cor * (self.Mcor_tot[np.newaxis, ...] / self.zoneArea_pc2)
 
     @property
     def MiniSD(self):
         popmu_ini = self.popmu_ini.copy()
         popmu_ini /= 100.0
-        if self.hasSegmentationMask:
-            area = self.zoneArea_pc2
-        else:
-            area = self.pixelArea_pc2
-        return popmu_ini * (self.Mini_tot[np.newaxis, ...] / area)
+        return popmu_ini * (self.Mini_tot[np.newaxis, ...] / self.zoneArea_pc2)
 
     @property
     def LobnSD(self):
         popx = self.popx.copy()
         popx /= 100.0
-        if self.hasSegmentationMask:
-            area = self.zoneArea_pc2
-        else:
-            area = self.pixelArea_pc2
-        return popx * (self.Lobs_norm[np.newaxis, ...] / area)
+        return popx * (self.Lobs_norm[np.newaxis, ...] / self.zoneArea_pc2)
 
     @property
     def at_flux(self):
