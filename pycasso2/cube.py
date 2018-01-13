@@ -8,6 +8,7 @@ from .wcs import get_wavelength_coordinates, get_celestial_coordinates, write_WC
 from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Naxis
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
+from .starlight.tables import pop_table_dtype, spec_table_dtype
 from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index
@@ -19,6 +20,7 @@ from . import modeling
 
 
 from astropy.io import fits
+from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from astropy.wcs import WCS
 from astropy import log
@@ -44,6 +46,9 @@ class FitsCube(object):
     _ext_popmu_cor = 'POPMU_COR'
     _ext_mstars = 'MSTARS'
     _ext_fbase_norm = 'FBASE_NORM'
+    
+    _ext_integ_spectra = 'integ_spectra'
+    _ext_integ_pop = 'integ_population'
 
     _h_lum_dist_Mpc = 'PYCASSO LUM_DIST_MPC'
     _h_redshift = 'PYCASSO REDSHIFT'
@@ -140,6 +145,9 @@ class FitsCube(object):
     def _readKeywords(self):
         self.keywords = {k.split()[1]: v for k, v in self._header.items() if 'PYCASSO' in k}
         self.synthKeywords = {k.split()[1]: v for k, v in self._header.items() if 'STARLIGHT' in k}
+        if self.hasIntegratedData:
+            integ_h = self._HDUList[self._ext_integ_pop].header
+            self.synthIntegKeywords = {k.split()[1]: v for k, v in integ_h.items() if 'STARLIGHT' in k}
 
     def write(self, filename, overwrite=False):
         self._HDUList.writeto(filename, overwrite=overwrite, output_verify='fix')
@@ -169,6 +177,18 @@ class FitsCube(object):
 
         for ext in self._ext_keyword_list:
             self._addExtension(ext, wcstype='image', shape=kw_shape, overwrite=True)
+
+        if self.hasSegmentationMask:
+            sum_segmask = self.segmentationMask.sum(axis=0)
+            if (sum_segmask > 1).any():
+                log.debug('Segmentation mask has overlapping regions, disabled integrated spectra.')
+                return
+
+        specdata = np.zeros((self.Nwave), dtype=spec_table_dtype)
+        specdata['l_obs'] = self.l_obs
+        self._addTableExtension(self._ext_integ_spectra, Table(specdata), overwrite=True)
+        popdata = np.zeros((pop_len), dtype=pop_table_dtype)
+        self._addTableExtension(self._ext_integ_pop, Table(popdata), overwrite=True)
 
     def _hasExtension(self, name):
         return name in self._HDUList
@@ -211,10 +231,26 @@ class FitsCube(object):
             raise Exception ('Unknown WCS type %s.' % wcstype)
         write_WCS(hdu.header, w)
         
+    def _addTableExtension(self, name, data=None, overwrite=False):
+        name = name.upper()
+        if self._hasExtension(name):
+            if not overwrite:
+                raise Exception(
+                    'Tried to create extension %s but it already exists.' % name)
+            else:
+                log.warn('Deleting existing extension %s.' % name)
+                self._delExtension(name)
+        imhdu = fits.BinTableHDU(data.as_array(), name=name)
+        self._HDUList.append(imhdu)
+
     def _getExtensionData(self, name):
         data = self._HDUList[name].data
         if (data.ndim > 1) and self.hasSegmentationMask and (name != self._ext_segmask):
             data = np.moveaxis(data, 0, -1)
+        return data
+
+    def _getTableExtensionData(self, name):
+        data = self._HDUList[name].data
         return data
 
     def _delExtension(self, name):
@@ -275,6 +311,17 @@ class FitsCube(object):
     def hasSegmentationMask(self, value):
         key = 'HIERARCH %s' % self._h_has_segmap
         self._header[key] = value
+
+    @lazyproperty
+    def isSpatializable(self):
+        if not self.hasSegmentationMask:
+            return True
+        sum_segmask = self.segmentationMask.sum(axis=0)
+        return (sum_segmask <= 1).all()
+
+    @property
+    def hasIntegratedData(self):
+        return self._ext_integ_spectra in self._HDUList
 
     @property
     def x0(self):
@@ -678,7 +725,7 @@ class FitsCube(object):
             as the cube, where ``True`` means the pixel is masked.
         '''
         flagged = ((self.f_flag & flags) > 0).astype(int).sum(axis=0)
-        return flagged > threshold * len(self.l_obs)
+        return flagged > (threshold * len(self.l_obs))
 
     def LickIndex(self, index_id, calc_error=False):
         if self.hasSynthesis:
@@ -692,3 +739,44 @@ class FitsCube(object):
             idx, _ = get_Lick_index(
                 index_id, self.l_obs, flux, error=None)
             return idx
+
+    @lazyproperty
+    def integ_f_obs(self):
+        t = self._getTableExtensionData(self._ext_integ_spectra)
+        return t['f_obs']
+    
+    @lazyproperty
+    def integ_f_err(self):
+        t = self._getTableExtensionData(self._ext_integ_spectra)
+        return t['f_err']
+    
+    @lazyproperty
+    def integ_f_flag(self):
+        t = self._getTableExtensionData(self._ext_integ_spectra)
+        return t['f_flag']
+    
+    @lazyproperty
+    def integ_f_syn(self):
+        t = self._getTableExtensionData(self._ext_integ_spectra)
+        return t['f_syn']
+    
+    @lazyproperty
+    def integ_f_wei(self):
+        t = self._getTableExtensionData(self._ext_integ_spectra)
+        return t['f_wei']
+    
+    @lazyproperty
+    def integ_popx(self):
+        t = self._getTableExtensionData(self._ext_integ_pop)
+        return t['popx']
+    
+    @lazyproperty
+    def integ_popmu_ini(self):
+        t = self._getTableExtensionData(self._ext_integ_pop)
+        return t['popmu_ini']
+    
+    @lazyproperty
+    def integ_popmu_cor(self):
+        t = self._getTableExtensionData(self._ext_integ_pop)
+        return t['popmu_cor']
+    

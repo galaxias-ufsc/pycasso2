@@ -7,6 +7,7 @@ from .tables import write_input, read_output_tables
 from .gridfile import GridRun, GridFile
 from ..resampling import get_subset_slices, find_nearest_index
 from ..error import estimate_error
+from ..segmentation import integrate_spectra
 from .. import flags
 
 from astropy import log
@@ -100,6 +101,7 @@ class SynthesisAdapter(object):
         self._arqMaskFormat = cfg.get(self._cfg_sec, 'arq_mask_format')
         self._inFileFormat = cfg.get(self._cfg_sec, 'arq_obs_format')
         self._outFileFormat = cfg.get(self._cfg_sec, 'arq_out_format')
+        self._cfg = cfg
         self._cube = FitsCube(cube)
         if new_name is None:
             self.name = self._cube.name
@@ -139,6 +141,19 @@ class SynthesisAdapter(object):
             self.f_err = self._cube.f_err
             self.f_flag = self._cube.f_flag
         self.spatialMask = self.getSpatialMask()
+
+        if self._cube.isSpatializable:
+            bin_size = self._cfg.getint('import', 'binning', fallback=1)
+            A = self._cfg.getfloat('import', 'spat_cov_a', fallback=0.0)
+            B = self._cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
+            f_obs, f_err, good_frac = integrate_spectra(self.f_obs, self.f_err,
+                                                    self.f_flag, self.spatialMask,
+                                                    bin_size, A, B)
+            nodata = good_frac == 0.0
+            self._integ_f_obs = np.ma.masked_where(nodata, f_obs)
+            self._integ_f_err = np.ma.masked_where(nodata, f_err)
+            self._integ_f_flag = np.where(nodata, flags.no_data, 0)
+
 
     def _getTemplates(self, cfg):
         grid = PGridFile(self.starlightDir)
@@ -236,6 +251,42 @@ class SynthesisAdapter(object):
         write_input(self.l_obs, f_obs, f_err, f_flag, path.join(self.obsDir, new_run.inFile))
         return new_run
 
+    def _getIntegGrid(self, use_errors_flags, use_custom_masks, synth_sn):
+        grid = self._gridTemplate.copy()
+        grid.name = 'grid_integ'
+        grid.randPhone = -958089828
+        # grid.seed()
+        if use_errors_flags:
+            grid.errSpecAvail = 1
+            grid.flagSpecAvail = 1
+        else:
+            grid.errSpecAvail = 0
+            grid.flagSpecAvail = 0
+
+        run = self._createIntegRun(use_errors_flags, use_custom_masks, synth_sn)
+        grid.runs.append(run)
+        return grid
+
+    def _createIntegRun(self, use_errors_flags, use_custom_masks, synth_sn):
+        log.debug('Creating inputs for integrated spectrum.')
+        new_run = self._runTemplate.copy()
+        new_run.inFile = 'integrated.in'
+        new_run.outFile = 'integrated.out'
+        new_run.x = None
+        new_run.y = None
+
+        f_obs = self._integ_f_obs
+        if use_errors_flags:
+            f_err = self._integ_f_err
+            if synth_sn is not None:
+                f_err = np.sqrt(f_err**2 + (f_obs / synth_sn)**2)
+            f_flag = self._integ_f_flag
+        else:
+            f_err = None
+            f_flag = None
+        write_input(self.l_obs, f_obs, f_err, f_flag, path.join(self.obsDir, new_run.inFile))
+        return new_run
+
     def gridIterator(self, chunk_size, use_errors_flags=True,
                      use_custom_masks=False, synth_sn=None):
         Nx = self.f_obs.shape[2]
@@ -246,6 +297,8 @@ class SynthesisAdapter(object):
                 if x2 > Nx:
                     x2 = Nx
                 yield self._getGrid(y, x1, x2, use_errors_flags, use_custom_masks, synth_sn)
+        if self._cube.isSpatializable:
+            yield self._getIntegGrid(use_errors_flags, use_custom_masks, synth_sn)
 
     def createSynthesisCubes(self, pop_len):
         self._cube.createSynthesisCubes(pop_len)
@@ -295,27 +348,56 @@ class SynthesisAdapter(object):
                 self.popaFe_base[:] = population['aFe']
                 self._base_data_saved = True
 
-            log.debug('Writing synthesis for spaxel (%d,%d)' % (x, y))
-            f_obs_norm = keywords['fobs_norm']
+            f_obs_norm = keywords['fobs_norm'] / grid.fluxUnit
             slice_d, slice_o = get_subset_slices(self.l_obs, spectra['l_obs'])
-            self.f_syn[slice_d, y, x] = spectra['f_syn'][slice_o] * (f_obs_norm / grid.fluxUnit)
 
-            f_wei = spectra['f_wei'][slice_o]
-            self.f_wei[slice_d, y, x] = f_wei
-            self.f_flag[slice_d, y, x] |= np.where(f_wei == -1.0, flags.starlight_clipped, 0)
-            self.f_flag[slice_d, y, x] |= np.where(f_wei == 0.0, flags.starlight_masked, 0)
-            
-            self.f_flag[:slice_d.start] |= flags.starlight_no_data
-            self.f_flag[slice_d.stop:] |= flags.starlight_no_data
+            if x is None or y is None:
+                if not self._cube.hasIntegratedData:
+                    log.warn('Found an integrated output, but the cube does not have integrated data.')
+                    break
+                log.debug('Writing synthesis for integrated data.')
+                self._cube.integ_f_obs[:] = self._integ_f_obs
+                self._cube.integ_f_err[:] = self._integ_f_err
 
-            self.popx[:, y, x] = population['popx']
-            self.popmu_ini[:, y, x] = population['popmu_ini']
-            self.popmu_cor[:, y, x] = population['popmu_cor']
-            for k in self._cube._ext_keyword_list:
-                if self.isSegmented:
-                    keyword_data[k][x] = keywords[k]
-                else:
-                    keyword_data[k][y, x] = keywords[k]
+                self._cube.integ_f_syn[slice_d] = spectra['f_syn'][slice_o] * f_obs_norm
+                f_wei = spectra['f_wei'][slice_o]
+                self._cube.integ_f_wei[slice_d] = f_wei
+
+                f_flag = self._cube.integ_f_flag
+                f_flag[:] = self._integ_f_flag
+                f_flag[slice_d] |= np.where(f_wei == -1.0, flags.starlight_clipped, 0)
+                f_flag[slice_d] |= np.where(f_wei == 0.0, flags.starlight_masked, 0)
+                f_flag[:slice_d.start] |= flags.starlight_no_data
+                f_flag[slice_d.stop:] |= flags.starlight_no_data
+                
+                self._cube.integ_popx[:] = population['popx']
+                self._cube.integ_popmu_ini[:] = population['popmu_ini']
+                self._cube.integ_popmu_cor[:] = population['popmu_cor']
+
+                h = self._cube._HDUList[self._cube._ext_integ_pop].header
+                for k in self._cube._ext_keyword_list:
+                    h['HIERARCH STARLIGHT ' + k] = keywords[k]
+
+            else:
+                log.debug('Writing synthesis for spaxel (%d,%d)' % (x, y))
+                self.f_syn[slice_d, y, x] = spectra['f_syn'][slice_o] * f_obs_norm
+    
+                f_wei = spectra['f_wei'][slice_o]
+                self.f_wei[slice_d, y, x] = f_wei
+                self.f_flag[slice_d, y, x] |= np.where(f_wei == -1.0, flags.starlight_clipped, 0)
+                self.f_flag[slice_d, y, x] |= np.where(f_wei == 0.0, flags.starlight_masked, 0)
+                
+                self.f_flag[:slice_d.start] |= flags.starlight_no_data
+                self.f_flag[slice_d.stop:] |= flags.starlight_no_data
+    
+                self.popx[:, y, x] = population['popx']
+                self.popmu_ini[:, y, x] = population['popmu_ini']
+                self.popmu_cor[:, y, x] = population['popmu_cor']
+                for k in self._cube._ext_keyword_list:
+                    if self.isSegmented:
+                        keyword_data[k][x] = keywords[k]
+                    else:
+                        keyword_data[k][y, x] = keywords[k]
 
     def writeSynthesisHeaders(self, ts):
         keywords = ts['keywords']

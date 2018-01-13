@@ -14,6 +14,19 @@ from astropy.table import Table
 from pycasso2 import flags
 __all__ = ['read_wavelength_mask', 'write_input', 'read_output_tables']
 
+pop_table_dtype = [('popx', 'float64'),
+                   ('popmu_ini', 'float64'),
+                   ('popmu_cor', 'float64'),
+                   ]
+
+spec_table_dtype = [('l_obs', 'float64'),
+                    ('f_obs', 'float64'),
+                    ('f_err', 'float64'),
+                    ('f_syn', 'float64'),
+                    ('f_wei', 'float64'),
+                    ('f_flag', 'int32'),
+                    ]
+
 
 def read_wavelength_mask(maskfile, wl, z=0.0, dest='rest'):
     '''

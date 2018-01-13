@@ -128,6 +128,29 @@ syn_keyword_list = ['arq_config', 'N_chains', 'l_norm', 'q_norm',
 for k in syn_keyword_list:
     g._header['HIERARCH STARLIGHT ' + k.upper()] = header['SYN ' + k.upper()]
 
+g.integ_f_obs[:] = f['integrated_f_obs'].data
+g.integ_f_err[:] = f['integrated_f_err'].data
+g.integ_f_syn[:] = f['integrated_f_syn'].data
+g.integ_f_wei[:] = f['integrated_f_wei'].data
+g.integ_f_flag |= np.where(g.integ_f_wei == -1.0, flags.starlight_clipped, 0)
+g.integ_f_flag |= np.where(g.integ_f_wei == 0.0, flags.starlight_masked, 0)
+
+g.integ_popx[:] = f['integrated_popx'].data.T.ravel()
+g.integ_popmu_ini[:] = f['integrated_popmu_ini'].data.T.ravel()
+g.integ_popmu_cor[:] = f['integrated_popmu_cor'].data.T.ravel()
+
+ # NOTE: The last one should be SN_NORMWIN, but does not exist in legacy cubes.
+ # We hackishly load another header card, then replace with zero.
+leg_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
+                    'A_v', 'v_0', 'v_d', 'adev', 'Ntot_clipped',
+                    'Nglobal_steps', 'chi2', 'chi2']
+integ_header = g._HDUList[g._ext_integ_pop].header
+for kd, ko in zip(g._ext_keyword_list, leg_keyword_list):
+    integ_header['HIERARCH STARLIGHT ' + kd] = header['SYN INTEG ' + ko.upper()]
+integ_header['HIERARCH STARLIGHT SN_NORMWIN'] = 0.0
+integ_header['HIERARCH STARLIGHT A_V'] = integ_header['HIERARCH STARLIGHT AV']
+integ_header['HIERARCH STARLIGHT V_0'] = integ_header['HIERARCH STARLIGHT V0']
+integ_header['HIERARCH STARLIGHT V_D'] = integ_header['HIERARCH STARLIGHT VD']
 g._HDUList.append(fits.ImageHDU(f[0].data, f[0].header, 'qPlanes'))
 
 # Testing at_flux

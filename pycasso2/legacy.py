@@ -76,7 +76,9 @@ class fitsQ3DataCube(FitsCube):
         self._y0 = np.asscalar(y0)
         if self.hasSegmentationMask:
             self.setSmoothDezonification(smooth, self.qSignal)
-        
+
+        self.integrated_keywords = self.synthIntegKeywords
+
     @property
     def header(self):
         return self._header
@@ -507,5 +509,15 @@ class fitsQ3DataCube(FitsCube):
     def chi2__yx(self):
         return self.spatialize(self.chi2, extensive=False)
     
-    
-    
+    @lazyproperty
+    def integrated_popx(self):
+        return self.toRectBase(self.integ_popx, 0.0)
+
+    @lazyproperty
+    def integrated_popmu_ini(self):
+        return self.toRectBase(self.integ_popmu_ini, 0.0)
+
+    @lazyproperty
+    def integrated_popmu_cor(self):
+        return self.toRectBase(self.integ_popmu_cor, 0.0)
+

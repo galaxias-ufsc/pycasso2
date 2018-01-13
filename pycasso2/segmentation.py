@@ -152,3 +152,17 @@ def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor_A=0.0, cov_factor_B=1
 
 def get_cov_factor(N, A, B):
     return 1.0 + A * np.log10(N)**B
+
+
+def integrate_spectra(f_obs, f_err, f_flag, mask, bin_size=1, cov_factor_A=0.0, cov_factor_B=1.0):
+    segmask = np.where(mask, 0, 1)[np.newaxis, ...]
+    if bin_size > 1:
+        N = bin_size**2
+        f_err = f_err / get_cov_factor(N, cov_factor_A, cov_factor_B)
+    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, f_flag,
+                                          cov_factor_A, cov_factor_B)
+    f_obs = f_obs.squeeze()
+    f_err = f_err.squeeze()
+    good_frac = good_frac.squeeze()
+    return f_obs, f_err, good_frac
+    
