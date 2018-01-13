@@ -64,7 +64,7 @@ class fitsQ3DataCube(FitsCube):
     def __init__(self, filename, smooth=True):
         FitsCube.__init__(self, filename)
         self.keywords.update(self.synthKeywords)
-        if 'qPlanes' in self._HDUList:
+        if self.hasQData:
             self._pmap = qplane_map(self._HDUList['qPlanes'].header)
         else:
             self._pmap = {}
@@ -75,10 +75,14 @@ class fitsQ3DataCube(FitsCube):
         self._x0 = np.asscalar(x0)
         self._y0 = np.asscalar(y0)
         if self.hasSegmentationMask:
-            self.setSmoothDezonification(smooth, self.qSignal)
+            self.setSmoothDezonification(smooth)
 
         self.integrated_keywords = self.synthIntegKeywords
 
+    @property
+    def hasQData(self):
+        return 'qPlanes' in self._HDUList
+     
     @property
     def header(self):
         return self._header
@@ -293,9 +297,11 @@ class fitsQ3DataCube(FitsCube):
         self._dezonificationWeight = self.getDezonificationWeight(smooth, prop)
 
     def getDezonificationWeight(self, smooth, prop=None):
-        if prop is None:
-            prop = self.qSignal
         if smooth:
+            if not self.hasQData:
+                raise NotImplementedError('Dezonification not supported yet for this cube.')
+            if prop is None:
+                prop = self.qSignal
             w = get_dezonification_weight(prop, self.segmentationMask, alpha=1.0)
         else:
             w = 1.0 / self.spatialize(self.zoneArea_pix, extensive=False)
@@ -444,7 +450,12 @@ class fitsQ3DataCube(FitsCube):
             axis and the semimajor axis (:math:`b/a`).
         '''
         if prop is None:
-            prop = self.qSignal
+            if self.hasQData:
+                prop = self.qSignal
+            elif self.isSpatializable:
+                prop = self.spatialize(self.flux_norm_window, extensive=True)
+            else:
+                raise Exception('Spatial data unfit for ellipticity measurement.')
         if mask is None:
             mask = self.qMask.copy()
         return get_ellipse_params(np.ma.array(prop, mask=~mask), self.x0, self.y0)
@@ -455,9 +466,15 @@ class fitsQ3DataCube(FitsCube):
     
     @property
     def qMask(self):
-        pid = self._pmap['Mask']
-        return self.qPlanes[pid] > 0
-        #return self.spatialize(~self.synthImageMask, extensive=False).filled(0)
+        if self.hasQData:
+            pid = self._pmap['Mask']
+            return self.qPlanes[pid] > 0
+        else:
+            if self.hasSegmentationMask:
+                qMask = self.spatialize(~self.synthImageMask, extensive=False).filled(0)
+                return qMask.astype('bool')
+            else:
+                return ~self.synthImageMask
     
     @property
     def qFlagRatio(self):
