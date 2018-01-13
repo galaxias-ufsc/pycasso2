@@ -122,7 +122,8 @@ class SynthesisAdapter(object):
         i1, i2 = find_nearest_index(self.l_obs, [l1, l2])
         N = i2 - i1
         bad_snwin = (self.f_flag[i1:i2] & flags.before_starlight) > 0
-        mask |= bad_snwin.sum(axis=0) > (snwin_max_bad_fraction * N)
+        bad_snwin = np.squeeze(bad_snwin.sum(axis=0))
+        mask |= bad_snwin > (snwin_max_bad_fraction * N)
         if self.isSegmented:
             mask = mask[np.newaxis, :]
         return mask
