@@ -86,10 +86,11 @@ class ObservedCube(object):
         self.wcs = shift_celestial_WCS(self.wcs, dx=x_slice.start, dy=y_slice.start)
         log.debug('New shape: %s.' % str(self.f_obs.shape))
 
-    def bin(self, bin_size, cov_factor=None):
+    def bin(self, bin_size, cov_factor_A=0, cov_factor_B=1.0):
+        cov_factor = get_cov_factor(bin_size**2, cov_factor_A, cov_factor_B)
         log.info('Binning cube (%d x %d), cov. factor=%.2f.' % (bin_size, bin_size, cov_factor))
         self.f_obs, self.f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
-                                                        bin_size, cov_factor)
+                                                        bin_size, cov_factor_A, cov_factor_B)
         self.f_flag = np.where(good_frac == 0, flags.no_data, 0)
         self.wcs = scale_celestial_WCS(self.wcs, scaling=bin_size)
 
@@ -150,12 +151,12 @@ def preprocess_obs(obs, cfg):
 
     bin_size = cfg.getint(cfg_import_sec, 'binning', fallback=1)
     if bin_size > 1:
-        A = cfg.getfloat('import', 'spat_cov_a', fallback=0.0)
-        B = cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
-        cov_factor = get_cov_factor(bin_size**2, A, B)
+        A = cfg.getfloat(cfg_import_sec, 'spat_cov_a', fallback=0.0)
+        B = cfg.getfloat(cfg_import_sec, 'spat_cov_b', fallback=1.0)
+        obs.bin(bin_size, A, B)
+        obs.addKeyword('SPAT_COV A', A)
+        obs.addKeyword('SPAT_COV B', B)
         obs.addKeyword('BIN SIZE', bin_size)
-        obs.addKeyword('BIN COV_FACTOR', cov_factor)
-        obs.bin(bin_size, cov_factor)
     
     obs.deredden()
     obs.toRestFrame()

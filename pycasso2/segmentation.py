@@ -76,7 +76,7 @@ def prune_segmask(segmask, spatial_mask):
     return segmask[good_zones]
 
 
-def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor=None):
+def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor_A=0.0, cov_factor_B=1.0):
     if not isinstance(f_obs, np.ma.MaskedArray):
         if f_flag is None:
             raise Exception('f_flag must be specified if f_obs is not a masked array.')
@@ -98,8 +98,8 @@ def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor=None):
     zone_error = np.tensordot(f_err**2, segmask, axes=[[1, 2], [1, 2]])
     zone_error[valid] /= good_frac[valid]
     np.sqrt(zone_error, out=zone_error)
-    if cov_factor is not None:
-        zone_error *= cov_factor
+    f = get_cov_factor(N_pix, cov_factor_A, cov_factor_B)
+    zone_error *= f
     return zone_flux, zone_error, good_frac
 
 
@@ -135,12 +135,15 @@ def read_segmentation_map(fitsfile):
     return segmask
 
 
-def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor=None):
+def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor_A=0.0, cov_factor_B=1.0):
     Nl = f_obs.shape[0]
     spatial_shape = f_obs.shape[1:]
     segmask = mosaic_segmentation(spatial_shape, bin_size)
-    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, f_flag, cov_factor)
-    shape = (Nl, spatial_shape[0] // bin_size, spatial_shape[1] // bin_size)
+    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, f_flag,
+                                          cov_factor_A, cov_factor_B)
+    Ny_b = np.ceil(spatial_shape[0] / bin_size)
+    Nx_b = np.ceil(spatial_shape[1] / bin_size)
+    shape = (Nl, int(Ny_b), int(Nx_b))
     f_obs = f_obs.reshape(shape)
     f_err = f_err.reshape(shape)
     good_frac = good_frac.reshape(shape)

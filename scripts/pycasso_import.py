@@ -80,11 +80,17 @@ if seg_type is not None:
     
     spatial_mask = g.getSpatialMask(flags.no_obs)
     segmask = seg.prune_segmask(segmask, spatial_mask)
-    
-    f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err)
+
+    A = cfg.getfloat('import', 'spat_cov_a', fallback=0.0)
+    B = cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
+
+    f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err,
+                                              cov_factor_A=A, cov_factor_B=B)
     gs = FitsCube()
     gs._initFits(f_obs, f_err, None, g._header, g._wcs, segmask, good_frac)
     gs.name = g.name
+    gs._header['HIERARCH PYCASSO SPAT_COV A'] = A
+    gs._header['HIERARCH PYCASSO SPAT_COV B'] = B
     g = gs
 
 telluric_mask_file = cfg.get('tables', 'telluric_mask', fallback=None)
