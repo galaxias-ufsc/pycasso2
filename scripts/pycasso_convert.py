@@ -126,7 +126,7 @@ syn_keyword_list = ['arq_config', 'N_chains', 'l_norm', 'q_norm',
                     'red_law_option', 'flux_unit' , 'l_ini', 'l_fin',
                     'dl', 'Nl_obs', 'arq_base', 'N_base', 'N_exAV', 'LumDistInMpc']
 for k in syn_keyword_list:
-    g._header['HIERARCH STARLIGHT ' + k.upper()] = header['SYN ' + k.upper()]
+    g._header['HIERARCH STARLIGHT ' + k] = header['SYN ' + k.upper()]
 
 g.integ_f_obs[:] = f['integrated_f_obs'].data
 g.integ_f_err[:] = f['integrated_f_err'].data

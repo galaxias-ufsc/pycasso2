@@ -600,7 +600,7 @@ class FitsCube(object):
 
     @lazyproperty
     def q_norm(self):
-        return self.synthKeywords['Q_NORM']
+        return self.synthKeywords['q_norm']
 
     @property
     def tau_V(self):

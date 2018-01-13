@@ -85,7 +85,7 @@ class fitsQ3DataCube(FitsCube):
         
     @property
     def baseId(self):
-        return self.synthKeywords['ARQ_BASE']
+        return self.synthKeywords['arq_base']
     
     @property
     def qVersion(self):
