@@ -4,11 +4,11 @@ Created on 08/12/2015
 @author: andre
 '''
 
-from ..resampling import age_smoothing_kernel, light2mass_ini, interp_age, bin_edges, hist_resample
+from ..resampling import age_smoothing_kernel, interp_age, bin_edges, hist_resample
 import numpy as np
 from scipy.interpolate import interp1d
 
-__all__ = ['smooth_Mini', 'SFR', 'MStarsEvolution']
+__all__ = ['smooth_Mini', 'SFR', 'MStarsEvolution', 'light_to_mass_ini']
 
 
 def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FWHM):
@@ -55,7 +55,7 @@ def smooth_Mini(popx, fbase_norm, Lobs_norm, q_norm, A_V, logtb, logtc, logtc_FW
     popx_sm = np.tensordot(smoothKernel, popx, (0, 0))
 
     fbase_norm_interp = interp_age(fbase_norm, logtb, logtc)
-    Mini_sm = light2mass_ini(
+    Mini_sm = light_to_mass_ini(
         popx_sm, fbase_norm_interp, Lobs_norm, q_norm, A_V)
     return Mini_sm
 
@@ -117,7 +117,6 @@ def SFR(Mini, tb1, tb2=None, dt=0.5e9):
     return sfr, tl
 
 def light_to_mass_ini(popx, fbase_norm, Lobs_norm, q_norm, A_V):
-
     '''
     Compute the initial mass from popx (and other parameters).
     The most important thing to remember is that popx (actually luminosity)
@@ -153,8 +152,12 @@ def light_to_mass_ini(popx, fbase_norm, Lobs_norm, q_norm, A_V):
     Lobs = popx / 100.0
     Lobs *= Lobs_norm
     Lobs *= 10.0**(0.4 * q_norm * A_V)
-    
-    Mini = Lobs / fbase_norm[..., np.newaxis]
+    if Lobs.ndim == 3:
+        fbase_norm = fbase_norm[..., np.newaxis]
+    elif Lobs.ndim == 4:
+        fbase_norm = fbase_norm[..., np.newaxis, np.newaxis]
+
+    Mini = Lobs / fbase_norm
     return Mini
 
 

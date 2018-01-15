@@ -10,7 +10,7 @@ from astropy import log
 
 __all__ = ['resample_spectra', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
-           'age_smoothing_kernel', 'light2mass_ini', 'interp_age', 'vac2air', 'get_subset_slices']
+           'age_smoothing_kernel', 'interp_age', 'vac2air', 'get_subset_slices']
 
 
 def ReSamplingMatrixNonUniform(lorig, lresam, extrap=False):
@@ -576,51 +576,6 @@ def interp_age(prop, log_age_base, log_age_interp):
     for z in range(n_met):
         prop_interp[:, z] = np.interp(log_age_interp, log_age_base, prop[:, z])
     return prop_interp
-
-
-def light2mass_ini(popx, fbase_norm, Lobs_norm, q_norm, A_V):
-    '''
-    Compute the initial mass from popx (and other parameters).
-    The most important thing to remember is that popx (actually luminosity)
-    must be "dereddened" before converting it to mass using fbase_norm
-    (popmu_ini).
-
-    Based on the subroutine ConvertLight2Mass (starlight source code).
-
-    Parameters
-    ----------
-    popx: array
-        The light fractions (in percents).
-
-    fbase_norm: array
-        Light to mass ratio for each population.
-
-    Lobs_norm : array
-        Luminosity norm of ``popx``.
-
-    q_norm : float 
-        Ratio between the extinction in l_norm (where Lobs_norm
-        is calculated) and ``A_V``.
-
-    A_V : array 
-        Extinction in V band.
-
-    Returns
-    -------
-    Mini : array
-        The initial mass in each population.
-
-    '''
-    Lobs = popx / 100.0
-    Lobs *= Lobs_norm
-    Lobs *= 10.0**(0.4 * q_norm * A_V)
-    if Lobs.ndim == 3:
-        fbase_norm = fbase_norm[..., np.newaxis]
-    elif Lobs.ndim == 4:
-        fbase_norm = fbase_norm[..., np.newaxis, np.newaxis]
-
-    Mini = Lobs / fbase_norm
-    return Mini
 
 
 def vac2air(wave):
