@@ -452,12 +452,7 @@ class fitsQ3DataCube(FitsCube):
             axis and the semimajor axis (:math:`b/a`).
         '''
         if prop is None:
-            if self.hasQData:
-                prop = self.qSignal
-            elif self.isSpatializable:
-                prop = self.spatialize(self.flux_norm_window, extensive=True)
-            else:
-                raise Exception('Spatial data unfit for ellipticity measurement.')
+            prop = self.qSignal
         if mask is None:
             mask = self.qMask.copy()
         return get_ellipse_params(np.ma.array(prop, mask=~mask), self.x0, self.y0)
@@ -485,9 +480,14 @@ class fitsQ3DataCube(FitsCube):
     
     @property
     def qSignal(self):
-        pid = self._pmap['Signal']
-        return self.qPlanes[pid]
-    
+        if self.hasQData:
+            pid = self._pmap['Signal']
+            return self.qPlanes[pid]
+        elif self.isSpatializable:
+            return self.spatialize(self.flux_norm_window, extensive=True)
+        else:
+            raise Exception('qSignal undefined for non-spatial data.')
+  
     @property
     def qSignalUnmasked(self):
         pid = self._pmap['SingalUnmasked']
