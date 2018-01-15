@@ -780,3 +780,94 @@ class FitsCube(object):
         t = self._getTableExtensionData(self._ext_integ_pop)
         return t['popmu_cor']
     
+    @property
+    def integ_tau_V(self):
+        '''
+        Dust optical depth in the V band.
+
+            * Units: dimensionless
+            * Type: float
+        '''
+        return self.synthIntegKeywords['Av'] / (2.5 * np.log10(np.exp(1.)))
+
+    @property
+    def integ_Lobn(self):
+        '''
+        Luminosity of each population in normalization window 
+        of the integrated spectrum.
+ 
+            * Units: :math:`[L_\odot]`
+            * Shape: ``(N_age, N_met)``
+        '''
+        tmp = self.integ_popx / 100.0
+        tmp *= self.synthIntegKeywords['Lobs_norm']
+        return tmp
+
+    @property
+    def integ_Mcor(self):
+        '''
+        Current mass of each population of the integrated spectrum.
+
+            * Units: :math:`[M_\odot]`
+            * Shape: ``(N_age, N_met, N_aFe)``
+        '''
+        tmp = self.integ_popmu_cor / 100.0
+        tmp *= self.synthIntegKeywords['Mcor_tot']
+        return tmp
+      
+    @property
+    def integ_Mini(self):
+        '''
+        Initial mass of each population of the integrated spectrum.
+
+            * Units: :math:`[M_\odot]`
+            * Shape: ``(N_age, N_met, N_aFe)``
+        '''
+        tmp = self.integ_popmu_ini / 100.0
+        tmp *= self.synthIntegKeywords['Mini_tot']
+        return tmp
+
+    @property
+    def integ_at_flux(self):
+        '''
+        Flux-weighted average log. age of the integrated spectrum.
+
+            * Units: :math:`[\log Gyr]`
+            *  Type: float
+        '''
+        logt = np.log10((self.popage_base + self.popage_base_t2) / 2)
+        return (self.integ_popx * logt).sum() / self.integ_popx.sum()
+
+    @property
+    def integ_at_mass(self):
+        '''
+        Mass-weighted average log. age of the integrated spectrum.
+
+            * Units: :math:`[\log Gyr]`
+            *  Type: float
+        '''
+        logt = np.log10((self.popage_base + self.popage_base_t2) / 2)
+        return (self.integ_popmu_cor * logt).sum() / self.integ_popmu_cor.sum()
+
+    @property
+    def integ_alogZ_flux(self):
+        '''
+        Flux-weighted average log of metallicity of the integrated spectrum.
+
+            * Units: dimensionless
+            *  Type: float
+        '''
+        logZ = np.log10(self.popZ_base / 0.019)
+        return (self.integ_popx * logZ).sum() / self.integ_popx.sum()
+
+    @property
+    def integ_alogZ_mass(self):
+        '''
+        Mass-weighted average log of metallicity of the integrated spectrum.
+
+            * Units: dimensionless
+            *  Type: float
+        '''
+        logZ = np.log10(self.popZ_base / 0.019)
+        return (self.integ_popmu_cor * logZ).sum() / self.integ_popmu_cor.sum()
+

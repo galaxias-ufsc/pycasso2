@@ -526,15 +526,75 @@ class fitsQ3DataCube(FitsCube):
     def chi2__yx(self):
         return self.spatialize(self.chi2, extensive=False)
     
-    @lazyproperty
+    @property
+    def integrated_f_obs(self):
+        return self.zoneToYX(self.integ_f_obs, extensive=True, surface_density=False) 
+    
+    @property
+    def integrated_f_err(self):
+        return self.zoneToYX(self.integ_f_err, extensive=True, surface_density=False) 
+    
+    @property
+    def integrated_f_flag(self):
+        return self.zoneToYX(self.integ_f_flag, extensive=False) 
+    
+    @property
+    def integrated_f_syn(self):
+        return self.zoneToYX(self.integ_f_syn, extensive=True, surface_density=False) 
+    
+    @property
     def integrated_popx(self):
         return self.toRectBase(self.integ_popx, 0.0)
 
-    @lazyproperty
+    @property
     def integrated_popmu_ini(self):
         return self.toRectBase(self.integ_popmu_ini, 0.0)
 
-    @lazyproperty
+    @property
     def integrated_popmu_cor(self):
         return self.toRectBase(self.integ_popmu_cor, 0.0)
 
+    @property
+    def integrated_tau_V(self):
+        return self.integ_tau_V
+    
+    @property
+    def integrated_Lobn__tZ(self):
+        return self.toRectBase(self.integ_Lobn)
+    
+    @property
+    def integrated_Lobn(self):
+        return self.integrated_Lobn__tZ.sum()
+    
+    @property
+    def integrated_Mcor__tZ(self):
+        return self.toRectBase(self.integ_Mcor)
+    
+    @property
+    def integrated_Mcor(self):
+        return self.integrated_Mcor__tZ.sum()
+    
+    @property
+    def integrated_Mini__tZ(self):
+        return self.toRectBase(self.integ_Mini)
+    
+    @property
+    def integrated_Mini(self):
+        return self.integrated_Mini__tZ.sum()
+    
+    @property
+    def integrated_at_flux(self):
+        return self.integ_at_flux
+    
+    @property
+    def integrated_at_mass(self):
+        return self.integ_at_mass
+    
+    @property
+    def integrated_alogZ_flux(self):
+        return self.integ_logZ_flux
+    
+    @property
+    def integrated_logZ_mass(self):
+        return self.integ_alogZ_mass
+    
