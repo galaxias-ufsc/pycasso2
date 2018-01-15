@@ -313,10 +313,12 @@ class fitsQ3DataCube(FitsCube):
                 a = self.spatialize(a, extensive=extensive)
             else:
                 a = self.spatialize(a, extensive=False)
+            
+        if extensive:
             a = a * self._dezonificationWeight
 
-        if surface_density:
-            a = a / self.pixelArea_pc2
+            if surface_density:
+                a = a / self.pixelArea_pc2
         return a
 
     def radialProfile(self, prop, bin_r, x0=None, y0=None, pa=None, ba=None,
