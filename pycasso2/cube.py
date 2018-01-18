@@ -64,8 +64,6 @@ class FitsCube(object):
 
     def __init__(self, cubefile=None, name=None, cube_type='pycasso', import_cfg=None):
         self._pop_len = None
-        self.ba = 1.0
-        self.pa = 0.0
         if cubefile is None:
             # FIXME: needed by segmentation code, which should moved here.
             return
@@ -143,6 +141,11 @@ class FitsCube(object):
 
 
     def _readKeywords(self):
+        self.x0 = self.center[2]
+        self.y0 = self.center[1]
+        self.ba = 1.0
+        self.pa = 0.0
+
         self.keywords = {k.split()[1]: v for k, v in self._header.items() if 'PYCASSO' in k}
         self.synthKeywords = {k.split()[1]: v for k, v in self._header.items() if 'STARLIGHT' in k}
         if self.hasIntegratedData:
@@ -322,14 +325,6 @@ class FitsCube(object):
     @property
     def hasIntegratedData(self):
         return self._ext_integ_spectra in self._HDUList
-
-    @property
-    def x0(self):
-        return self.center[2]
-
-    @property
-    def y0(self):
-        return self.center[1]
 
     @lazyproperty
     def Nx(self):
