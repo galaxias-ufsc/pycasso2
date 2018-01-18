@@ -7,6 +7,7 @@ Created on 28 de set de 2016
 from .resampling import gen_rebin
 from .external.pylygon import convexhull, Polygon
 
+from astropy import log
 import numpy as np
 
 __all__ = ['get_ellipse_params', 'get_image_distance',
@@ -434,5 +435,34 @@ def convex_hull_mask(mask):
     yy_inside, xx_inside = zip(*inside_hull_points)
     convex_mask[yy_inside, xx_inside] = True
     return convex_mask
+
+
+def find_image_max(image):
+    y0, x0 = np.unravel_index(np.argmax(image), image.shape)
+    return x0, y0
+
+
+def find_peak(image, x0=None, y0=None, delta=10, max_iter=20):
+    from scipy.ndimage.measurements import center_of_mass
+    rtol = 0.01
+    if x0 is None or y0 is None:
+        x0, y0 = find_image_max(image)
+    delta = int(delta)
+    for i in range(max_iter):
+        _x0 = int(np.rint(x0))
+        _y0 = int(np.rint(y0))
+        xx = slice(_x0 - delta, _x0 + delta)
+        yy = slice(_y0 - delta, _y0 + delta)
+        y0_c, x0_c = center_of_mass(image[yy, xx])
+        x0_c += xx.start
+        y0_c += yy.start
+        if np.isclose(x0, x0_c, rtol=rtol) and  np.isclose(y0, y0_c, rtol=rtol):
+            break
+        x0 = x0_c
+        y0 = y0_c
+    if i >= (max_iter - 1):
+        log.warn('find_peak reached maximum interations: %d' % max_iter)
+    return x0_c, y0_c
+
 
 
