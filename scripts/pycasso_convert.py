@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 Created on 10/11/2017
 
@@ -7,7 +8,6 @@ Created on 10/11/2017
 from pycasso2 import FitsCube, flags, __version__
 from pycasso2.importer.core import get_git_hash
 from pycasso2.wcs import replace_wave_WCS, write_WCS
-from pycasso2.legacy import qplane_map, qzones2segmask
 
 from astropy.io import fits
 from astropy.wcs.wcs import WCS
@@ -33,6 +33,33 @@ def parse_args():
 
     return parser.parse_args()
 ###############################################################################
+
+
+###############################################################################
+def qplane_map(header):
+    '''
+    Create a dictionary of plane names to index in image.
+    '''   
+    nplanes = header['NAXIS3']
+    plane_index = {}
+    for pid in range(nplanes):
+        key = 'PLANE_%d' % pid
+        pname = header[key].split(':')[0]
+        plane_index[pname] = pid
+    return plane_index
+###############################################################################
+
+
+###############################################################################
+def qzones2segmask(qZones):
+    Nzone = int(qZones.max()) + 1
+    segmask = np.zeros((Nzone,) + qZones.shape, dtype='int32')
+    for z in range(Nzone):
+        this_zone = (qZones == z)
+        segmask[z, this_zone] = 1
+    return segmask
+###############################################################################
+
 
 log.setLevel('DEBUG')
 args = parse_args()
