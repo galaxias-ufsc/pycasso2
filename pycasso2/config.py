@@ -4,15 +4,13 @@ Created on 24/06/2015
 @author: andre
 '''
 
-from configparser import ConfigParser, ExtendedInterpolation
-
-
 __all__ = ['default_config_path', 'get_config', 'save_config']
 
 default_config_path = 'pycasso.cfg'
 
 
 def get_config(configfile='pycasso.cfg'):
+    from configparser import ConfigParser, ExtendedInterpolation
     config = ConfigParser(interpolation=ExtendedInterpolation())
     config.read(configfile)
     return config
