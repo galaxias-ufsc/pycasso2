@@ -4,7 +4,14 @@ from distutils.extension import Extension
 
 ext_modules = [Extension('pycasso2.resampling_opt',
                          sources=['pycasso2/resampling_opt.pyx']),
+               Extension('pycasso2.external.photutils.circular_overlap',
+                         sources=['pycasso2/external/photutils/circular_overlap.pyx']),
+               Extension('pycasso2.external.photutils.elliptical_exact',
+                         sources=['pycasso2/external/photutils/elliptical_exact.pyx']),
+               Extension('pycasso2.external.photutils.downsample',
+                         sources=['pycasso2/external/photutils/downsample.pyx']),
                ]
+
 setup(
     name='pycasso2',
     version='2.0.0',

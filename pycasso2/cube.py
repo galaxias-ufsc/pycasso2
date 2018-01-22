@@ -288,7 +288,7 @@ class FitsCube(object):
         return spatialize(a, self.segmentationMask, extensive)
 
     def radialProfile(self, prop, bin_r, x0=None, y0=None, pa=None, ba=None,
-                      rad_scale=1.0, mode='mean', return_npts=False):
+                      rad_scale=1.0, mode='mean', exact=True, return_npts=False):
         if x0 is None:
             x0 = self.x0
         if y0 is None:
@@ -297,7 +297,7 @@ class FitsCube(object):
             pa = self.pa
         if ba is None:
             ba = self.ba
-        return radial_profile(prop, bin_r, x0, y0, pa, ba, rad_scale, mode, return_npts)
+        return radial_profile(prop, bin_r, x0, y0, pa, ba, rad_scale, mode, exact, return_npts)
 
     @property
     def hasSynthesis(self):
