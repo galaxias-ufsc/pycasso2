@@ -362,7 +362,7 @@ class GridFile(object):
                  ]
 
         mapping = {k: str(getattr(self, k)) for k in attrs}
-        return tpl.substitute(mapping) + '\n'.join([str(run) for run in self.runs])
+        return tpl.substitute(mapping) + '\n'.join([str(run) for run in self.runs]) + '\n'
 
     def write(self, grid_file_name):
         open(grid_file_name, 'w').write(str(self))
