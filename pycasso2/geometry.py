@@ -257,6 +257,71 @@ def get_image_angle(shape, x0, y0, pa=0.0, ba=1.0):
     return get_angle(x, y, x0, y0, pa, ba)
 
 
+def weighted_mean_radprof(prop, w, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, exact=False, return_npts=False):
+    '''
+    Calculate the mean radial profile of ``prop``, weighted by ``w``.
+
+    Parameters
+    ----------
+    prop : array
+        Image of property to calculate the radial profile.
+
+    w : array
+        Image of weights.
+
+    bin_r : array
+        Semimajor axis bin boundaries in units of ``rad_scale``.
+
+    x0 : float
+        X coordinate of the origin.
+
+    y0 : float
+        Y coordinate of the origin.
+
+    pa : float, optional
+        Position angle in radians, counter-clockwise relative
+        to the positive X axis.
+
+    ba : float, optional
+        Ellipticity, defined as the ratio between the semiminor
+        axis and the semimajor axis (:math:`b/a`).
+
+    rad_scale : float, optional
+        Scale of the bins, in pixels. Defaults to 1.0.
+
+    exact : bool, optional
+        If set to ``True``, use an apertures algorithm to calculate the profile.
+        Otherwise, use discrete binning.
+        Defaults to ``True``.
+
+    return_npts : bool, optional
+        If set to ``True``, also return the number of points inside
+        each bin. Defaults to ``False``.
+
+
+    Returns
+    -------
+    radProf : masked array
+        Array containing the radial profile as the last dimension.
+        Note that ``radProf.shape[-1] == (len(bin_r) - 1)``
+
+    npts : masked array, optional
+        The number of points inside each bin, only if ``return_npts``
+        is set to ``True``.
+
+    '''
+    w_prop = w * prop
+    w = np.ma.masked_where(w_prop.mask, w)
+    sum_wm, npts = radial_profile(w_prop, bin_r, x0, y0, pa, ba, rad_scale=rad_scale,
+                                  mode='sum', exact=exact, return_npts=True)
+    sum_w = radial_profile(w, bin_r, x0, y0, pa, ba, rad_scale=rad_scale, mode='sum', exact=exact)
+    radprof = sum_wm / sum_w
+    if return_npts:
+        return radprof, npts
+    else:
+        return radprof
+
+
 def radial_profile(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0,
                    mode='mean', exact=True, return_npts=False):
     '''
@@ -291,9 +356,15 @@ def radial_profile(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0,
         One of:
             * ``'mean'``: Compute the mean inside the radial bins (default).
             * ``'median'``: Compute the median inside the radial bins.
+                            Not available for ``exact=True``.
             * ``'sum'``: Compute the sum inside the radial bins.
             * ``'var'``: Compute the variance inside the radial bins.
             * ``'std'``: Compute the standard deviation inside the radial bins.
+
+    exact : bool, optional
+        If set to ``True``, use an apertures algorithm to calculate the profile.
+        Otherwise, use discrete binning.
+        Defaults to ``True``.
 
     return_npts : bool, optional
         If set to ``True``, also return the number of points inside
@@ -324,7 +395,7 @@ def radial_profile(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0,
 
 def radial_profile_discrete(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, mode='mean'):
     '''
-    Calculate the radial profile of an N-D image.
+    Calculate the radial profile of an N-D image, where each pixel goes to a single radial bin.
 
     Parameters
     ----------
@@ -359,20 +430,14 @@ def radial_profile_discrete(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, 
             * ``'var'``: Compute the variance inside the radial bins.
             * ``'std'``: Compute the standard deviation inside the radial bins.
 
-    return_npts : bool, optional
-        If set to ``True``, also return the number of points inside
-        each bin. Defaults to ``False``.
-
-
     Returns
     -------
     radProf : masked array
         Array containing the radial profile as the last dimension.
         Note that ``radProf.shape[-1] == (len(bin_r) - 1)``
 
-    npts : masked array, optional
-        The number of points inside each bin, only if ``return_npts``
-        is set to ``True``.
+    npts : masked array
+        The number of points inside each bin.
 
     '''
     def red(func, x, fill_value):
@@ -422,9 +487,7 @@ def radial_profile_discrete(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, 
 
 def radial_profile_exact(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, mode='mean'):
     '''
-    Calculate the radial profile of a property, using exact elliptic apertures.
-    This is suited for a one-shot radial profile. See :meth:`getYXToRadialBinsTensorExact`
-    for a more efficient approach.
+    Calculate the radial profile of a N-d image, using exact elliptic apertures.
     
     Parameters
     ----------
@@ -455,11 +518,7 @@ def radial_profile_exact(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, mod
         One of:
             * ``'mean'``: Compute the mean inside the radial bins (default).
             * ``'sum'``: Compute the sum inside the radial bins.
-        
-    return_npts : bool, optional
-        If set to ``True``, also return the number of points inside
-        each bin. Defaults to ``False``.
-        
+                
         
     Returns
     -------
@@ -467,17 +526,9 @@ def radial_profile_exact(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, mod
         Array containing the radial profile as the last dimension.
         Note that ``radProf.shape[-1] == (len(bin_r) - 1)``
         
-    npts : masked array, optional
-        The number of points inside each bin, only if ``return_npts``
-        is set to ``True``.
+    npts : masked array
+        The number of points inside each bin.
         
-    Examples
-    --------
-    TODO: examples of radialProfileExact
-    
-    See also
-    --------
-    radialProfile, getPixelDistance, getEllipseParams
     '''
     if mode == 'median':
         raise Exception('Median mode not supported for exact profile.')
@@ -487,10 +538,10 @@ def radial_profile_exact(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, mod
         prop = prop.filled(0.0)
     else:
         masked = np.ones_like(prop, dtype='bool')
-    bin_r = np.asarray(bin_r)
+
     ryx, _ = get_aperture_mask(shape, x0, y0, pa, ba, tuple(bin_r), rad_scale)
     ryx[:, masked] = 0.0
-    area_pix = np.ma.masked_less(ryx.sum(axis=2).sum(axis=1), 0.1)
+    area_pix = np.ma.masked_less(ryx.sum(axis=2).sum(axis=1), 0.05)
     prop_sum = np.tensordot(prop, ryx, [(-2, -1), (-2, -1)])
     prop_sum = np.ma.array(prop_sum, mask=area_pix.mask)
     if mode =='sum':
