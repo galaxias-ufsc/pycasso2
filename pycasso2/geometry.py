@@ -678,10 +678,10 @@ def get_aperture_mask(shape, x0, y0, pa, ba, apertures, rad_scale=1.0, method='e
     apertures = np.asarray(apertures) * rad_scale
     apertures_in = apertures[:-1]
     apertures_out = apertures[1:]
-    x_min = -x0
-    x_max = N_x - x0
-    y_min = -y0
-    y_max = N_y - y0
+    x_min = -x0 - 0.5
+    x_max = N_x - x0 - 0.5
+    y_min = -y0 - 0.5
+    y_max = N_y - y0 - 0.5
     N_r = len(apertures_in)
     mask = np.zeros((N_r, N_y, N_x))
     area = np.zeros((N_r))
