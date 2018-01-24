@@ -20,6 +20,7 @@ setup(
               'pycasso2.dobby.models',
               'pycasso2.external',
               'pycasso2.external.pylygon',
+              'pycasso2.external.photutils',
               'pycasso2.importer',
               'pycasso2.legacy',
               'pycasso2.starlight',
