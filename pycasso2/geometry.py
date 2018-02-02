@@ -9,7 +9,11 @@ from .external.pylygon import convexhull, Polygon
 
 from astropy import log
 import numpy as np
-from functools import lru_cache
+
+try:
+    from functools import lru_cache
+except ImportError:
+    from backports.functools_lru_cache import lru_cache
 
 __all__ = ['get_ellipse_params', 'get_image_distance',
            'get_image_angle', 'radial_profile']
