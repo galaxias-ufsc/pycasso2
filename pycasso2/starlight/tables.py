@@ -108,6 +108,25 @@ def write_input(l_obs, f_obs, f_err, f_flag, filename):
     ascii.write(cols, filename, Writer=ascii.NoHeader, formats=formats, overwrite=True)
 
 
+def read_base(basefile, basedir='', read_spectra=False):
+    from astropy.io import ascii
+    colnames = ['sspfile', 'age_base', 'Z_base', 'component', 'Mstars', 'YA_V', 'aFe']
+    bt = ascii.read(basefile, names=colnames, data_start=1,
+                    Reader=ascii.NoHeader, guess=False)
+
+    if not read_spectra:
+        return bt
+    else:
+        colnames = ['wl', 'flux']
+        f = []
+        for ssp_file in bt['sspfile']:
+            
+            t = ascii.read(os.path.join(basedir, ssp_file), names=colnames,
+                           Reader=ascii.CommentedHeader, guess=False)
+            f.append(t['flux'])
+        return bt, np.array(t['wl']), np.vstack(f)
+
+
 def read_output_tables(filename, read_chains=False):
     '''
     Reads STARLIGHT output file - version v06r1.
