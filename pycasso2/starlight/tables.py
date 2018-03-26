@@ -97,10 +97,10 @@ def _read_mask(maskfile):
 def write_input(l_obs, f_obs, f_err, f_flag, filename):
     from astropy.io import ascii
     f_obs = f_obs.filled(0.0)
-    f_err = f_err.filled(0.0)
-    bad = (f_flag & flags.before_starlight) > 0
-    f_flag = np.where(bad, 2.0, 0.0)
     if f_flag is not None and f_err is not None:
+        f_err = f_err.filled(0.0)
+        bad = (f_flag & flags.before_starlight) > 0
+        f_flag = np.where(bad, 2.0, 0.0)
         cols = [l_obs, f_obs, f_err, f_flag]
     else:
         cols = [l_obs, f_obs]
