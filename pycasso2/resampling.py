@@ -619,7 +619,6 @@ def get_subset_slices(l_obs_d, l_obs_o):
     return slice(l1_d, l2_d), slice(l1_o, l2_o)
 
 
-################################################################################
 def get_dezonification_weight(light, segmask, alpha=1.0):
     '''
     Create the weight image for dezonification. If smooth is True, 
@@ -655,4 +654,46 @@ def get_dezonification_weight(light, segmask, alpha=1.0):
     weight = np.zeros_like(light)
     weight[mask] = light[mask] / light_mean[mask]
     return weight
-################################################################################
+
+
+def gauss_velocity_smooth(lo, fo, v0, sig, ls=None):
+    '''
+    Apply a gaussian velocity dispersion and displacement filter to a spectrum.
+    Implements the integration presented in the page 27 of the 
+    `STARLIGHT manual <http://www.starlight.ufsc.br/papers/Manual_StCv04.pdf>`_.
+    
+    Parameters
+    ----------
+    
+    lo : array
+        Original wavelength array.
+        
+    fo : array
+        Original flux array, must be of same length as ``lo``.
+    
+    v0 : float
+        Systemic velocity to apply to input spectrum.
+        
+    sig : float
+        Velocity dispersion (sigma of the gaussian).
+        
+    ls : array, optional
+        Wavelengths in which calculate the output spectrum.
+        If not set, ``lo`` will be used.
+        
+        
+    Returns
+    -------
+    
+    fs : array
+        Resampled and smoothed flux array, must be of same length as ``ls``
+        (or ``lo`` if ``ls`` is not set).
+    
+   '''
+    from .resampling_opt import gauss_velocity_smooth
+    lo = np.ascontiguousarray(lo)
+    fo = np.ascontiguousarray(fo)
+    if lo.shape != fo.shape or lo.ndim > 1:
+        raise Exception('lo and fo must be unidimensional and have the same length.')
+    return gauss_velocity_smooth(lo, fo, v0, sig)
+
