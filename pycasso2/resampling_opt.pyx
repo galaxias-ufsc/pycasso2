@@ -147,7 +147,7 @@ def gauss_velocity_smooth(np.ndarray[np.double_t, ndim=1, mode='c'] lo not None,
                           np.ndarray[np.double_t, ndim=1, mode='c'] fo not None,
                           double v0, double sig,
                           np.ndarray[np.double_t, ndim=1, mode='c'] ls=None,
-                          int n_u=31, int n_sig=6, fill='nearest', double fill_val=0):
+                          int n_u=51, int n_sig=6, fill='nearest', double fill_val=0):
     '''
     Apply a gaussian velocity dispersion and displacement filter to a spectrum.
     Implements the integration presented in the page 27 of the 
@@ -199,7 +199,7 @@ def gauss_velocity_smooth(np.ndarray[np.double_t, ndim=1, mode='c'] lo not None,
     if n_u < 5:
         raise ValueError('n_u=%d too small to integrate properly.' % n_u)
 
-    if n_u > 31:
+    if n_u > 51:
         raise ValueError('n_u=%d too large.' % n_u)
     
     if ls is None:
@@ -240,7 +240,7 @@ def gauss_velocity_smooth(np.ndarray[np.double_t, ndim=1, mode='c'] lo not None,
     cdef double du_sqrt_2pi = du / sqrt_2pi
 
 # Avoid calculating these values on every velocity loop
-    cdef double[31] u, v, exp_u2
+    cdef double[51] u, v, exp_u2
     cdef double uu
     for i_u from 0 <= i_u < n_u:
         uu = u_low + du * i_u
