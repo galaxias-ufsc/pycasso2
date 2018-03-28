@@ -36,6 +36,7 @@ class FitsCube(object):
     _ext_f_flag = 'F_FLAG'
     _ext_segmask = 'SEGMASK'
     _ext_seg_good_frac = 'SEG_GOOD_FRAC'
+    _ext_fobs_norm = 'FOBS_NORM'
     
     _ext_popZ_base = 'POPZ_BASE'
     _ext_popage_base = 'POPAGE_BASE'
@@ -370,6 +371,10 @@ class FitsCube(object):
     @lazyproperty
     def zoneArea_pc2(self):
         return self.zoneArea_pix * self.pixelArea_pc2
+
+    @lazyproperty
+    def fobs_norm(self):
+        return self._getSynthExtension(self._ext_fobs_norm)
 
     @lazyproperty
     def f_obs(self):
