@@ -57,6 +57,7 @@ class StarlightBase(object):
             self.f_ssp = self._f_ssp.copy()
             self.l_obs = self._l_ssp.copy()
         
+        self._l_norm = l_norm
         self.fbase_norm = self._calc_Fnorm(l_norm)
         self.f_ssp /= self.fbase_norm[:, np.newaxis]
         
@@ -156,6 +157,8 @@ class StarlightBase(object):
         popx = popx / 100.0
         f_syn = np.tensordot(self.f_ssp, popx, (0, 0))
         q = calc_redlaw(self.l_obs, redlaw)
+        q_norm = calc_redlaw([self._l_norm], redlaw)
+        q -= q_norm
         redfactor = np.power(10.0, -0.4 * q[:, np.newaxis] * A_V)
         f_syn *= redfactor
         for i in range(f_syn.shape[-1]):
