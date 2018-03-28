@@ -4,7 +4,7 @@ Created on Aug 21, 2012
 @author: Andre L. de Amorim
 '''
 
-from .tables import read_output_tables
+from .io import read_output_tables
 from os import path, unlink
 import copy
 from numpy import random, iinfo

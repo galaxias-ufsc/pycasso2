@@ -8,7 +8,7 @@ from .wcs import get_wavelength_coordinates, get_celestial_coordinates, write_WC
 from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Naxis
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
-from .starlight.tables import pop_table_dtype, spec_table_dtype
+from .starlight.io import pop_table_dtype, spec_table_dtype
 from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index

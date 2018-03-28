@@ -6,7 +6,7 @@ Created on 30/05/2014
 
 from ..resampling import resample_cube, gauss_velocity_smooth
 from ..reddening import calc_redlaw
-from .tables import read_base
+from .io import read_base
 
 from os import path
 from tables import open_file, IsDescription, StringCol, Float64Col, Int32Col

@@ -3,7 +3,7 @@ Created on 26/06/2015
 
 @author: andre
 '''
-from .tables import write_input, read_output_tables
+from .io import write_input, read_output_tables
 from .gridfile import GridRun, GridFile
 from ..resampling import get_subset_slices, find_nearest_index
 from ..error import estimate_error

@@ -5,7 +5,7 @@ Created on 08/12/2015
 '''
 from ..wcs import get_wavelength_coordinates, get_Naxis
 from ..cosmology import velocity2redshift
-from ..starlight.tables import read_wavelength_mask
+from ..starlight.io import read_wavelength_mask
 from .. import flags
 from .core import safe_getheader, ObservedCube
 
