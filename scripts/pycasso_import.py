@@ -7,7 +7,7 @@ Created on 15/06/2015
 '''
 
 from pycasso2.importer import read_type
-from pycasso2.starlight.tables import read_wavelength_mask
+from pycasso2.starlight.io import read_wavelength_mask
 from pycasso2.config import get_config, default_config_path
 import pycasso2.segmentation as seg
 from pycasso2 import flags
