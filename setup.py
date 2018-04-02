@@ -2,8 +2,10 @@ from numpy.distutils.core import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
 
-ext_modules = [Extension('pycasso2.resampling_opt',
-                         sources=['pycasso2/resampling_opt.pyx']),
+ext_modules = [Extension('pycasso2.resampling.hist_resample_opt',
+                         sources=['pycasso2/resampling/hist_resample_opt.pyx']),
+               Extension('pycasso2.resampling.gauss_smooth',
+                         sources=['pycasso2/resampling/gauss_smooth.pyx']),
                Extension('pycasso2.external.photutils.circular_overlap',
                          sources=['pycasso2/external/photutils/circular_overlap.pyx']),
                Extension('pycasso2.external.photutils.elliptical_exact',

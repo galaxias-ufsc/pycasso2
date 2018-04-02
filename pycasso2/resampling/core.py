@@ -4,13 +4,14 @@ Created on 22/06/2015
 @author: andre
 '''
 
-from . import flags
+from .. import flags
 import numpy as np
 from astropy import log
 
-__all__ = ['resample_spectra', 'find_nearest_index',
+__all__ = ['ReSamplingMatrixNonUniform', 'resample_spectra', 'resample_cube', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
-           'age_smoothing_kernel', 'interp_age', 'vac2air', 'get_subset_slices']
+           'age_smoothing_kernel', 'interp_age', 'vac2air', 'get_subset_slices',
+           'get_dezonification_weight']
 
 
 def ReSamplingMatrixNonUniform(lorig, lresam, extrap=False):
@@ -234,7 +235,7 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
 
 def resample_cube(l_orig, l_resam, f):
     try:
-        from .resampling_opt import hist_resample as hist_resample_opt
+        from .hist_resample_opt import hist_resample as hist_resample_opt
         resample = hist_resample_opt
     except:
         log.warn('Could not load optimized hist_resample, falling back to python code.')
@@ -654,46 +655,4 @@ def get_dezonification_weight(light, segmask, alpha=1.0):
     weight = np.zeros_like(light)
     weight[mask] = light[mask] / light_mean[mask]
     return weight
-
-
-def gauss_velocity_smooth(lo, fo, v0, sig, ls=None):
-    '''
-    Apply a gaussian velocity dispersion and displacement filter to a spectrum.
-    Implements the integration presented in the page 27 of the 
-    `STARLIGHT manual <http://www.starlight.ufsc.br/papers/Manual_StCv04.pdf>`_.
-    
-    Parameters
-    ----------
-    
-    lo : array
-        Original wavelength array.
-        
-    fo : array
-        Original flux array, must be of same length as ``lo``.
-    
-    v0 : float
-        Systemic velocity to apply to input spectrum.
-        
-    sig : float
-        Velocity dispersion (sigma of the gaussian).
-        
-    ls : array, optional
-        Wavelengths in which calculate the output spectrum.
-        If not set, ``lo`` will be used.
-        
-        
-    Returns
-    -------
-    
-    fs : array
-        Resampled and smoothed flux array, must be of same length as ``ls``
-        (or ``lo`` if ``ls`` is not set).
-    
-   '''
-    from .resampling_opt import gauss_velocity_smooth
-    lo = np.ascontiguousarray(lo)
-    fo = np.ascontiguousarray(fo)
-    if lo.shape != fo.shape or lo.ndim > 1:
-        raise Exception('lo and fo must be unidimensional and have the same length.')
-    return gauss_velocity_smooth(lo, fo, v0, sig)
 

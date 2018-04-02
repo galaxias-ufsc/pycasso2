@@ -4,7 +4,7 @@ Created on 30/05/2014
 @author: andre
 '''
 
-from ..resampling import resample_cube, gauss_velocity_smooth
+from ..resampling import resample_cube, apply_kinematics
 from ..reddening import calc_redlaw
 from .io import read_base
 
@@ -143,7 +143,7 @@ class StarlightBase(object):
         return f_ssp_res.T
 
 
-    def f_syn(self, popx, v_0, v_d, A_V, redlaw='CCM'):
+    def f_syn(self, popx, v_0, v_d, A_V, redlaw='CCM', nproc=None):
         if popx.ndim == 1:
             popx = popx[:, np.newaxis]
             v_0 = np.array([v_0])
@@ -161,8 +161,7 @@ class StarlightBase(object):
         q -= q_norm
         redfactor = np.power(10.0, -0.4 * q[:, np.newaxis] * A_V)
         f_syn *= redfactor
-        for i in range(f_syn.shape[-1]):
-            f_syn[:, i] = gauss_velocity_smooth(self.l_obs, f_syn[:, i], v_0[i], v_d[i])
+        f_syn = apply_kinematics(self.l_obs, f_syn, v_0, v_d, nproc=nproc)
         f_syn.shape = (len(self.l_obs),) + spatial_shape
         return np.squeeze(f_syn) 
     
