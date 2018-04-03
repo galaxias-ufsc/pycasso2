@@ -229,9 +229,9 @@ def _params_iter(l_obs, flux, v_0, v_d, fill, fill_val):
     
 ################################################################################
 def _velocity_smooth_error_wrapper(args):
-    from .gauss_smooth import gauss_velocity_smooth_flag  # @UnresolvedImport
+    from .gauss_smooth import gauss_velocity_smooth_error
     l_obs, flux, err, badpix, v_0, v_d, fill, fill_val, l_cov_FWHM = args
-    return gauss_velocity_smooth_flag(l_obs, flux, err, badpix,
+    return gauss_velocity_smooth_error(l_obs, flux, err, badpix,
                                    v_0, v_d, n_sig=6, n_u=51,
                                    fill=fill, fill_val=fill_val,
                                    badpix_threshold=0.8, l_cov_FWHM=l_cov_FWHM)
