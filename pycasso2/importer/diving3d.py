@@ -23,7 +23,7 @@ def read_diving3d(cubes, name, cfg):
     '''
     if len(cubes) != 2:
         raise Exception('Please specify the reduced and observed cubes.')
-        redcube, obscube = cubes
+    redcube, obscube = cubes
     
     flux_unit = cfg.getfloat('import', 'flux_unit')
 
