@@ -10,7 +10,7 @@ from .. import flags
 from .core import safe_getheader, ObservedCube
 
 from astropy import log, wcs
-from astropy.io import fits
+from astropy.io import fits, ascii
 import numpy as np
 
 __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
@@ -52,7 +52,7 @@ def read_diving3d(cubes, name, cfg):
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
     ml = d3d_read_masterlist(masterlist, galaxy_id)
     d3d_save_masterlist(header, ml)
-    z = velocity2redshift(ml['V_hel'])
+    z = velocity2redshift(ml['V_hel_km/s'])
 
     log.debug('Applying CCD gap mask (z = %f)' % z)
     gap_mask_template = cfg.get(d3d_cfg_sec, 'gap_mask_template')
@@ -62,27 +62,9 @@ def read_diving3d(cubes, name, cfg):
 
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = 0.0
-    obs.lumDist_Mpc = ml['DL']
+    obs.lumDist_Mpc = np.asscalar(ml['DL_Mpc'])
     obs.inRestFrame = True
     return obs
-
-
-masterlist_dtype = [('id', '|S05'),
-                    ('name', '|S12'),
-                    ('V_hel', 'float64'),
-                    ('morph', '|S05'),
-                    ('T', 'float64'),
-                    ('R_e', 'float64'),
-                    ('M_K', 'float64'),
-                    ('n_s', 'float64'),
-                    ('epsilon', 'float64'),
-                    ('DL', 'float64'),
-                    ('eDL', 'float64'),
-                    ('EL', '|S05'),
-                    ('grating', '|S04'),
-                    ('cube', '|S0128'),
-                    ('cube_obs', '|S0128'),
-                    ]
 
 
 def d3d_read_masterlist(filename, galaxy_id=None):
@@ -105,9 +87,9 @@ def d3d_read_masterlist(filename, galaxy_id=None):
         A numpy record array containing either the whole masterlist
         or the entry pointed by ``galaxy_id``.
     '''
-    ml = np.genfromtxt(filename, masterlist_dtype, skip_header=2)
+    ml = ascii.read(filename)
     if galaxy_id is not None:
-        index = np.where(ml['id'] == galaxy_id)[0]
+        index = np.where(ml['Name'] == galaxy_id)[0]
         if len(index) == 0:
             raise Exception(
                 'Entry %s not found in masterlist %s.' % (galaxy_id, filename))
@@ -135,12 +117,12 @@ def d3d_fix_crpix(header, ax):
 
 
 def d3d_save_masterlist(header, ml):
-    header_ignored = ['cube', 'cube_obs']
+    header_ignored = ['Cube', 'Observed_cube']
     for key in ml.dtype.names:
         if key in header_ignored:
             continue
         hkey = 'HIERARCH MASTERLIST %s' % key.upper()
-        header[hkey] = ml[key]
+        header[hkey] = np.asscalar(ml[key])
 
 
 def d3d_get_galaxy_id(cube):
