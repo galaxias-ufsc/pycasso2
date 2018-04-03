@@ -124,7 +124,6 @@ def spatialize(x, segmask, extensive=False):
         x_spat = np.ma.array(x_spat)
         x_spat[..., mask] = np.ma.masked
         return x_spat
-        return
 
 
 def read_segmentation_map(fitsfile):

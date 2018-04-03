@@ -88,7 +88,7 @@ def cube_continuum(l_obs, f_obs, **copts):
         """
         Nlambda = f_obs.shape[0]
         data = f_obs.reshape(Nlambda, -1)
-        c = np.ma.zeros(shape=data.shape)
+        c = np.ma.zeros(data.shape)
 
         for i in range(data.shape[1]):
             s = data[:, i]

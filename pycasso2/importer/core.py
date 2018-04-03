@@ -116,7 +116,7 @@ class ObservedCube(object):
     def resample(self, l_ini, l_fin, dl, vectorized=False):
         log.info('Resampling spectra in [%.1f, %.1f], dl=%.2f \AA.' % (l_ini, l_fin, dl))
         l_resam = np.arange(l_ini, l_fin + dl, dl)
-        badpix = (self.f_flag & flags.no_data) > 0
+        badpix = (self.f_flag & flags.no_obs) > 0
         self.f_obs, self.f_err, self.f_flag = resample_spectra(self.l_obs, l_resam,
                                                                self.f_obs, self.f_err, badpix,
                                                                vectorized=vectorized)
