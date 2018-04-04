@@ -3,7 +3,7 @@ Created on 08/12/2015
 
 @author: andre
 '''
-from ..wcs import get_wavelength_coordinates, get_Naxis
+from ..wcs import get_wavelength_coordinates, get_Naxis, write_WCS
 from ..cosmology import velocity2redshift
 from ..starlight.io import read_wavelength_mask
 from .. import flags
@@ -14,8 +14,6 @@ from astropy.io import fits, ascii
 import numpy as np
 
 __all__ = ['read_diving3d', 'd3d_read_masterlist', 'd3d_get_galaxy_id']
-
-d3d_cfg_sec = 'diving3d'
 
 def read_diving3d(cubes, name, cfg):
     '''
@@ -30,15 +28,14 @@ def read_diving3d(cubes, name, cfg):
     # FIXME: sanitize file I/O
     log.debug('Loading header from reduced cube %s.' % redcube)
     header = safe_getheader(redcube)
-    d3d_fix_crpix(header, 1)
-    d3d_fix_crpix(header, 2)
     log.debug('Loading header from observed cube %s.' % obscube)
     obs_header = safe_getheader(obscube)
     for k in list(obs_header.keys()):
         if k in header or k == 'COMMENT' or k == '':
             continue
         header[k] = obs_header[k]
-    w = wcs.WCS(header)
+    w = d3d_WCS(header)
+    write_WCS(header, w)
     l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
 
     log.debug('Loading data from reduced cube %s.' % redcube)
@@ -55,7 +52,7 @@ def read_diving3d(cubes, name, cfg):
     z = velocity2redshift(ml['V_hel_km/s'])
 
     log.debug('Applying CCD gap mask (z = %f)' % z)
-    gap_mask_template = cfg.get(d3d_cfg_sec, 'gap_mask_template')
+    gap_mask_template = cfg.get('tables', 'gap_mask_template')
     gap_mask_file = gap_mask_template % ml['grating']
     gap_mask = read_wavelength_mask(gap_mask_file, l_obs, z, dest='rest')
     f_flag[gap_mask] |= flags.ccd_gap
@@ -116,6 +113,23 @@ def d3d_fix_crpix(header, ax):
     header['CRPIX%d' % ax] = crpix
 
 
+def d3d_WCS(header):
+    d3d_fix_crpix(header, 1)
+    d3d_fix_crpix(header, 2)
+    w_orig = wcs.WCS(header)
+    dx = w_orig.wcs.cd[0, 0] / 3600.0
+    dy = w_orig.wcs.cd[1, 1] / 3600.0
+    dl = w_orig.wcs.cd[2, 2]
+
+    w = wcs.WCS(naxis=3)
+    w.wcs.crpix = w_orig.wcs.crpix
+    w.wcs.crval = w_orig.wcs.crval
+    w.wcs.pc = np.diag([dx, dy, dl]) 
+    w.wcs.ctype[0] = 'RA---TAN'
+    w.wcs.ctype[1] = 'DEC--TAN'
+    w.wcs.cunit[2] = 'Angstrom'
+    return w
+    
 def d3d_save_masterlist(header, ml):
     header_ignored = ['Cube', 'Observed_cube']
     for key in ml.dtype.names:

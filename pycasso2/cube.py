@@ -128,7 +128,7 @@ class FitsCube(object):
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList[0].header
-        self._wcs = WCS(self._header)
+        self._wcs = WCS(self._HDUList[self._ext_f_obs].header)
         self._initMasks()
         self._readKeywords()
 

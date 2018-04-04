@@ -136,10 +136,13 @@ def get_pixel_scale_rad(w):
 
 
 def write_WCS(header, w):
-    # TODO: clean the previous WCS data from header.
+    if w is None:
+        return
+
     wcs_garbage = ['CRPIX1', 'CRPIX2', 'CRPIX3',
                    'CRVAL1', 'CRVAL2', 'CRVAL3',
                    'CDELT1', 'CDELT2', 'CDELT3',
+                   'CUNIT1', 'CUNIT2', 'CUNIT3',
                    'PC1_1', 'PC1_2', 'PC1_3',
                    'PC2_1', 'PC2_2', 'PC2_3',
                    'PC3_1', 'PC3_2', 'PC3_3',
@@ -150,8 +153,7 @@ def write_WCS(header, w):
     for h in wcs_garbage:
         if h in header:
             del header[h]
-    if w is None:
-        return
+
     header.extend(w.to_header(), update=True)
 
 
