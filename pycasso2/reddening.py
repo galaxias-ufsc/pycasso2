@@ -12,7 +12,9 @@ import numpy as np
 from os import path
 from astropy import log
 
-__all__ = ['extinction_corr', 'calc_extincion', 'get_EBV']
+__all__ = ['Galactic_reddening_corr', 'calc_redlaw', 'get_EBV',
+           'Cardelli_RedLaw', 'Charlot_RedLaw',
+           'Calzetti_RedLaw', 'CCC_RedLaw']
 
 
 def get_EBV_map(file_name):
@@ -51,7 +53,7 @@ def get_EBV(wcs, file_name):
 
 
 
-def Cardelli_RedLaw(l,R_V=3.1):
+def Cardelli_RedLaw(l, R_V=None):
     '''
         @summary: Calculates q(lambda) to the Cardelli, Clayton & Mathis 1989 reddening law.
         Converted to Python from STALIGHT.
@@ -65,6 +67,8 @@ def Cardelli_RedLaw(l,R_V=3.1):
 #     q = a + b / R_V; where a = a(x) & b = b(x)
 #     Cid@INAOE - 6/July/2004
 #
+    if R_V is None:
+        R_V = 3.1
     a = np.zeros(np.shape(l))
     b = np.zeros(np.shape(l))
     F_a = np.zeros(np.shape(l))
@@ -114,7 +118,7 @@ def Cardelli_RedLaw(l,R_V=3.1):
 
     return q
 
-def Charlot_RedLaw(l, mu = 0.3):
+def Charlot_RedLaw(l, mu=0.3):
     '''
     Returns two-component dust model by Charlot and Fall 2000. 
     
@@ -141,7 +145,7 @@ def Charlot_RedLaw(l, mu = 0.3):
 
 
 
-def Calzetti_RedLaw(l, R_V=4.05):
+def Calzetti_RedLaw(l, R_V=None):
     '''
     Calculates the reddening law by Calzetti et al. (1994).
     Original comments in the .for file:
@@ -165,6 +169,8 @@ def Calzetti_RedLaw(l, R_V=4.05):
         Extinction A_lamda / A_V. Array of same length as l.
         
     '''
+    if R_V is None:
+        R_V = 4.05
     if not isinstance(l, np.ma.MaskedArray):
         l = np.asarray(l, 'float64')
         
@@ -185,7 +191,7 @@ def Calzetti_RedLaw(l, R_V=4.05):
     return q
 
 
-def CCC_RedLaw(l, R_V=4.05):
+def CCC_RedLaw(l, R_V=None):
     '''
     CCC = "Calzetti + Claus + Cid" - law: Returns $2 = q(l) = A(l) / AV; for
     given l = (in Angs).  Strictly valid from 970 to 22000, but
@@ -198,6 +204,9 @@ def CCC_RedLaw(l, R_V=4.05):
 
     Cid@Granada - 22/Jan/2010
     '''
+    if R_V is None:
+        R_V = 4.05
+
     q = np.zeros_like(l)
     x   = 10000. / l
 
@@ -226,34 +235,19 @@ def CCC_RedLaw(l, R_V=4.05):
     return q
 
 
-def calc_redlaw(l, redlaw):
+def calc_redlaw(l, redlaw, R_V=None):
     if redlaw == 'CCM':
-        return Cardelli_RedLaw(l)
+        return Cardelli_RedLaw(l, R_V)
     elif redlaw == 'CAL':
-        return Calzetti_RedLaw(l)
+        return Calzetti_RedLaw(l, R_V)
     elif redlaw == 'CCC':
-        return CCC_RedLaw(l)
+        return CCC_RedLaw(l, R_V)
     else:
         raise Exception('Unknown reddening law %s.' % redlaw)
 
 
-def calc_extinction(wave, EBV, Rv=3.1, redlaw='CCM'):
-    '''
-
-    Gets the galactic extinction in a given wavelenght through a given line of
-    sight.
-
-    Input:   wavelenght, header with WCS, E(B-V), Rv (Optional, default is 3.1)
-    Returns: A_lambda, E(B-V)
-
-    '''
-    Av = Rv * EBV
-    A_lambda = Av * calc_redlaw(wave, redlaw)
-
-    return A_lambda
-
-
-def extinction_corr(wave, EBV, redlaw='CCM'):
-    A_lambda = calc_extinction(wave, EBV, redlaw)
+def Galactic_reddening_corr(wave, EBV, R_V=3.1):
+    Av = R_V * EBV
+    A_lambda = Av * calc_redlaw(wave, redlaw='CCM', R_V=R_V)
     tau_lambda = A_lambda / (2.5 * np.log10(np.exp(1.)))
     return np.exp(tau_lambda)

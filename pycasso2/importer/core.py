@@ -6,7 +6,7 @@ Created on 24 de jul de 2017
 
 from ..wcs import scale_celestial_WCS, shift_celestial_WCS, replace_wave_WCS, write_WCS
 from ..resampling import vac2air, resample_spectra, find_nearest_index
-from ..reddening import extinction_corr
+from ..reddening import Galactic_reddening_corr
 from ..config import parse_slice
 from ..modeling import cube_continuum
 from ..segmentation import bin_spectra, get_cov_factor
@@ -74,7 +74,7 @@ class ObservedCube(object):
             log.debug('E(B-V) = 0, not dereddening spectra.')
             return
         log.info('Dereddening spectra, E(B-V) = %f.' % self.EBV)
-        ext_corr = extinction_corr(self.l_obs, self.EBV)[:, np.newaxis, np.newaxis]
+        ext_corr = Galactic_reddening_corr(self.l_obs, self.EBV)[:, np.newaxis, np.newaxis]
         self.f_obs *= ext_corr
         self.f_err *= ext_corr
         
