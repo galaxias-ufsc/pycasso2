@@ -137,6 +137,19 @@ def get_pixel_scale_rad(w):
 
 def write_WCS(header, w):
     # TODO: clean the previous WCS data from header.
+    wcs_garbage = ['CRPIX1', 'CRPIX2', 'CRPIX3',
+                   'CRVAL1', 'CRVAL2', 'CRVAL3',
+                   'CDELT1', 'CDELT2', 'CDELT3',
+                   'PC1_1', 'PC1_2', 'PC1_3',
+                   'PC2_1', 'PC2_2', 'PC2_3',
+                   'PC3_1', 'PC3_2', 'PC3_3',
+                   'CD1_1', 'CD1_2', 'CD1_3',
+                   'CD2_1', 'CD2_2', 'CD2_3',
+                   'CD3_1', 'CD3_2', 'CD3_3',
+                   ]
+    for h in wcs_garbage:
+        if h in header:
+            del header[h]
     if w is None:
         return
     header.extend(w.to_header(), update=True)
@@ -153,6 +166,8 @@ def replace_wave_WCS(w, crpix_wave, crval_wave, cdelt_wave):
     w.wcs.crval = crval[0], crval[1], crval_wave
     if w.wcs.has_cd():
         w.wcs.cd[2, 2] = cdelt_wave
+    elif w.wcs.has_pc():
+        w.wcs.pc[2, 2] = cdelt_wave
     else:
         w.wcs.cdelt[2] = cdelt_wave
     return w
@@ -171,6 +186,8 @@ def scale_celestial_WCS(w, scaling):
     w.wcs.crpix = (transform(crpix[0]), transform(crpix[1]), crpix[2])
     if w.wcs.has_cd():
         w.wcs.cd[0:2, 0:2] *= scaling
+    elif w.wcs.has_pc():
+        w.wcs.pc[0:2, 0:2] *= scaling
     else:
         w.wcs.cdelt[0:2] *= scaling
     return w
