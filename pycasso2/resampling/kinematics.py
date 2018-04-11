@@ -6,7 +6,7 @@ Created on Jun 27, 2013
 
 import numpy as np
 
-__all__ = ['FixKinematics', 'apply_kinematics', 'apply_kinematics_flagged']
+__all__ = ['fix_kinematics', 'apply_kinematics', 'apply_kinematics_flagged', 'gauss_velocity_smooth']
 
 ################################################################################
 def gauss_velocity_smooth(lo, fo, v0, sig, ls=None):
@@ -53,42 +53,30 @@ def gauss_velocity_smooth(lo, fo, v0, sig, ls=None):
 
 
 ################################################################################
-class FixKinematics(object):
-    '''
-    FIXME: docme.
-    '''
-    
-    def __init__(self, l_obs, v_0, v_d, nproc=None):
-        self.l_obs = np.ascontiguousarray(l_obs, 'float64')
-        if not np.allclose(self.l_obs, np.linspace(self.l_obs.min(), self.l_obs.max(), len(self.l_obs))):
-            raise ValueError('l_obs is not equally spaced.')
-        if np.isscalar(v_0):
-            self.v_0 = np.array([v_0])
-        else:
-            self.v_0 = np.asarray(v_0)
-        if np.isscalar(v_d):
-            self.v_d = np.array([v_d])
-        else:
-            self.v_d = np.asarray(v_d)
-        self.nproc = nproc
-        
-        
-    def _getVd(self, target_vd):
-        m = self.v_d < target_vd
-        vd_fix = np.zeros_like(self.v_d)
-        vd_fix[m] = np.sqrt(target_vd**2 - self.v_d[m]**2)
+def fix_kinematics(l_obs, flux, err, v_0, v_d, target_vd=0.0,
+                   fill='nearest', fill_val=0.0, l_cov_FWHM=-1.0, nproc=None):
+
+    def _get_v_d_correction(v_d, target_vd):
+        m = v_d < target_vd
+        vd_fix = np.zeros_like(v_d)
+        vd_fix[m] = np.sqrt(target_vd**2 - v_d[m]**2)
         return vd_fix
-  
+
+    l_obs = np.ascontiguousarray(l_obs, 'float64')
+    if not np.allclose(l_obs, np.linspace(l_obs.min(), l_obs.max(), len(l_obs))):
+        raise ValueError('l_obs is not equally spaced.')
+    if np.isscalar(v_0):
+        v_0 = np.array([v_0])
+    else:
+        v_0 = np.asarray(v_0)
+    if np.isscalar(v_d):
+        v_d = np.array([v_d])
+    else:
+        v_d = np.asarray(v_d)
     
-    def applyFlagged(self, flux, err, target_vd=0.0, fill='nearest', fill_val=0.0, l_cov_FWHM=-1.0):
-        vd = self._getVd(target_vd)
-        return apply_kinematics_flagged(self.l_obs, flux, err, -self.v_0, vd,
-                                        fill, fill_val, l_cov_FWHM, self.nproc)
-
-
-    def apply(self, flux, target_vd=0.0, fill='nearest', fill_val=0.0):
-        vd = self._getVd(target_vd)
-        return apply_kinematics(self.l_obs, flux, -self.v_0, vd, fill, fill_val, self.nproc)
+    v_d_corr = _get_v_d_correction(v_d, target_vd)
+    return apply_kinematics_flagged(l_obs, flux, err, -v_0, v_d_corr,
+                                    fill, fill_val, l_cov_FWHM, nproc)
 ################################################################################
 
 
