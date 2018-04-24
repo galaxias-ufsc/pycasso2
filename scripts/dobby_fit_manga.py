@@ -16,12 +16,9 @@ Natalia@UFSC - 20/Sep/2017
 import sys
 from os import path, makedirs
 
-import h5py
-
 import numpy as np
 
 from astropy.table import Table
-from astropy.io.fits import BinTableHDU
 
 from pycasso2 import FitsCube
 from pycasso2 import flags
@@ -31,20 +28,26 @@ from pycasso2.dobby.utils import plot_el
 
 
 ########################################################################
+# Options
+in_cassiopea = True
+fit_all = True
+debug = False
+
+
+########################################################################
 # Get galaxy name
 galname = sys.argv[1]
 
 
 ########################################################################
 # Defining input and output dirs
-in_cassiopea = False
 
 if in_cassiopea:
-    in_dir = '/home/ASTRO/manga/dr14/starlight/dr14.bin2.cA.Ca0c_6x16/'
-    el_dir = '/home/ASTRO/manga/dr14/starlight_el/dr14.bin2.cA.Ca0c_6x16/'    
+    in_dir = '/home/ASTRO/manga/dr14/starlight/dr14.bin2.cA.CB17_7x16/'
+    el_dir = '/home/ASTRO/manga/dr14/starlight_el/dr14.bin2.cA.CB17_7x16/'    
 else:
-    in_dir = '/Users/natalia/data/MaNGA/dr14/starlight/dr14.bin2.cA.Ca0c_6x16/'
-    el_dir = '/Users/natalia/data/MaNGA/dr14/starlight_el/dr14.bin2.cA.Ca0c_6x16/'    
+    in_dir = '/Users/natalia/data/MaNGA/dr14/starlight/dr14.bin2.cA.CB17_7x16/'
+    el_dir = '/Users/natalia/data/MaNGA/dr14/starlight_el/dr14.bin2.cA.CB17_7x16/'    
 
 # Create output directory
 outdir = path.join(el_dir, 'el', galname)
@@ -54,111 +57,94 @@ if not path.exists(outdir):
     
 ########################################################################
 # Read STARLIGHT cube and get data
-c = FitsCube(path.join(in_dir, 'manga-%s.dr14.bin2.cA.Ca0c_6x16.fits' % galname))
+c = FitsCube(path.join(in_dir, 'manga-%s.dr14.bin2.cA.CB17_7x16.fits' % galname))
 
 ll = c.l_obs
 
 f_res = (c.f_obs - c.f_syn)
 f_flagged = ((flags.before_starlight & c.f_flag) > 0)
 f_res[f_flagged] = np.ma.masked
+
+vd_inst = 70.
+
 Nl, Ny, Nx = c.f_obs.shape
+name_template = 'p%04i-%04i'
+
 
 ########################################################################
-# Fit emission lines in all pixels and save the results into one file per pixel
-fit_all = False
-
+# Pixels to fit
 if fit_all:
     iys, ixs = range(Ny), range(Nx)
 else:
     iys, ixs = [c.y0,], [c.x0,]
+    #iys, ixs = np.arange(11, 16), np.arange(11, 16)
 
     
-for iy in iys:
-  for ix in ixs:
-
-        # Only measure emission lines if STARLIGHT was run on that pixel
-        if (not c.synthImageMask[iy, ix]):
-
-            # Output name
-            name = 'p%04i-%04i' % (iy, ix)
-            outfile = path.join(outdir, '%s.hdf5' % name)
-            
-            if not (path.exists(outfile)):
-
-            
-                print ('Fitting pixel ', iy, ix)
-                    
-                # Modelling the gaussian
-                el = fit_strong_lines( ll, f_res[..., iy, ix], c.f_syn[..., iy, ix], f_res[..., iy, ix],
-                                       kinematic_ties_on = True, 
-                                       saveAll = True, outname = name, outdir = outdir, overwrite = True)
-                mod_fit_HbHaN2, mod_fit_O3, el_extra = el
-                
-                
-                # Plot spectra
-                fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 2)
-                fig.savefig( path.join(outdir, '%s.pdf' % name) )
-
-
 ########################################################################
-# After pixel-by-pixel fitting, read all individual files and
-# save to a super-fits file (including the original STARLIGHT file).
+# Fit emission lines in all pixels and save the results into one file per pixel
 
-# Read the central pixel to find the emission lines fitted
-iy, ix = c.y0, c.x0
-name = 'p%04i-%04i' % (iy, ix)
-filename = path.join(outdir, '%s.hdf5' % name)
+def fit(kinematic_ties_on, balmer_limit_on, model):
+
+    _k = 1 * kinematic_ties_on
+    _b = 1 * balmer_limit_on
+    if model == 'gaussian': _m = 'GA'
+    if model == 'resampled_gaussian': _m = 'RG'
+    suffix = 'El%sk%ib%i' % (_m, _k, _b)
     
-with h5py.File(filename, 'r') as f:
-    El_lambda = f['elines']['lambda']
-    El_name   = f['elines']['line']
-    El_l0     = f['elines']['El_l0']
-
-Nl = len(El_lambda)
-
-El_F  = np.zeros((Nl, Ny, Nx))
-El_v0 = np.zeros((Nl, Ny, Nx))
-El_vd = np.zeros((Nl, Ny, Nx))
-El_EW = np.zeros((Nl, Ny, Nx))
-
-# Reading hdf5 files
-for iy in iys:
-  for ix in ixs:
-
-        if (c.SN_normwin[iy, ix] > 3):
-
-            print ('Reading pixel ', iy, ix)
-
-            name = 'p%04i-%04i' % (iy, ix)
-            filename = path.join(outdir, '%s.hdf5' % name)
+    for iy in iys:
+      for ix in ixs:
     
-            with h5py.File(filename, 'r') as f:
-
-                  for il, l in enumerate(El_lambda):
-                        flag_line = (f['elines']['lambda'] == l)
-                        El_F [il, iy, ix] = f['elines']['El_F' ][flag_line]
-                        El_v0[il, iy, ix] = f['elines']['El_v0'][flag_line]
-                        El_vd[il, iy, ix] = f['elines']['El_vd'][flag_line]
-                        El_EW[il, iy, ix] = f['elines']['El_EW'][flag_line]
-                        
-# Save info about each emission line                  
-# Central wavelength - TO ADD to this table ++
-aux = { 'lambda': El_lambda,
-        'name'  : El_name,
-        'l0'    : El_l0,
-         'model' : Nl*['GaussianIntELModel'],
-        'kinematic_ties_on' : Nl*[True],
-        }
+            # Only measure emission lines if STARLIGHT was run on that pixel
+            #if (not c.synthImageMask[iy, ix]):
+            if True:
+                # Output name
+                name = suffix + '.' + name_template % (iy, ix)
+                outfile = path.join(outdir, '%s.hdf5' % name)
     
-El_info = Table(aux)
-El_info.convert_unicode_to_bytestring()
-El_info_HDU = BinTableHDU(data=El_info.as_array(), name='El_info')
-c._HDUList.append(El_info_HDU)
+                if not (path.exists(outfile)):
+                
+                    print ('Fitting pixel ', iy, ix)
+    
+                    # Modelling the gaussian
+                    el = fit_strong_lines( ll, f_res[..., iy, ix], c.f_syn[..., iy, ix], c.f_err[..., iy, ix], vd_inst = vd_inst,
+                                           kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                                           saveAll = True, outname = name, outdir = outdir, overwrite = True)
+    
+                    if debug:
+                        # Plot spectrum
+                        fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0)
+                        fig.savefig( path.join(outdir, '%s.pdf' % name) )
+    
+    
+    # Fit integrated spectrum
+    integ_f_res = (c.integ_f_obs - c.integ_f_syn)
+    name = suffix + '.' + 'integ'
+    el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = vd_inst,
+                           kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                           saveAll = True, outname = name, outdir = outdir, overwrite = True)
+    if debug:
+        # Plot integrate spectrum
+        fig = plot_el(ll, integ_f_res, el, ifig = 0)
+        fig.savefig( path.join(outdir, '%s.pdf' % name) )
+    
 
-# Save fluxes, EWs, etc ++
-c._addExtension('El_F', data=El_F, wcstype='image', overwrite=True)
-c._addExtension('El_v0', data=El_v0, wcstype='image', overwrite=True)
-c._addExtension('El_vd', data=El_vd, wcstype='image', overwrite=True)
-c._addExtension('El_EW', data=El_EW, wcstype='image', overwrite=True)
+        
+    # After pixel-by-pixel fitting, read all individual files and
+    # save to a super-fits file (including the original STARLIGHT file).
+    import dobby_save_fits
+    dobby_save_fits.save_fits(c, galname, outdir, el_dir, name_template,
+                              suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
 
-c.write( path.join(el_dir, 'manga-%s.dr14.bin2.cA.Ca0c_6x16.El.fits' % galname), overwrite=True )
+    
+# Fit!
+#++for kin_ties in [True, False]:
+#++    for balmer_lim in [True, False]:
+#++        for model in ['gaussian', 'resampled_gaussian']:
+#++            fit(kinematic_ties_on = kin_ties, balmer_limit_on = balmer_lim, model = model)
+
+for kin_ties in [False, ]:
+    for balmer_lim in [False, ]:
+        for model in ['gaussian', ]:
+            fit(kinematic_ties_on = kin_ties, balmer_limit_on = balmer_lim, model = model)
+
+# EOF
