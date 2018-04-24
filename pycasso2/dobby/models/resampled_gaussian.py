@@ -22,6 +22,9 @@ class ResampledGaussian(Fittable1DModel):
     v0 = Parameter()
     vd = Parameter()
     vd_inst = Parameter(fixed=True)
+
+    def __getitem__(self, i):
+        return self
     
     def bounding_box(self, factor=5.5):
         l0 = self.l0.value * (self.v0 / c)
@@ -31,6 +34,7 @@ class ResampledGaussian(Fittable1DModel):
     @staticmethod
     def evaluate(l, l0, flux, v0, vd, vd_inst):
 
+            
         def gaussian_int(l):
             from scipy.special import erf
             v = c * (l - l0) / l0
@@ -51,14 +55,15 @@ class ResampledGaussian(Fittable1DModel):
     
     @staticmethod
     def fit_deriv(l, l0, flux, v0, vd, vd_inst):
+        #v = c * (l - l0) / l0
         vd_obs2 = vd ** 2 + vd_inst ** 2
         d_flux = np.exp( -0.5 * (v - v0) ** 2 / vd_obs2 ) / np.sqrt(2. * np.pi * vd_obs2)
         d_v0   = flux * d_flux * (v - v0) / vd_obs2
         d_vd   = flux * d_flux * (v - v0) ** 2 * vd / vd_obs2 ** 2
-        return [d_flux, d_v0, d_vd]
+        return [0., d_flux, d_v0, d_vd]
 
 
-def MultiResampledGaussian(l0, flux, v0, vd, vd_inst, name, ratio=None, v0_min=None, v0_max=None, vd_min=None, vd_max=None):
+def MultiResampledGaussian(l0, flux, v0, vd, vd_inst, name, v0_min=None, v0_max=None, vd_min=None, vd_max=None):
     # TODO: Sanity checks.
 
     flux = [flux, ] * len(l0)
@@ -68,7 +73,7 @@ def MultiResampledGaussian(l0, flux, v0, vd, vd_inst, name, ratio=None, v0_min=N
     model = models[0]
     for i in np.arange(1, len(models)):
         model += models[i]
-    
+
     for n in name:
         model[n].flux.min = 0.0
 

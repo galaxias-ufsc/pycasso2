@@ -8,31 +8,39 @@ import numpy as np
 
 from astropy.table import Table
 from astropy.modeling import fitting
+import astropy.constants as const
 
-lines_windows = Table.read(path.join(path.dirname(__file__), 'lines.dat'), format = 'ascii.commented_header')
+
+c = const.c.to('km/s').value
 
 
-def calc_cont_EW(_ll, _f_syn, flux_integrated, linename):
+def calc_cont_EW(_ll, _f_syn, flux_integrated, linename, lines_windows):
     # Calculate continuum and equivalent width
-    a, b, central_lambda = local_continuum(_ll, _f_syn, linename, return_continuum = False)
+    a, b, central_lambda = local_continuum(_ll, _f_syn, linename, lines_windows, return_continuum = False)
     C  = a * central_lambda + b
     EW = flux_integrated / C
 
     return EW
 
 
-def local_continuum(_ll, _f_res, linename, return_continuum = True, debug = False):
+def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = True, debug = False):
     # Select a line from our red/blue continua table
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
 
     # Get the blue and red continuum median
-    blue_median = np.median(_f_res[(_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])])
-    red_median  = np.median(_f_res[(_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])])
+    blue_median = np.ma.median(_f_res[(_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])])
+    red_median  = np.ma.median(_f_res[(_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])])
 
+    # Deal with completely masked windows
+    if np.ma.is_masked(blue_median):
+        blue_median = 0.
+    if np.ma.is_masked(red_median):
+        red_median = 0.
+        
     # Get the midpoint wavelengths
-    blue_lambda = (lines_windows[flag_line]['blue1'] + lines_windows[flag_line]['blue2']) / 2.
-    red_lambda  = (lines_windows[flag_line][ 'red1'] + lines_windows[flag_line][ 'red2']) / 2.
-    central_lambda = lines_windows[flag_line]['central']
+    blue_lambda = (lines_windows[flag_line]['blue1'] + lines_windows[flag_line]['blue2'])[0] / 2.
+    red_lambda  = (lines_windows[flag_line][ 'red1'] + lines_windows[flag_line][ 'red2'])[0] / 2.
+    central_lambda = lines_windows[flag_line]['central'][0]
 
     # Calculate line parameters
     a = (red_median - blue_median) / (red_lambda - blue_lambda)
@@ -43,21 +51,31 @@ def local_continuum(_ll, _f_res, linename, return_continuum = True, debug = Fals
 
     if debug:
         import matplotlib.pyplot as plt
+        plt.figure('fit2')
+        plt.clf()
+        plt.plot(_ll, _f_res)
         plt.plot(blue_lambda, blue_median, 'xb')
         plt.plot(red_lambda, red_median, 'xr')
         plt.plot(central_lambda, a*central_lambda + b, 'xk')
-    
+        
     if return_continuum:
         return local_cont, flag_cont
     else:
         return a, b, central_lambda
-    
 
-def fit_strong_lines(_ll, _f_res, _f_syn, _f_err, kinematic_ties_on = True,
-                     model = 'resampled_gaussian', vd_inst = None,
+
+def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
+                     kinematic_ties_on = True, balmer_limit_on = True,
+                     model = 'resampled_gaussian', vd_inst = None, vd_kms = True,
+                     lines_windows_file = None,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False, **kwargs):
 
+    if lines_windows_file is None:
+        lines_windows = Table.read(path.join(path.dirname(__file__), 'lines.dat'), format = 'ascii.commented_header')
+    else:
+        lines_windows = Table.read(lines_windows_file, format = 'ascii.commented_header')
+        
     if model == 'resampled_gaussian':
         from .models.resampled_gaussian import MultiResampledGaussian
         elModel = MultiResampledGaussian
@@ -67,66 +85,116 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err, kinematic_ties_on = True,
     else:
         raise Exception('@@> No model found. Giving up.')
         
-    # Normalize spectrum by the median, to avoid problems in the fit
-    med = np.median(_f_syn)
-    f_res = _f_res / np.abs(med)
-    f_err = _f_err / np.abs(med)
 
+    # Get central wavelength for each line
+    def get_central_wavelength(name):
+        l0 = np.zeros(len(name))
+        for il, linename in enumerate(name):
+            flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
+            l0[il] = lines_windows[flag_line]['central'][0]
+        return l0
+    
     # Get vd_inst
-    def get_vd_inst(vd_inst, name):
+    def get_vd_inst(vd_inst, name, l0, vd_kms):
+
         if vd_inst is None:
             return [0. for n in name]
+
         elif np.isscalar(vd_inst):
-            return [vd_inst for n in name]
+            if vd_kms:
+                return [vd_inst for n in name]
+            else:
+                return [c * vd_inst / l  for l in l0]
+
         elif type(vd_inst) is dict:
-            return [vd_inst[n] for n in name]
+            if vd_kms:
+                return [vd_inst[n] for n in name]
+            else:
+                return [c * vd_inst[n] / l for l, n in zip(l0, name)]
+
         else:
             sys.exit('Check vd_inst, must be a scalar a dictionary: %s' % vd_inst)
 
 
+    # Normalize spectrum by the median, to avoid problems in the fit
+    med = np.median(_f_syn)
+    f_res = _f_res / np.abs(med)
+    f_err = _f_err / np.abs(med)
+    
     # Get local pseudocontinuum
     el_extra = {}
+    total_lc = np.ma.zeros(len(_ll))
+    total_lc.mask = True
 
     # Continuum only for Ha
-    l, f = local_continuum(_ll, _f_res, '6563')
+    l, f = local_continuum(_ll, _f_res, '6563', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
+    lc_rms = np.ma.std((_f_res - lc)[f])
     name     = ['6563',   '6548',      '6584']
-    linename = ['Halpha', '[NII]6548', '[NII]6584' ]    
+    linename = ['Halpha', '[NII]6548', '[NII]6584' ]
     for n, ln in zip(name, linename):
         el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc }
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
 
     # Continuum for Hb
-    l, f = local_continuum(_ll, _f_res, '4861')
+    l, f = local_continuum(_ll, _f_res, '4861', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
+    lc_rms = np.ma.std((_f_res - lc)[f])
     name     = ['4861'  ]
     linename = ['Hbeta' ]
     for n, ln in zip(name, linename):
         el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc }
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+        
+    # Continuum for Hg
+    l, f = local_continuum(_ll, _f_res, '4340', lines_windows)
+    lc = np.ma.masked_array(l, mask=~f)
+    lc_rms = np.ma.std((_f_res - lc)[f])
+    name     = ['4340'   ]
+    linename = ['Hgamma' ]
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
         
     # Continuum only for 5007
-    l, f = local_continuum(_ll, _f_res, '5007')
+    l, f = local_continuum(_ll, _f_res, '5007', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
+    lc_rms = np.ma.std((_f_res - lc)[f])
     name     = ['4959',       '5007']
     linename = ['[OIII]4959', '[OIII]5007']
     for n, ln in zip(name, linename):
         el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc }
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
 
-    
+    el_extra['total_lc'] = total_lc
+
 	# ** Fitting Ha and [NII]
 
     # Parameters
     name = ['6563', '6548', '6584']
-    _vd_inst = get_vd_inst(vd_inst, name)
-    l0 = [0., 0., 0.]
-    for il, linename in enumerate(name):
-        flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
-        l0[il] = lines_windows[flag_line]['central'][0]
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
     # Get local continuum
-    lc = el_extra[name[0]]['local_cont']
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
     mod_init_HaN2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
@@ -139,67 +207,74 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err, kinematic_ties_on = True,
 
     # Fit
     fitter = fitting.LevMarLSQFitter()
-    mod_fit_HaN2 = fitter(mod_init_HaN2, _ll, f_res-lc, weights=f_err)
-
+    mod_fit_HaN2 = fitter(mod_init_HaN2, _ll, f_res-lc, weights=f_err, maxiter=500)
+    
     if debug:
+        print ('Ha', fitter.fit_info['message'], fitter.fit_info['ierr'])
         import matplotlib.pyplot as plt
         plt.figure('fit1')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_HaN2(_ll)+lc)
 
-        
+
 	# ** Fitting Hb
 
     # Parameters
-    name = ['4861','6563',]
-    _vd_inst = get_vd_inst(vd_inst, name)
-    l0 = [0., 0.]
-    for il, linename in enumerate(name):
-        flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
-        l0[il] = lines_windows[flag_line]['central'][0]
+    name = ['4861', '4340']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
         
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont']
-
+    # Get local continuum for Hb ang Hg
+    lc = np.ma.zeros(len(_ll))
+    lc.mask = True
+    for n in name:
+        fc = ~el_extra[n]['local_cont'].mask
+        lc[fc] = el_extra[n]['local_cont'][fc]
+        lc.mask[fc] = False
+    lc /= np.abs(med)
+    
     # Start model
     # Fitting Ha too because the single model has a problem,
     # and many things are based on the compounded model.
-    mod_init_Hb = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6563'].v0, vd=mod_fit_HaN2['6563'].vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
-
+    mod_init_HbHg = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6563'].v0, vd=mod_fit_HaN2['6563'].vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
+    
     # Ties
     if kinematic_ties_on:
-        mod_init_Hb['4861'].v0.fixed = True
-        mod_init_Hb['4861'].vd.fixed = True
+        mod_init_HbHg['4861'].v0.fixed = True
+        mod_init_HbHg['4861'].vd.fixed = True
+        mod_init_HbHg['4340'].v0.fixed = True
+        mod_init_HbHg['4340'].vd.fixed = True
+
+    if balmer_limit_on:
+        mod_init_HbHg['4861'].flux.max = mod_fit_HaN2['6563'].flux / 2.6
+        mod_init_HbHg['4340'].flux.max = mod_fit_HaN2['6563'].flux / 5.5
     
     # Fit
     fitter = fitting.LevMarLSQFitter()
-    mod_fit_Hb = fitter(mod_init_Hb, _ll, f_res-lc) #, weights=f_err)
+    mod_fit_HbHg = fitter(mod_init_HbHg, _ll, f_res-lc, weights=f_err, maxiter=500)
 
     if debug:
+        print ('Hb', fitter.fit_info['message'])
         import matplotlib.pyplot as plt
         plt.figure('fit2')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_Hb(_ll)+lc)
-        #plt.plot(_ll, f_res-lc)
-        #plt.plot(_ll, mod_fit_Hb(_ll))
-        #plt.xlim(4750, 4950)
-        #plt.ylim(-0.5, 2)
-
+        plt.plot(_ll, mod_fit_HbHg(_ll)+lc)
         
     # ** Fitting [OIII]
 
     # Parameters
     name = ['4959', '5007']
-    _vd_inst = get_vd_inst(vd_inst, name)
-    l0 = [0., 0.]
-    for il, linename in enumerate(name):
-        flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
-        l0[il] = lines_windows[flag_line]['central'][0]
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
     # Get local continuum
-    lc = el_extra[name[0]]['local_cont']
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
     mod_init_O3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
@@ -212,22 +287,25 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err, kinematic_ties_on = True,
 
     # Fit
     fitter = fitting.LevMarLSQFitter()
-    mod_fit_O3 = fitter(mod_init_O3, _ll, f_res-lc, weights=f_err)
+    mod_fit_O3 = fitter(mod_init_O3, _ll, f_res-lc, weights=f_err, maxiter=500)
 
     if debug:
+        print ('O3', fitter.fit_info['message'])
         import matplotlib.pyplot as plt
         plt.figure('fit3')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O3(_ll)+lc)
 
+
     # Rescale by the median
-    el = [mod_fit_HaN2, mod_fit_Hb, mod_fit_O3]
+    el = [mod_fit_HaN2, mod_fit_HbHg, mod_fit_O3]
     for model in el:
         for name in model.submodel_names:
             model[name].flux.value *= np.abs(med)
 
-            
+
+    # TO DO
     # Integrate fluxes (be careful not to use the one normalized)
     flag = (_ll > 6554) & (_ll < 6573)
     flux_Ha_int =  _f_res[flag].sum()
@@ -238,17 +316,17 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err, kinematic_ties_on = True,
     name     = ['6563',   '6548',      '6584']
     linename = ['Halpha', '[NII]6548', '[NII]6584' ]
     for n, ln in zip(name, linename):
-        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_HaN2[n].flux, n)
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_HaN2[n].flux, n, lines_windows)
         
-    name     = ['4861'  ]
-    linename = ['Hbeta' ]
+    name     = ['4861'  , '4340'  ]
+    linename = ['Hbeta' , 'Hgamma']
     for n, ln in zip(name, linename):
-        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Hb[n].flux, n)
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_HbHg[n].flux, n, lines_windows)
         
     name     = ['4959',       '5007']
     linename = ['[OIII]4959', '[OIII]5007']
     for n, ln in zip(name, linename):
-        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O3[n].flux, n)
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O3[n].flux, n, lines_windows)
 
     el.append(el_extra)
     
@@ -261,7 +339,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err, kinematic_ties_on = True,
         save_summary_to_file(el, outdir, outname, saveHDF5 = saveHDF5, saveTXT = saveTXT, **kwargs)
 
     return el
-
 
 
 if __name__ == "__main__":
