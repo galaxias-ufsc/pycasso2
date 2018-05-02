@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from pycasso2 import FitsCube, flags
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
@@ -298,6 +299,9 @@ class PycassoExplorer:
         ax.plot(c.l_obs, np.ma.masked_where(fl & (flags.telluric | flags.seg_has_badpixels) > 0, f),
                 '-', color='blue', label='observed')
         err_scale = np.ceil(0.2 * f.mean() / e.mean())
+        if not np.isfinite(err_scale):
+            print('Error scale is non-finite. Setting it to zero.')
+            err_scale = 0.0
         ax.plot(c.l_obs, e * err_scale, '-', color='k', label='error (x%d)' % err_scale)
 
         ax.plot(c.l_obs, np.ma.masked_where((fl & flags.telluric) == 0, f),
@@ -344,6 +348,7 @@ class PycassoExplorer:
         self.fig.text(.6, .68,
                       r'$\sigma_\star = %3.2f\,\mathrm{km/s}\ |\ v_\star = %3.2f\,\mathrm{km/s}$' \
                       % (v_d, v_0), size=textsize)
+        self.fig.text(.6, .64, r'$z = %3.4f$' % c.redshift, size=textsize)
 
 ##########################################################################
 
