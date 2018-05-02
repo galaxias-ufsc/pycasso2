@@ -128,7 +128,22 @@ class FitsCube(object):
     def _load(self, cubefile):
         self._HDUList = fits.open(cubefile, memmap=True)
         self._header = self._HDUList[0].header
-        self._wcs = WCS(self._HDUList[self._ext_f_obs].header)
+        if self.hasSegmentationMask:
+            w = WCS(naxis=3)
+            w_xy = WCS(self._HDUList[self._ext_segmask].header).celestial
+            w_l = WCS(self._HDUList[self._ext_f_obs].header).sub([1])
+            w.wcs.pc[:2, :2] = w_xy.wcs.pc
+            w.wcs.pc[2, 2] = w_l.wcs.pc
+            w.wcs.crpix[:2] = w_xy.wcs.crpix
+            w.wcs.crpix[2] = w_l.wcs.crpix
+            w.wcs.crval[:2] = w_xy.wcs.crval
+            w.wcs.crval[2] = w_l.wcs.crval
+            w.wcs.ctype[0] = w_xy.wcs.ctype[0]
+            w.wcs.ctype[1] = w_xy.wcs.ctype[1]
+            w.wcs.ctype[2] = w_l.wcs.ctype[0]
+            self._wcs = w
+        else:
+            self._wcs = WCS(self._HDUList[self._ext_f_obs].header)
         self._initMasks()
         self._readKeywords()
 
