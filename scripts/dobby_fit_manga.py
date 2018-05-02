@@ -13,72 +13,85 @@ done
 Natalia@UFSC - 20/Sep/2017
 '''
 
-import sys
 from os import path, makedirs
-
 import numpy as np
-
-from astropy.table import Table
+from multiprocessing import cpu_count
+import argparse
+from astropy import log
 
 from pycasso2 import FitsCube
 from pycasso2 import flags
-
+from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
 from pycasso2.dobby.utils import plot_el
 
 
-########################################################################
-# Options
-in_cassiopea = True
-fit_all = True
-debug = False
+###############################################################################
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Run starlight for a pycasso cube.')
 
+    parser.add_argument('cubeIn', type=str, nargs=1,
+                        help='Cube. Ex.: T001.fits')
+    parser.add_argument('--out', dest='cubeOut', required=True,
+                        help='Output cube.')
+    parser.add_argument('--name', dest='newName',
+                        help='Rename the output cube.')
+    parser.add_argument('--config', dest='configFile', default=default_config_path,
+                        help='Config file. Default: %s' % default_config_path)
+    parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count() - 1,
+                        help='Number of worker processes.')
+    parser.add_argument('--overwrite', dest='overwrite', action='store_true',
+                        help='Overwrite output.')
+    parser.add_argument('--debug', dest='debug', action='store_true',
+                        help='Save detailed fit plots.')
+    parser.add_argument('--tmp-dir', dest='tmpDir', default='./tmp_el',
+                        help='Write temporary tables here. Default: ./tmp_el')
+    parser.add_argument('--only-center', dest='onlyCenter', action='store_true',
+                        help='Test fit, only central spaxel.')
+    parser.add_argument('--model', dest='model', default='gaussian',
+                        help='Line profile model: gaussian or resampled_gaussian. Default: gaussian')
+    parser.add_argument('--enable-kin-ties', dest='enableKinTies', action='store_true',
+                        help='Enable kinematic ties.')
+    parser.add_argument('--enable-balmer-lim', dest='enableBalmerLim', action='store_true',
+                        help='Do not allow Ha/Hb < 2.0.')
 
-########################################################################
-# Get galaxy name
-galname = sys.argv[1]
+    return parser.parse_args()
+###############################################################################
 
-
-########################################################################
-# Defining input and output dirs
-
-if in_cassiopea:
-    in_dir = '/home/ASTRO/manga/dr14/starlight/dr14.bin2.cA.CB17_7x16/'
-    el_dir = '/home/ASTRO/manga/dr14/starlight_el/dr14.bin2.cA.CB17_7x16/'    
-else:
-    in_dir = '/Users/natalia/data/MaNGA/dr14/starlight/dr14.bin2.cA.CB17_7x16/'
-    el_dir = '/Users/natalia/data/MaNGA/dr14/starlight_el/dr14.bin2.cA.CB17_7x16/'    
+args = parse_args()
+log.info('Loading cube %s.' % args.cubeIn[0])
+c = FitsCube(args.cubeIn[0])
+galname = c.name
 
 # Create output directory
-outdir = path.join(el_dir, 'el', galname)
-if not path.exists(outdir):
-    makedirs(outdir)
-
-    
-########################################################################
-# Read STARLIGHT cube and get data
-c = FitsCube(path.join(in_dir, 'manga-%s.dr14.bin2.cA.CB17_7x16.fits' % galname))
+tmpdir = path.join(args.tmpDir, galname)
+if not path.exists(tmpdir):
+    log.debug('Creating directory %s.' % tmpdir)
+    makedirs(tmpdir)
 
 ll = c.l_obs
 
 f_res = (c.f_obs - c.f_syn)
-f_flagged = ((flags.before_starlight & c.f_flag) > 0)
+f_flagged = ((flags.no_starlight & c.f_flag) > 0)
 f_res[f_flagged] = np.ma.masked
 
+# TODO: read from config / args
 vd_inst = 70.
 
 Nl, Ny, Nx = c.f_obs.shape
+
+# TODO: read from config
 name_template = 'p%04i-%04i'
 
 
 ########################################################################
 # Pixels to fit
-if fit_all:
-    iys, ixs = range(Ny), range(Nx)
-else:
+if args.onlyCenter:
+    log.warn('Fitting only central spaxel.')
     iys, ixs = [c.y0,], [c.x0,]
-    #iys, ixs = np.arange(11, 16), np.arange(11, 16)
-
+else:
+    iys, ixs = range(Ny), range(Nx)
     
 ########################################################################
 # Fit emission lines in all pixels and save the results into one file per pixel
@@ -92,28 +105,27 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     suffix = 'El%sk%ib%i' % (_m, _k, _b)
     
     for iy in iys:
-      for ix in ixs:
+        for ix in ixs:
     
             # Only measure emission lines if STARLIGHT was run on that pixel
-            #if (not c.synthImageMask[iy, ix]):
-            if True:
+            if (not c.synthImageMask[iy, ix]):
                 # Output name
                 name = suffix + '.' + name_template % (iy, ix)
-                outfile = path.join(outdir, '%s.hdf5' % name)
+                outfile = path.join(tmpdir, '%s.hdf5' % name)
     
                 if not (path.exists(outfile)):
                 
-                    print ('Fitting pixel ', iy, ix)
+                    log.info('Fitting pixel %d-%d' % (iy, ix))
     
                     # Modelling the gaussian
-                    el = fit_strong_lines( ll, f_res[..., iy, ix], c.f_syn[..., iy, ix], c.f_err[..., iy, ix], vd_inst = vd_inst,
-                                           kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
-                                           saveAll = True, outname = name, outdir = outdir, overwrite = True)
+                    el = fit_strong_lines(ll, f_res[..., iy, ix], c.f_syn[..., iy, ix], c.f_err[..., iy, ix], vd_inst = vd_inst,
+                                          kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                                          saveAll = True, outname = name, outdir = tmpdir, overwrite = True)
     
-                    if debug:
+                    if args.debug:
                         # Plot spectrum
                         fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0)
-                        fig.savefig( path.join(outdir, '%s.pdf' % name) )
+                        fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
     
     
     # Fit integrated spectrum
@@ -121,18 +133,18 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     name = suffix + '.' + 'integ'
     el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = vd_inst,
                            kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
-                           saveAll = True, outname = name, outdir = outdir, overwrite = True)
-    if debug:
+                           saveAll = True, outname = name, outdir = tmpdir, overwrite = True)
+    if args.debug:
         # Plot integrate spectrum
         fig = plot_el(ll, integ_f_res, el, ifig = 0)
-        fig.savefig( path.join(outdir, '%s.pdf' % name) )
+        fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
     
 
         
     # After pixel-by-pixel fitting, read all individual files and
     # save to a super-fits file (including the original STARLIGHT file).
     import dobby_save_fits
-    dobby_save_fits.save_fits(c, galname, outdir, el_dir, name_template,
+    dobby_save_fits.save_fits(c, args.cubeOut, tmpdir, name_template,
                               suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
 
     
@@ -142,9 +154,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
 #++        for model in ['gaussian', 'resampled_gaussian']:
 #++            fit(kinematic_ties_on = kin_ties, balmer_limit_on = balmer_lim, model = model)
 
-for kin_ties in [False, ]:
-    for balmer_lim in [False, ]:
-        for model in ['gaussian', ]:
-            fit(kinematic_ties_on = kin_ties, balmer_limit_on = balmer_lim, model = model)
+
+fit(kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim, model=args.model)
 
 # EOF

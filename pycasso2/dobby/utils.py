@@ -3,13 +3,8 @@ Natalia@UFSC - 29/Nov/2017
 '''
 
 import h5py
-
 from os import path, remove
-
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-
 from astropy.table import Table
 
 
@@ -157,6 +152,10 @@ def plot_el_starlight(ts, el, save = False):
     
     
 def plot_el(ll, f_res, el, ifig = 1):
+    import matplotlib
+    matplotlib.use('pdf')
+    import matplotlib.pyplot as plt
+    from matplotlib import gridspec
     
     fig = plt.figure(ifig, figsize=(12,6))
     gs = gridspec.GridSpec(2, 3)

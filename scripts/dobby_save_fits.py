@@ -131,7 +131,7 @@ def save_fits_test(c, galname, outdir, el_dir, name_template, balLim=True, kinTi
     '''
 
     
-def save_fits(c, galname, outdir, el_dir, name_template, suffix, kinTies, balLim, model):
+def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model):
 
     # Get the dimensions
     Nl, Ny, Nx = c.f_obs.shape
@@ -139,7 +139,7 @@ def save_fits(c, galname, outdir, el_dir, name_template, suffix, kinTies, balLim
 
     # Read the integrated spectra to find the emission lines fitted
     name = suffix + '.' + 'integ'
-    filename = path.join(outdir, '%s.hdf5' % name)
+    filename = path.join(el_dir, '%s.hdf5' % name)
         
     with h5py.File(filename, 'r') as f:
         El_lambda = f['elines']['lambda']
@@ -160,12 +160,12 @@ def save_fits(c, galname, outdir, el_dir, name_template, suffix, kinTies, balLim
     iys, ixs = range(Ny), range(Nx)
     
     for iy in iys:
-      for ix in ixs:
+        for ix in ixs:
     
             if (c.SN_normwin[iy, ix] > 3):
     
                 name = suffix + '.' + name_template % (iy, ix)
-                filename = path.join(outdir, '%s.hdf5' % name)
+                filename = path.join(el_dir, '%s.hdf5' % name)
 
                 if (path.exists(filename)):
                     
@@ -208,11 +208,11 @@ def save_fits(c, galname, outdir, el_dir, name_template, suffix, kinTies, balLim
     
     # Save integrated spec info
     name = suffix + '.' + 'integ'
-    filename = path.join(outdir, '%s.hdf5' % name)
+    filename = path.join(el_dir, '%s.hdf5' % name)
         
     with h5py.File(filename, 'r') as f:
         c._addTableExtension('El_integ', data=Table(f['elines'].value), overwrite=True)
         c._addTableExtension('El_integ_lc', data=Table({'l_obs': ll, 'total_lc': f['spec']['total_lc']}), overwrite=True)
     
-    c.write( path.join(el_dir, 'manga-%s.dr14.bin2.cA.CB17_7x16.%s.fits' % (galname, suffix)), overwrite=True )
+    c.write(outfile, overwrite=True)
 
