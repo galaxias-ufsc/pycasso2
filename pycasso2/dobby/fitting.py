@@ -9,6 +9,8 @@ import numpy as np
 from astropy.table import Table
 from astropy.modeling import fitting
 import astropy.constants as const
+from astropy import log
+from pycasso2.dobby import flags
 
 
 c = const.c.to('km/s').value
@@ -113,9 +115,27 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                 return [c * vd_inst[n] / l for l, n in zip(l0, name)]
 
         else:
-            sys.exit('Check vd_inst, must be a scalar a dictionary: %s' % vd_inst)
+            raise Exception('Check vd_inst, must be a scalar a dictionary: %s' % vd_inst)
 
-
+    def do_fit(model, ll, lc, flux, err, min_good_points=20):
+        fitter = fitting.LevMarLSQFitter()
+        good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
+        if good.sum() < min_good_points:
+            log.warn('Too few data points for fitting, flagging model.')
+            return model.copy(), flags.no_data
+        fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=err[good]**-1, maxiter=500)
+        flag = interpret_fit_result(fitter.fit_info)
+        return fitted_model, flag
+    
+    
+    def interpret_fit_result(fit_info):
+        log.debug('nfev: %d, ierr: %d' % (fit_info['nfev'], fit_info['ierr']))
+        if fit_info['ierr'] not in [1, 2, 3, 4]:
+            log.warn('Bad fit, cause: %s' % fit_info['message'])
+            return flags.bad_fit
+        else:
+            return 0
+        
     # Normalize spectrum by the median, to avoid problems in the fit
     med = np.median(_f_syn)
     f_res = _f_res / np.abs(med)
@@ -184,7 +204,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     el_extra['total_lc'] = total_lc
 
-	# ** Fitting Ha and [NII]
+    # ** Fitting Ha and [NII]
 
     # Parameters
     name = ['6563', '6548', '6584']
@@ -206,11 +226,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_HaN2['6548'].vd.tied = lambda m: m['6584'].vd
 
     # Fit
-    fitter = fitting.LevMarLSQFitter()
-    mod_fit_HaN2 = fitter(mod_init_HaN2, _ll, f_res-lc, weights=f_err, maxiter=500)
-    
+    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, lc, f_res, f_err)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag 
+
     if debug:
-        print ('Ha', fitter.fit_info['message'], fitter.fit_info['ierr'])
         import matplotlib.pyplot as plt
         plt.figure('fit1')
         plt.clf()
@@ -218,7 +238,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, mod_fit_HaN2(_ll)+lc)
 
 
-	# ** Fitting Hb
+    # ** Fitting Hb
 
     # Parameters
     name = ['4861', '4340']
@@ -253,11 +273,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_HbHg['4340'].flux.max = mod_fit_HaN2['6563'].flux / 5.5
     
     # Fit
-    fitter = fitting.LevMarLSQFitter()
-    mod_fit_HbHg = fitter(mod_init_HbHg, _ll, f_res-lc, weights=f_err, maxiter=500)
+    mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, lc, f_res, f_err)
 
     if debug:
-        print ('Hb', fitter.fit_info['message'])
         import matplotlib.pyplot as plt
         plt.figure('fit2')
         plt.clf()
@@ -286,11 +304,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_O3['4959'].vd.tied = lambda m: m['5007'].vd
 
     # Fit
-    fitter = fitting.LevMarLSQFitter()
-    mod_fit_O3 = fitter(mod_init_O3, _ll, f_res-lc, weights=f_err, maxiter=500)
+    mod_fit_O3, _flag = do_fit(mod_init_O3, _ll, lc, f_res, f_err)
 
     if debug:
-        print ('O3', fitter.fit_info['message'])
         import matplotlib.pyplot as plt
         plt.figure('fit3')
         plt.clf()

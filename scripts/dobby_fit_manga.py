@@ -59,6 +59,8 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
+log.setLevel('DEBUG')
+
 args = parse_args()
 log.info('Loading cube %s.' % args.cubeIn[0])
 c = FitsCube(args.cubeIn[0])
@@ -115,7 +117,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     
                 if not (path.exists(outfile)):
                 
-                    log.info('Fitting pixel %d-%d' % (iy, ix))
+                    log.info('Fitting pixel [%d, %d]' % (iy, ix))
     
                     # Modelling the gaussian
                     el = fit_strong_lines(ll, f_res[..., iy, ix], c.f_syn[..., iy, ix], c.f_err[..., iy, ix], vd_inst = vd_inst,
