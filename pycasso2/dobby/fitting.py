@@ -274,6 +274,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     
     # Fit
     mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, lc, f_res, f_err)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag 
 
     if debug:
         import matplotlib.pyplot as plt
@@ -305,6 +307,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     # Fit
     mod_fit_O3, _flag = do_fit(mod_init_O3, _ll, lc, f_res, f_err)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag 
 
     if debug:
         import matplotlib.pyplot as plt

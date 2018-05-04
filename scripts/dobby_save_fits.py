@@ -151,6 +151,7 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
     El_F     = np.zeros((Ne, Ny, Nx))
     El_v0    = np.zeros((Ne, Ny, Nx))
     El_vd    = np.zeros((Ne, Ny, Nx))
+    El_flag  = np.zeros((Ne, Ny, Nx), dtype='int32')
     El_EW    = np.zeros((Ne, Ny, Nx))
     El_lcrms = np.zeros((Ne, Ny, Nx))
     El_vdins = np.zeros((Ne, Ny, Nx))
@@ -180,6 +181,7 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
                             El_F [il, iy, ix]    = f['elines']['El_F'    ][flag_line]
                             El_v0[il, iy, ix]    = f['elines']['El_v0'   ][flag_line]
                             El_vd[il, iy, ix]    = f['elines']['El_vd'   ][flag_line]
+                            El_flag[il, iy, ix]  = f['elines']['El_flag' ][flag_line]
                             El_EW[il, iy, ix]    = f['elines']['El_EW'   ][flag_line]
                             El_vdins[il, iy, ix] = f['elines']['El_vdins'][flag_line]
                             El_lcrms[il, iy, ix] = f['elines']['El_lcrms'][flag_line]
@@ -201,6 +203,7 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
     c._addExtension('El_F',     data=El_F,     wcstype='image',   overwrite=True)
     c._addExtension('El_v0',    data=El_v0,    wcstype='image',   overwrite=True)
     c._addExtension('El_vd',    data=El_vd,    wcstype='image',   overwrite=True)
+    c._addExtension('El_flag',  data=El_flag,  wcstype='image',   overwrite=True)
     c._addExtension('El_EW',    data=El_EW,    wcstype='image',   overwrite=True)
     c._addExtension('El_lcrms', data=El_lcrms, wcstype='image',   overwrite=True)
     c._addExtension('El_vdins', data=El_vdins, wcstype='image',   overwrite=True)

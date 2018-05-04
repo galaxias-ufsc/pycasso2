@@ -41,6 +41,7 @@ def summary_elines(el):
         El_vd.extend( [ model[submodel].vd.value   for submodel in model.submodel_names ] )
 
     # And now get info from extra dictionary (outside astropy model)
+    El_flag  = [el_extra[l]['flag']     for l in El_l]
     El_EW    = [el_extra[l]['EW']       for l in El_l]
     El_line  = [el_extra[l]['linename'] for l in El_l]
     El_vdins = [el_extra[l]['vd_inst']  for l in El_l]
@@ -54,6 +55,7 @@ def summary_elines(el):
     El_F     = replace_nan_inf_by_minus999( np.array(El_F)     )
     El_v0    = replace_nan_inf_by_minus999( np.array(El_v0)    )
     El_vd    = replace_nan_inf_by_minus999( np.array(El_vd)    )
+    El_flag  = replace_nan_inf_by_minus999( np.array(El_flag)  )
     El_EW    = replace_nan_inf_by_minus999( np.array(El_EW)    )
     El_vdins = replace_nan_inf_by_minus999( np.array(El_vdins) )
     El_lcrms = replace_nan_inf_by_minus999( np.array(El_lcrms) )
@@ -65,6 +67,7 @@ def summary_elines(el):
                       "El_F"     : El_F     ,
                       "El_v0"    : El_v0    ,
                       "El_vd"    : El_vd    ,
+                      "El_flag"  : El_flag  ,
                       "El_EW"    : El_EW    ,
                       "El_lcrms" : El_lcrms ,
                       "El_vdins" : El_vdins ,
@@ -173,13 +176,14 @@ def plot_el(ll, f_res, el, ifig = 1):
     ax2 = plt.subplot(gs[1, 0])
     #flag = (ll >= 4900) & (ll < 5100)
     lc = el_extra[mod_fit_O3.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O3.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
     plt.plot(ll[flag], mod_fit_O3(ll[flag]) + lc[flag], 'r', label = 'Fit')
     m[flag] = mod_fit_O3(ll[flag]) + lc[flag]
     for i, name in enumerate(mod_fit_O3.submodel_names):
-        ax2.text(0.99, 0.50 + i*0.45, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$' 
-                 % (name, mod_fit_O3[name].v0.value, mod_fit_O3[name].vd.value, mod_fit_O3[name].flux.value / FHa),
+        ax2.text(0.99, 0.50 + i*0.45, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
+                 % (name, mod_fit_O3[name].v0.value, mod_fit_O3[name].vd.value, mod_fit_O3[name].flux.value / FHa, good_fit),
                  horizontalalignment='right',
                  verticalalignment='top',
                  transform=ax2.transAxes)
@@ -188,11 +192,12 @@ def plot_el(ll, f_res, el, ifig = 1):
     ax3 = plt.subplot(gs[1, 1])
     #flag = (ll >= 4750) & (ll < 4950)
     lc = el_extra[mod_fit_HbHg.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_HbHg.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
     plt.plot(ll[flag], mod_fit_HbHg(ll[flag]) + lc[flag], 'r', label = 'Fit')
-    ax3.text(0.99, 0.95, '$\lambda_0 = 4861$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$' 
-             % (mod_fit_HbHg['4861'].v0.value, mod_fit_HbHg['4861'].vd.value, mod_fit_HbHg['4861'].flux.value / FHa),
+    ax3.text(0.99, 0.95, '$\lambda_0 = 4861$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
+             % (mod_fit_HbHg['4861'].v0.value, mod_fit_HbHg['4861'].vd.value, mod_fit_HbHg['4861'].flux.value / FHa, good_fit),
              horizontalalignment='right',
              verticalalignment='top',
              transform=ax3.transAxes)
@@ -207,6 +212,7 @@ def plot_el(ll, f_res, el, ifig = 1):
     ax4 = plt.subplot(gs[1, 2])
     #flag = (ll >= 6500) & (ll < 6600)
     lc = el_extra[mod_fit_HaN2.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_HaN2.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
     plt.plot(ll[flag], mod_fit_HaN2(ll[flag]) + lc[flag], 'r', label = 'Fit')
@@ -215,8 +221,8 @@ def plot_el(ll, f_res, el, ifig = 1):
         xlab, ylab = 0.99, 0.55 + (i-1)*0.40
         if name == '6563':
             xlab, ylab = 0.50, 0.95
-        ax4.text(xlab, ylab, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$' 
-                 % (name, mod_fit_HaN2[name].v0.value, mod_fit_HaN2[name].vd.value, mod_fit_HaN2[name].flux.value / FHa),
+        ax4.text(xlab, ylab, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
+                 % (name, mod_fit_HaN2[name].v0.value, mod_fit_HaN2[name].vd.value, mod_fit_HaN2[name].flux.value / FHa, good_fit),
                  horizontalalignment='right',
                  verticalalignment='top',
                  transform=ax4.transAxes)
