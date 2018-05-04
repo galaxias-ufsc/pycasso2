@@ -50,7 +50,19 @@ class FitsCube(object):
     
     _ext_integ_spectra = 'integ_spectra'
     _ext_integ_pop = 'integ_population'
-
+    
+    _ext_el_info = 'EL_INFO'
+    _ext_el_flux = 'EL_F'
+    _ext_el_flag = 'EL_FLAG'   
+    _ext_el_ew = 'EL_EW'   
+    _ext_el_v_0 = 'EL_V0'   
+    _ext_el_v_d = 'EL_VD'   
+    _ext_el_v_d_inst = 'EL_VDINS'   
+    _ext_el_lc = 'EL_LC'   
+    _ext_el_lc_rms = 'EL_LCRMS'   
+    _ext_el_integ = 'EL_INTEG'   
+    _ext_el_integ_lc = 'EL_INTEG_LC'   
+    
     _h_lum_dist_Mpc = 'PYCASSO LUM_DIST_MPC'
     _h_redshift = 'PYCASSO REDSHIFT'
     _h_flux_unit = 'PYCASSO FLUX_UNIT'
@@ -886,3 +898,85 @@ class FitsCube(object):
         logZ = np.log10(self.popZ_base / 0.019)
         return (self.integ_popmu_cor * logZ).sum() / self.integ_popmu_cor.sum()
 
+    @lazyproperty
+    def EL_info(self):
+        return self._getTableExtensionData(self._ext_el_info)
+    
+    @lazyproperty
+    def EL_names(self):
+        return list(self.EL_info['name'])
+        
+    @lazyproperty
+    def _EL_name_map(self):
+        return {k: i for i, k in enumerate(self.EL_names)}
+    
+    @lazyproperty
+    def _EL_flux(self):
+        return self._getSynthExtension(self._ext_el_flux)
+
+    @lazyproperty
+    def _EL_flag(self):
+        return self._getSynthExtension(self._ext_el_flag)
+
+    @lazyproperty
+    def _EL_EW(self):
+        return self._getSynthExtension(self._ext_el_ew)
+
+    @lazyproperty
+    def _EL_v_0(self):
+        return self._getSynthExtension(self._ext_el_v_0)
+
+    @lazyproperty
+    def _EL_v_d(self):
+        return self._getSynthExtension(self._ext_el_v_d)
+
+    @lazyproperty
+    def _EL_v_d_inst(self):
+        return self._getSynthExtension(self._ext_el_v_d_inst)
+
+    @lazyproperty
+    def _EL_continuum_RMS(self):
+        return self._getSynthExtension(self._ext_el_lc_rms)
+
+    @lazyproperty
+    def EL_continuum(self):
+        return self._getSynthExtension(self._ext_el_lc)
+
+    def _getELProperty(self, line, prop):
+        if not line in self._EL_name_map:
+            raise Exception('Emission line not found: %s' % line)
+        i = self._EL_name_map[line]
+        return np.ma.masked_where(self._EL_flag[i] > 0, prop[i])
+        
+    def EL_flux(self, line):
+        return self._getELProperty(line, self._EL_flux)
+    
+    def EL_EW(self, line):
+        return self._getELProperty(line, self._EL_EW)
+    
+    def EL_v_0(self, line):
+        return self._getELProperty(line, self._EL_v_0)
+    
+    def EL_v_d(self, line):
+        return self._getELProperty(line, self._EL_v_d)
+    
+    def EL_v_d_inst(self, line):
+        return self._getELProperty(line, self._EL_v_d_inst)
+    
+    def EL_continuum_RMS(self, line):
+        return self._getELProperty(line, self._EL_continuum_RMS)
+    
+    @lazyproperty
+    def _EL_integ(self):
+        t = self._getTableExtensionData(self._ext_el_integ)
+        return np.array(t)
+
+    def EL_integ(self, line):
+        return self._getELProperty(line, self._EL_integ)
+
+    @lazyproperty
+    def EL_integ_continuum(self):
+        t = self._getTableExtensionData(self._ext_el_integ_lc)
+        return np.array(t['total_lc'])  
+
+            
