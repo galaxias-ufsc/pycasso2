@@ -163,7 +163,7 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
     for iy in iys:
         for ix in ixs:
     
-            if (c.SN_normwin[iy, ix] > 3):
+            if (not c.synthImageMask[iy, ix]):
     
                 name = suffix + '.' + name_template % (iy, ix)
                 filename = path.join(el_dir, '%s.hdf5' % name)
