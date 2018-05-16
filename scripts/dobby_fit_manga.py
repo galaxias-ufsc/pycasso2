@@ -133,13 +133,15 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     # Fit integrated spectrum
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
     name = suffix + '.' + 'integ'
-    el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = vd_inst,
-                           kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
-                           saveAll = True, outname = name, outdir = tmpdir, overwrite = True)
-    if args.debug:
-        # Plot integrate spectrum
-        fig = plot_el(ll, integ_f_res, el, ifig = 0)
-        fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
+    outfile = path.join(tmpdir, '%s.hdf5' % name)
+    if not path.exists(outfile):
+        el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = vd_inst,
+                               kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                               saveAll = True, outname = name, outdir = tmpdir, overwrite = True)
+        if args.debug:
+            # Plot integrate spectrum
+            fig = plot_el(ll, integ_f_res, el, ifig = 0)
+            fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
     
 
         
