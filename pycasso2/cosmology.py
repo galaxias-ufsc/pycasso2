@@ -30,6 +30,12 @@ def redshift2lum_distance(z, simple=False):
     return float(dl)
 
 
+def get_angular_distance(z, angle_rad):
+    cosmo = FlatLambdaCDM(H0, omega0)
+    ds = cosmo.angular_diameter_distance(z) * angle_rad
+    return float(ds / u.pc)
+
+
 def velocity2redshift(v):
     return v / c
 

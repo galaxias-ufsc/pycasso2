@@ -6,6 +6,7 @@ Created on 22/06/2015
 
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, write_WCS, get_reference_pixel
 from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Naxis
+from .cosmology import get_angular_distance
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .starlight.io import pop_table_dtype, spec_table_dtype
@@ -496,9 +497,8 @@ class FitsCube(object):
 
     @lazyproperty
     def pixelScale_pc(self):
-        lum_dist_pc = self.lumDistMpc * 1e6
         angle = get_pixel_scale_rad(self._wcs)
-        return angle * lum_dist_pc
+        return get_angular_distance(self.redshift, angle)
 
     @lazyproperty
     def HLR(self):
