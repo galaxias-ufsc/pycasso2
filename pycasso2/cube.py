@@ -907,8 +907,16 @@ class FitsCube(object):
         return list(self.EL_info['name'])
         
     @lazyproperty
+    def EL_lambda(self):
+        return list(self.EL_info['lambda'])
+        
+    @lazyproperty
     def _EL_name_map(self):
         return {k: i for i, k in enumerate(self.EL_names)}
+    
+    @lazyproperty
+    def _EL_id_map(self):
+        return {k: i for i, k in enumerate(self.EL_lambda)}
     
     @lazyproperty
     def _EL_flux(self):
@@ -943,9 +951,15 @@ class FitsCube(object):
         return self._getSynthExtension(self._ext_el_lc)
 
     def _getELProperty(self, line, prop):
-        if not line in self._EL_name_map:
+        if type(line) is str:
+            line_map = self._EL_name_map
+        elif type(line) is int:
+            line_map = self._EL_id_map
+        else:
+            raise ValueError('Line id must be integer or string')
+        if not line in line_map:
             raise Exception('Emission line not found: %s' % line)
-        i = self._EL_name_map[line]
+        i = line_map[line]
         return np.ma.masked_where(self._EL_flag[i] > 0, prop[i])
         
     def EL_flux(self, line):
