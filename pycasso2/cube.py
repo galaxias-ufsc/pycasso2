@@ -520,26 +520,33 @@ class FitsCube(object):
     @lazyproperty
     def Lobs_norm(self):
         return self._getSynthExtension('LOBS_NORM')
+    
+    @property
+    def l_norm(self):
+        if not self.hasSynthesis:
+            raise Exception('Cube does not have synthesis data.')
+        return self.synthKeywords['l_norm']
+
+    @property
+    def dl_norm(self):
+        if not self.hasSynthesis:
+            raise Exception('Cube does not have synthesis data.')
+        return self.synthKeywords['lupp_norm'] - self.synthKeywords['llow_norm']
+
+    def statFluxWindow(self, flux, ll, dl):
+        l1, l2 = find_nearest_index(self.l_obs, [ll - dl, ll + dl])
+        y = modeling.cube_continuum(self.l_obs[l1:l2], flux[l1:l2], degr=1, niterate=0)
+        return np.mean(y, axis=0), np.std(flux[l1:l2] - y, axis=0)
 
     @lazyproperty
     def flux_norm_window(self):
-        norm_lambda = 5635.0
-        delta_l = 45.0
-        l1, l2 = find_nearest_index(
-            self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
-        y = modeling.cube_continuum(
-            self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)
-        return np.mean(y, axis=0)
+        flux, _ = self.statFluxWindow(self.f_obs, self.l_norm, self.dl_norm)
+        return flux
 
     @lazyproperty
     def noise_norm_window(self):
-        norm_lambda = 5635.0
-        delta_l = 45.0
-        l1, l2 = find_nearest_index(
-            self.l_obs, [norm_lambda - delta_l, norm_lambda + delta_l])
-        y = modeling.cube_continuum(
-            self.l_obs[l1:l2], self.f_obs[l1:l2], degr=1, niterate=0)
-        return np.std(self.f_obs[l1:l2] - y, axis=0)
+        _, noise = self.statFluxWindow(self.f_obs, self.l_norm, self.dl_norm)
+        return noise
 
     @property
     def McorSD(self):
