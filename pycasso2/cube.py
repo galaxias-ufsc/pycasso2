@@ -930,32 +930,36 @@ class FitsCube(object):
         return {k: i for i, k in enumerate(self.EL_lambda)}
     
     @lazyproperty
-    def _EL_flux(self):
-        return self._getSynthExtension(self._ext_el_flux)
-
-    @lazyproperty
     def _EL_flag(self):
         return self._getSynthExtension(self._ext_el_flag)
 
+    def _getELExtension(self, name):
+        data = self._getSynthExtension(name)
+        return np.ma.masked_where(self._EL_flag > 0, data)
+
+    @lazyproperty
+    def _EL_flux(self):
+        return self._getELExtension(self._ext_el_flux)
+
     @lazyproperty
     def _EL_EW(self):
-        return self._getSynthExtension(self._ext_el_ew)
+        return self._getELExtension(self._ext_el_ew)
 
     @lazyproperty
     def _EL_v_0(self):
-        return self._getSynthExtension(self._ext_el_v_0)
+        return self._getELExtension(self._ext_el_v_0)
 
     @lazyproperty
     def _EL_v_d(self):
-        return self._getSynthExtension(self._ext_el_v_d)
+        return self._getELExtension(self._ext_el_v_d)
 
     @lazyproperty
     def _EL_v_d_inst(self):
-        return self._getSynthExtension(self._ext_el_v_d_inst)
+        return self._getELExtension(self._ext_el_v_d_inst)
 
     @lazyproperty
     def _EL_continuum_RMS(self):
-        return self._getSynthExtension(self._ext_el_lc_rms)
+        return self._getELExtension(self._ext_el_lc_rms)
 
     @lazyproperty
     def EL_continuum(self):
@@ -971,7 +975,7 @@ class FitsCube(object):
         if not line in line_map:
             raise Exception('Emission line not found: %s' % line)
         i = line_map[line]
-        return np.ma.masked_where(self._EL_flag[i] > 0, prop[i])
+        return prop[i]
         
     def EL_flux(self, line):
         return self._getELProperty(line, self._EL_flux)
@@ -994,7 +998,8 @@ class FitsCube(object):
     @lazyproperty
     def _EL_integ(self):
         t = self._getTableExtensionData(self._ext_el_integ)
-        return np.array(t)
+        data = np.array(t)
+        return np.ma.masked_where(data['El_flag'] > 0, data)
 
     def EL_integ(self, line):
         return self._getELProperty(line, self._EL_integ)
