@@ -777,12 +777,14 @@ class FitsCube(object):
     @lazyproperty
     def integ_f_obs(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
-        return t['f_obs']
+        flagged = (self.integ_f_flag & flags.no_obs) > 0
+        return np.ma.masked_where(flagged, t['f_obs'])
     
     @lazyproperty
     def integ_f_err(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
-        return t['f_err']
+        flagged = (self.integ_f_flag & flags.no_obs) > 0
+        return np.ma.masked_where(flagged, t['f_err'])
     
     @lazyproperty
     def integ_f_flag(self):
@@ -792,12 +794,14 @@ class FitsCube(object):
     @lazyproperty
     def integ_f_syn(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
-        return t['f_syn']
+        flagged = (self.f_flag & flags.no_starlight) > 0
+        return np.ma.masked_where(flagged, t['f_syn'])
     
     @lazyproperty
     def integ_f_wei(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
-        return t['f_wei']
+        flagged = (self.f_flag & flags.no_starlight) > 0
+        return np.ma.masked_where(flagged, t['f_wei'])
     
     @lazyproperty
     def integ_popx(self):
