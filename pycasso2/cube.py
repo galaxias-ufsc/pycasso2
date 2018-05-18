@@ -794,7 +794,7 @@ class FitsCube(object):
     @lazyproperty
     def integ_f_syn(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
-        flagged = (self.f_flag & flags.no_starlight) > 0
+        flagged = (self.integ_f_flag & flags.no_starlight) > 0
         return np.ma.masked_where(flagged, t['f_syn'])
     
     @lazyproperty
