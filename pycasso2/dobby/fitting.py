@@ -117,11 +117,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         else:
             raise Exception('Check vd_inst, must be a scalar a dictionary: %s' % vd_inst)
 
-    def do_fit(model, ll, lc, flux, err, min_good_points=20):
+    def do_fit(model, ll, lc, flux, err, min_good_fraction=.5):
         fitter = fitting.LevMarLSQFitter()
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
-        if good.sum() < min_good_points:
-            log.warn('Too few data points for fitting, flagging model.')
+        good_fraction = good.sum() / lc.count()
+        if good_fraction < min_good_fraction:
+            log.warn('Too few data points for fitting (%.1f %%), flagging model.' % (good_fraction * 100.0))
             return model.copy(), flags.no_data
         fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=err[good]**-1, maxiter=500)
         flag = interpret_fit_result(fitter.fit_info)
