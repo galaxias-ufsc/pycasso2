@@ -774,6 +774,19 @@ class FitsCube(object):
                 index_id, self.l_obs, flux, error=None)
             return idx
 
+    def integLickIndex(self, index_id, calc_error=False):
+        if self.hasSynthesis:
+            flux = self.integ_f_syn
+        else:
+            log.warn('Synthetic spectra not found, calculating Lick index on observed spectra.')
+            flux = self.integ_f_obs
+        if calc_error:
+            return get_Lick_index(index_id, self.l_obs, flux, self.f_err)
+        else:
+            idx, _ = get_Lick_index(
+                index_id, self.l_obs, flux, error=None)
+            return idx
+
     @lazyproperty
     def integ_f_obs(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
