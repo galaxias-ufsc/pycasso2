@@ -30,8 +30,10 @@ def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = Tru
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
 
     # Get the blue and red continuum median
-    blue_median = np.ma.median(_f_res[(_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])])
-    red_median  = np.ma.median(_f_res[(_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])])
+    flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
+    flag_red  = (_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    blue_median = np.ma.median(_f_res[flag_blue])
+    red_median  = np.ma.median(_f_res[flag_red ])
 
     # Deal with completely masked windows
     if np.ma.is_masked(blue_median):
@@ -51,6 +53,8 @@ def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = Tru
     flag_cont = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
     local_cont = a * _ll + b
 
+    flag_windows = (flag_blue) | (flag_red)
+    
     if debug:
         import matplotlib.pyplot as plt
         plt.figure('fit2')
@@ -61,7 +65,7 @@ def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = Tru
         plt.plot(central_lambda, a*central_lambda + b, 'xk')
         
     if return_continuum:
-        return local_cont, flag_cont
+        return local_cont, flag_cont, flag_windows
     else:
         return a, b, central_lambda
 
@@ -148,9 +152,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask = True
 
     # Continuum only for Ha
-    l, f = local_continuum(_ll, _f_res, '6563', lines_windows)
+    l, f, fw = local_continuum(_ll, _f_res, '6563', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[f])
+    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
     name     = ['6563',   '6548',      '6584']
     linename = ['Halpha', '[NII]6548', '[NII]6584' ]
     for n, ln in zip(name, linename):
@@ -162,9 +166,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask[fc] = False
 
     # Continuum for Hb
-    l, f = local_continuum(_ll, _f_res, '4861', lines_windows)
+    l, f, fw = local_continuum(_ll, _f_res, '4861', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[f])
+    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
     name     = ['4861'  ]
     linename = ['Hbeta' ]
     for n, ln in zip(name, linename):
@@ -176,9 +180,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask[fc] = False
         
     # Continuum for Hg
-    l, f = local_continuum(_ll, _f_res, '4340', lines_windows)
+    l, f, fw = local_continuum(_ll, _f_res, '4340', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[f])
+    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
     name     = ['4340'   ]
     linename = ['Hgamma' ]
     for n, ln in zip(name, linename):
@@ -190,9 +194,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask[fc] = False
         
     # Continuum only for 5007
-    l, f = local_continuum(_ll, _f_res, '5007', lines_windows)
+    l, f, fw = local_continuum(_ll, _f_res, '5007', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[f])
+    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
     name     = ['4959',       '5007']
     linename = ['[OIII]4959', '[OIII]5007']
     for n, ln in zip(name, linename):
