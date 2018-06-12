@@ -541,7 +541,7 @@ def radial_profile_exact(prop, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, mod
         masked = np.ma.getmaskarray(prop)
         prop = prop.filled(0.0)
     else:
-        masked = np.ones_like(prop, dtype='bool')
+        masked = np.zeros_like(prop, dtype='bool')
 
     ryx, _ = get_aperture_mask(shape, x0, y0, pa, ba, tuple(bin_r), rad_scale)
     ryx[:, masked] = 0.0
