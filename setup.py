@@ -25,6 +25,7 @@ setup(
               'pycasso2.external.photutils',
               'pycasso2.importer',
               'pycasso2.legacy',
+              'pycasso2.resampling',
               'pycasso2.starlight',
               ],
     ext_modules=cythonize(ext_modules),
