@@ -111,8 +111,7 @@ def write_input(l_obs, f_obs, f_err, f_flag, filename):
 def read_base(basefile, basedir='', read_spectra=False):
     from astropy.io import ascii
     colnames = ['sspfile', 'age_base', 'Z_base', 'component', 'Mstars', 'YA_V', 'aFe']
-    bt = ascii.read(basefile, names=colnames, data_start=1,
-                    Reader=ascii.NoHeader, guess=False)
+    bt = read_base_file(basefile)
 
     if not read_spectra:
         return bt
@@ -125,6 +124,18 @@ def read_base(basefile, basedir='', read_spectra=False):
                            Reader=ascii.CommentedHeader, guess=False)
             f.append(t['flux'])
         return bt, np.array(t['wl']), np.vstack(f)
+
+
+def read_base_file(basefile):
+    with open(basefile, 'rt') as f:
+        data = [l.split() for l in f.read().splitlines()]
+    Nbase = int(data[0][0])
+    names = ['sspfile', 'age_base', 'Z_base', 'component', 'Mstars', 'YA_V', 'aFe']
+    dt = ['|S128', 'float32', 'float32', '|S128', 'float32', 'float32', 'float32']
+    t = Table(names=names, dtype=dt)
+    for i in range(1, Nbase + 1):
+        t.add_row(data[i])
+    return t
 
 
 def read_output_tables(filename, read_chains=False):
