@@ -11,6 +11,7 @@ from .io import read_base
 from os import path
 from tables import open_file, IsDescription, StringCol, Float64Col, Int32Col
 import numpy as np
+from pycasso2.resampling.core import find_nearest_index
 
 ###############################################################################
 
@@ -144,27 +145,42 @@ class StarlightBase(object):
 
 
     def f_syn(self, popx, v_0, v_d, A_V, redlaw='CCM', nproc=None):
+        A_V = np.ones_like(popx) * A_V
         if popx.ndim == 1:
             popx = popx[:, np.newaxis]
+            A_V = A_V[:, np.newaxis]
             v_0 = np.array([v_0])
             v_d = np.array([v_d])
-            A_V = np.array([A_V])
         spatial_shape = popx.shape[1:]
         popx = popx.reshape(self.nBase, -1)
-        A_V = A_V.ravel()
+        A_V = A_V.reshape(self.nBase, -1)
         v_0 = v_0.ravel()
         v_d = v_d.ravel()
         popx = popx / 100.0
-        f_syn = np.tensordot(self.f_ssp, popx, (0, 0))
+
         q = calc_redlaw(self.l_obs, redlaw)
         q_norm = calc_redlaw([self._l_norm], redlaw)
         q -= q_norm
-        redfactor = np.power(10.0, -0.4 * q[:, np.newaxis] * A_V)
-        f_syn *= redfactor
+        redfactor = np.power(10.0, -0.4 * q[:, np.newaxis, np.newaxis] * A_V)
+
+        f_ssp = self.f_ssp.T[..., np.newaxis] * redfactor
+        f_syn = (f_ssp * popx).sum(axis=1)
+
         f_syn = apply_kinematics(self.l_obs, f_syn, v_0, v_d, nproc=nproc)
         f_syn.shape = (len(self.l_obs),) + spatial_shape
         return np.squeeze(f_syn) 
     
+
+    def QH0(self):
+        lim = find_nearest_index(self._l_ssp, 912.0)
+        K_Lsun_hc = (3.826 / (6.626 * 2.997925)) * 1.e2
+        s =  np.trapz(self._f_ssp[:, :lim], self._l_ssp[:lim], axis=1)
+        return s * K_Lsun_hc
+    
+    def Q2Lnorm40(self, popx, A_V, redlaw='CCM'):
+        q_norm = calc_redlaw([self._l_norm], redlaw)
+        redfactor = np.power(10.0, -0.4 * q_norm * A_V)
+        return self.QH0() / self.fbase_norm * popx * 10**redfactor
 
     def popmu_ini(self, popx, A_V, redlaw='CCM'):
         raise NotImplementedError('mass stuff not implemented.')
