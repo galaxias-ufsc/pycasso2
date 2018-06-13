@@ -236,6 +236,7 @@ def CCC_RedLaw(l, R_V=None):
 
 
 def calc_redlaw(l, redlaw, R_V=None):
+    l = np.atleast_1d(l)
     if redlaw == 'CCM':
         return Cardelli_RedLaw(l, R_V)
     elif redlaw == 'CAL':
