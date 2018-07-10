@@ -155,12 +155,14 @@ syn_keyword_list = ['arq_config', 'N_chains', 'l_norm', 'q_norm',
 for k in syn_keyword_list:
     g._header['HIERARCH STARLIGHT ' + k] = header['SYN ' + k.upper()]
 
-g.integ_f_obs[:] = f['integrated_f_obs'].data
-g.integ_f_err[:] = f['integrated_f_err'].data
-g.integ_f_syn[:] = f['integrated_f_syn'].data
-g.integ_f_wei[:] = f['integrated_f_wei'].data
-g.integ_f_flag |= np.where(g.integ_f_wei == -1.0, flags.starlight_clipped, 0)
-g.integ_f_flag |= np.where(g.integ_f_wei == 0.0, flags.starlight_masked, 0)
+t = g._getTableExtensionData(g._ext_integ_spectra)
+t['f_obs'] = f['integrated_f_obs'].data
+t['f_err'] = f['integrated_f_err'].data
+t['f_syn'] = f['integrated_f_syn'].data
+t['f_wei'] = f['integrated_f_wei'].data
+t['f_flag'] = np.where(f['integrated_f_flag'].data > 1.0, flags.no_data, 0)
+t['f_flag'] |= np.where(g.integ_f_wei == -1.0, flags.starlight_clipped, 0)
+t['f_flag'] |= np.where(g.integ_f_wei == 0.0, flags.starlight_masked, 0)
 
 g.integ_popx[:] = f['integrated_popx'].data.T.ravel()
 g.integ_popmu_ini[:] = f['integrated_popmu_ini'].data.T.ravel()
