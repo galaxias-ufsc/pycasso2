@@ -134,8 +134,15 @@ def save_fits_test(c, galname, outdir, el_dir, name_template, balLim=True, kinTi
 def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model):
 
     # Get the dimensions
-    Nl, Ny, Nx = c.f_obs.shape
+    if c.hasSegmentationMask:
+        Ny = c.Nzone
+        Nx = 1
+    else:
+        Ny = c.Ny
+        Nx = c.Nx
+
     ll = c.l_obs
+    Nl = len(ll)
 
     # Read the integrated spectra to find the emission lines fitted
     name = suffix + '.' + 'integ'
@@ -163,28 +170,28 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
     for iy in iys:
         for ix in ixs:
     
-            if (not c.synthImageMask[iy, ix]):
-    
-                name = suffix + '.' + name_template % (iy, ix)
-                filename = path.join(el_dir, '%s.hdf5' % name)
+            if not c.hasSegmentationMask and c.synthImageMask[iy, ix]:
+                continue
+            name = suffix + '.' + name_template % (iy, ix)
+            filename = path.join(el_dir, '%s.hdf5' % name)
 
-                if (path.exists(filename)):
-                    
-                    print ('Reading pixel ', iy, ix)
-                            
-                    with h5py.File(filename, 'r') as f:
-        
-                        El_lc[:, iy, ix] = f['spec']['total_lc']
+            if (path.exists(filename)):
+                
+                print ('Reading pixel ', iy, ix)
                         
-                        for il, l in enumerate(El_lambda):
-                            flag_line = (f['elines']['lambda'] == l)
-                            El_F [il, iy, ix]    = f['elines']['El_F'    ][flag_line]
-                            El_v0[il, iy, ix]    = f['elines']['El_v0'   ][flag_line]
-                            El_vd[il, iy, ix]    = f['elines']['El_vd'   ][flag_line]
-                            El_flag[il, iy, ix]  = f['elines']['El_flag' ][flag_line]
-                            El_EW[il, iy, ix]    = f['elines']['El_EW'   ][flag_line]
-                            El_vdins[il, iy, ix] = f['elines']['El_vdins'][flag_line]
-                            El_lcrms[il, iy, ix] = f['elines']['El_lcrms'][flag_line]
+                with h5py.File(filename, 'r') as f:
+    
+                    El_lc[:, iy, ix] = f['spec']['total_lc']
+                    
+                    for il, l in enumerate(El_lambda):
+                        flag_line = (f['elines']['lambda'] == l)
+                        El_F [il, iy, ix]    = f['elines']['El_F'    ][flag_line]
+                        El_v0[il, iy, ix]    = f['elines']['El_v0'   ][flag_line]
+                        El_vd[il, iy, ix]    = f['elines']['El_vd'   ][flag_line]
+                        El_flag[il, iy, ix]  = f['elines']['El_flag' ][flag_line]
+                        El_EW[il, iy, ix]    = f['elines']['El_EW'   ][flag_line]
+                        El_vdins[il, iy, ix] = f['elines']['El_vdins'][flag_line]
+                        El_lcrms[il, iy, ix] = f['elines']['El_lcrms'][flag_line]
                             
     # Save info about each emission line
     aux = { 'lambda': El_lambda,
@@ -198,6 +205,16 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
     El_info = Table(aux)
     El_info.convert_unicode_to_bytestring()
     c._addTableExtension('El_info', data=El_info, overwrite=True)
+    
+    if c.hasSegmentationMask:
+        El_F = np.squeeze(El_F).T
+        El_v0 = np.squeeze(El_v0).T
+        El_vd = np.squeeze(El_vd).T
+        El_flag = np.squeeze(El_flag).T
+        El_EW = np.squeeze(El_EW).T
+        El_lcrms = np.squeeze(El_lcrms).T
+        El_vdins = np.squeeze(El_vdins).T
+        El_lc = np.squeeze(El_lc).T
     
     # Save fluxes, EWs, etc
     c._addExtension('El_F',     data=El_F,     wcstype='image',   overwrite=True)
