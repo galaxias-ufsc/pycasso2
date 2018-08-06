@@ -13,8 +13,8 @@ def summary_elines(el):
     Save emission line info to an easy-to-use array.
     '''
 
-    mod_fit_HaN2, mod_fit_HbHg, mod_fit_O3, el_extra = el
-    el = mod_fit_HaN2, mod_fit_HbHg, mod_fit_O3
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2
     
     N_models = len(el)
 
@@ -156,14 +156,14 @@ def plot_el_starlight(ts, el, save = False):
     
 def plot_el(ll, f_res, el, ifig = 1):
     import matplotlib
-    matplotlib.use('pdf')
+    #++matplotlib.use('pdf')
     import matplotlib.pyplot as plt
     from matplotlib import gridspec
     
     fig = plt.figure(ifig, figsize=(12,6))
     gs = gridspec.GridSpec(2, 3)
 
-    mod_fit_HaN2, mod_fit_HbHg, mod_fit_O3, el_extra = el
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
 
     # Start full spectrum
     m = np.full_like(ll, np.nan)
@@ -227,7 +227,18 @@ def plot_el(ll, f_res, el, ifig = 1):
                  verticalalignment='top',
                  transform=ax4.transAxes)
 
+    # Plot [OII]
+    lc = el_extra[mod_fit_O2.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O2.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_O2(ll[flag]) + lc[flag]
         
+    # Plot [SII]
+    lc = el_extra[mod_fit_S2.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_S2.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_S2(ll[flag]) + lc[flag]
+    
     # Plot the full spectrum
     ax1 = plt.subplot(gs[0, :])
     plt.plot(ll, f_res, 'k', label = 'Residual', drawstyle = 'steps-mid')

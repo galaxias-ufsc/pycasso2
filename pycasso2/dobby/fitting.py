@@ -193,7 +193,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
         
-    # Continuum only for 5007
+    # Continuum only for [OIII]5007
     l, f, fw = local_continuum(_ll, _f_res, '5007', lines_windows)
     lc = np.ma.masked_array(l, mask=~f)
     lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
@@ -207,6 +207,34 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
 
+    # Continuum only for [OII]3726
+    l, f, fw = local_continuum(_ll, _f_res, '3726', lines_windows)
+    lc = np.ma.masked_array(l, mask=~f)
+    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    name     = ['3726'     , '3729'      ]
+    linename = ['[OII]3726', '[OII]3729' ]
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+    
+    # Continuum only for [SII]6716
+    l, f, fw = local_continuum(_ll, _f_res, '6716', lines_windows)
+    lc = np.ma.masked_array(l, mask=~f)
+    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    name     = ['6716'     , '6731'      ]
+    linename = ['[SII]6716', '[SII]6731' ]
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+    
     el_extra['total_lc'] = total_lc
 
     # ** Fitting Ha and [NII]
@@ -243,7 +271,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, mod_fit_HaN2(_ll)+lc)
 
 
-    # ** Fitting Hb
+    # ** Fitting Hb and Hg
 
     # Parameters
     name = ['4861', '4340']
@@ -322,9 +350,75 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O3(_ll)+lc)
 
+        
+    # ** Fitting [OII]
+
+    # Parameters
+    name = ['3726', '3729']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    mod_init_O2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+
+    # Ties
+    if kinematic_ties_on:
+        mod_init_O2['3726'].v0.tied = lambda m: m['3729'].v0
+        mod_init_O2['3726'].vd.tied = lambda m: m['3729'].vd
+
+    # Fit
+    mod_fit_O2, _flag = do_fit(mod_init_O2, _ll, lc, f_res, f_err)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag 
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit1')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_O2(_ll)+lc)
+
+
+    # ** Fitting [SII]
+
+    # Parameters
+    name = ['6716', '6731']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    mod_init_S2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+
+    # Ties
+    if kinematic_ties_on:
+        mod_init_S2['6716'].v0.tied = lambda m: m['6731'].v0
+        mod_init_S2['6716'].vd.tied = lambda m: m['6731'].vd
+
+    # Fit
+    mod_fit_S2, _flag = do_fit(mod_init_S2, _ll, lc, f_res, f_err)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag 
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit1')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_S2(_ll)+lc)
+
 
     # Rescale by the median
-    el = [mod_fit_HaN2, mod_fit_HbHg, mod_fit_O3]
+    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2]
     for model in el:
         for name in model.submodel_names:
             model[name].flux.value *= np.abs(med)
@@ -353,6 +447,16 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O3[n].flux, n, lines_windows)
 
+    name     = ['3726',      '3729']
+    linename = ['[OII]3726', '[OII]3729']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O2[n].flux, n, lines_windows)
+
+    name     = ['6716',      '6731']
+    linename = ['[SII]6716', '[SII]6731']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_S2[n].flux, n, lines_windows)
+        
     el.append(el_extra)
     
     if saveAll:
