@@ -91,10 +91,10 @@ plt.scatter(El_EW[flag_Hb][0], El_F[flag_Ha][0]/El_F[flag_Hb][0])
 def plot_fits(c, iy = None, ix = None, ifig = 1, integrated = False, model = 'resampled_gaussian'):
 
     if model == 'resampled_gaussian':
-        from .models.resampled_gaussian import MultiResampledGaussian
+        from pycasso2.dobby.models.resampled_gaussian import MultiResampledGaussian
         elModel = MultiResampledGaussian
     elif model == 'gaussian':
-        from .models.gaussian import MultiGaussian
+        from pycasso2.dobby.models.gaussian import MultiGaussian
         elModel = MultiGaussian
     else:
         raise Exception('@@> No model found. Giving up.')
