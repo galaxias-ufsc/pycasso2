@@ -699,4 +699,52 @@ def get_aperture_mask(shape, x0, y0, pa, ba, apertures, rad_scale=1.0, method='e
     return mask, area
 
 
+def fill_image(image, x0, y0, pa=0.0, ba=1.0):
+    '''
+    Fill a 2-D the masked pixels of an image of a property
+    using the values of a radial profile. The pixels to fill
+    are chosen by ``mode``.
+    
+    Parameters
+    ----------
+    image : array
+        Property (2-D) to fill the hollow pixels.
+        
+    prop__r : the radial profile to use to fill the data.
+        If not set, calculate from prop.
+
+    r : array
+        The radial distances for ``prop__r`` values.
+        If not set (or ``prop__r`` is not set), use
+        a 1 pixel step.
+        
+    r__yx : array
+        A 2-D image containing the geometry of the image.
+        If not set, use :attr:`pixelDistance__yx`.
+        
+    mode : {'convex', 'hollow'}, string
+        If mode is ``'convex'``, fill entire convex hull.
+        If mode is ``'hollow'``, fill only hollow pixels.
+        Default is ``'convex'``.
+            
+    Returns
+    -------
+    prop_fill : array
+        A 2-D image of ``prop``, with the missing pixels filled.
+        
+    mask : array
+        The effective mask for the filled image.
+        
+    '''
+    r__yx = get_image_distance(image.shape, x0, y0, pa, ba)
+    r__yx = np.ma.array(r__yx, mask=image.mask)
+    bin_r = np.arange(0.0, r__yx.max(), 1.0)
+    r = bin_r[:-1] + 0.5
+    image_r = radial_profile(image, bin_r, x0, y0, pa, ba, mode='mean')
+    to_fill = convex_hull_mask(~image.mask) & image.mask
+    
+    _image = image.copy()
+    _image[to_fill] = np.interp(r__yx[to_fill], r[~image_r.mask], image_r.compressed())
+    return _image
+
 

@@ -72,10 +72,12 @@ if args.name is None:
 else:
     name = args.name
 
+flux_unit = header['SYN FLUX_UNIT']
+
 qp_map = qplane_map(header)
 w = WCS(header)
-f_obs = f['f_obs'].data
-f_err = f['f_err'].data
+f_obs = f['f_obs'].data / flux_unit
+f_err = f['f_err'].data / flux_unit
 f_flag_orig = f['f_flag'].data
 badpix = (f_flag_orig >= 2.0)
 sky_lines = (f_flag_orig == 12.0)
@@ -99,7 +101,7 @@ w = replace_wave_WCS(w, crpix_wave=0, crval_wave=l_ini, cdelt_wave=dl)
 write_WCS(header, w)
 
 g._initFits(f_obs, f_err, f_flag, header, w, segmask, good_frac)
-g.flux_unit = header['SYN FLUX_UNIT']
+g.flux_unit = flux_unit
 g.lumDistMpc = header['D_MPC']
 g.redshift = header['REDSHIFT']
 g.name = name
@@ -116,7 +118,7 @@ pop_len = len(age_base) * len(met_base)
 Nz = segmask.shape[0]
 
 g.createSynthesisCubes(pop_len)
-g.f_syn[...] = f['f_syn'].data
+g.f_syn[...] = f['f_syn'].data / flux_unit
 g.f_wei[...] = f['f_wei'].data
 g.f_flag |= np.where(g.f_wei == -1.0, flags.starlight_clipped, 0)
 g.f_flag |= np.where(g.f_wei == 0.0, flags.starlight_masked, 0)
@@ -156,9 +158,9 @@ for k in syn_keyword_list:
     g._header['HIERARCH STARLIGHT ' + k] = header['SYN ' + k.upper()]
 
 t = g._getTableExtensionData(g._ext_integ_spectra)
-t['f_obs'] = f['integrated_f_obs'].data
-t['f_err'] = f['integrated_f_err'].data
-t['f_syn'] = f['integrated_f_syn'].data
+t['f_obs'] = f['integrated_f_obs'].data / flux_unit
+t['f_err'] = f['integrated_f_err'].data / flux_unit
+t['f_syn'] = f['integrated_f_syn'].data / flux_unit
 t['f_wei'] = f['integrated_f_wei'].data
 t['f_flag'] = np.where(f['integrated_f_flag'].data > 1.0, flags.no_data, 0)
 t['f_flag'] |= np.where(g.integ_f_wei == -1.0, flags.starlight_clipped, 0)
