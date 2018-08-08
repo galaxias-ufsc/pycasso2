@@ -153,10 +153,6 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
     name = suffix + '.' + 'integ'
     outfile = path.join(tmpdir, '%s.hdf5' % name)
-    log.debug(np.median(c.integ_f_syn.compressed()))
-    import matplotlib.pyplot as plt
-    plt.plot(c.l_obs, c.integ_f_syn)
-    plt.show()
     if not path.exists(outfile):
         el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = args.vdInst,
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
