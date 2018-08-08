@@ -482,7 +482,7 @@ if __name__ == "__main__":
     #ts = atpy.TableSet('STARLIGHTv04/0404.51812.036.sc4.NA3.gm.CCM.BS', type = 'starlightv4')
 
     el = fit_strong_lines_starlight(tc, ts, kinematic_ties_on = False)
-    plot_el(ts, el)
+    plot_el(ts, el, display_plot = True)
     
     
     # Test flux

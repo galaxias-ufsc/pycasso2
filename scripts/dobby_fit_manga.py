@@ -45,6 +45,8 @@ def parse_args():
                         help='Overwrite output.')
     parser.add_argument('--debug', dest='debug', action='store_true',
                         help='Save detailed fit plots.')
+    parser.add_argument('--display-plots', dest='displayPlots', action='store_true',
+                        help='Display detailed fit plots.')
     parser.add_argument('--tmp-dir', dest='tmpDir', default='./tmp_el',
                         help='Write temporary tables here. Default: ./tmp_el')
     parser.add_argument('--only-center', dest='onlyCenter', action='store_true',
@@ -143,14 +145,18 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
 
                 if args.debug:
                     # Plot spectrum
-                    fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0)
+                    fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0, display_plot = args.displayPlots)
                     fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
     
     
-    # Fit integrated spectrum
+    log.debug('Fitting integrated spectrum...')
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
     name = suffix + '.' + 'integ'
     outfile = path.join(tmpdir, '%s.hdf5' % name)
+    log.debug(np.median(c.integ_f_syn.compressed()))
+    import matplotlib.pyplot as plt
+    plt.plot(c.l_obs, c.integ_f_syn)
+    plt.show()
     if not path.exists(outfile):
         el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = args.vdInst,
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
@@ -158,7 +164,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
                                vd_kms=not args.vdInstAngstrom)
         if args.debug:
             # Plot integrate spectrum
-            fig = plot_el(ll, integ_f_res, el, ifig = 0)
+            fig = plot_el(ll, integ_f_res, el, ifig = 0, display_plot = args.displayPlots)
             fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
     
 

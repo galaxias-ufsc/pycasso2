@@ -141,7 +141,7 @@ def fit_strong_lines_starlight(tc, ts, **kwargs):
 
     return fit_strong_lines(_ll, _f_res, _f_wei, **kwargs)
 
-def plot_el_starlight(ts, el, save = False):
+def plot_el_starlight(ts, el, save = False, display_plot = True):
     
     ll = ts.spectra.l_obs
 
@@ -151,12 +151,14 @@ def plot_el_starlight(ts, el, save = False):
     f_err = f_wei**-1
     f_res = (f_obs - f_syn)
 
-    plot_el(ll, f_res, el)
+    plot_el(ll, f_res, el, display_plot = display_plot)
     
     
-def plot_el(ll, f_res, el, ifig = 1):
+def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     import matplotlib
-    #++matplotlib.use('pdf')
+    if not display_plot:
+        matplotlib.use('pdf')
+    
     import matplotlib.pyplot as plt
     from matplotlib import gridspec
     
@@ -245,6 +247,9 @@ def plot_el(ll, f_res, el, ifig = 1):
     plt.plot(ll, m, 'r', label = 'Fit', drawstyle = 'steps-mid')
     plt.legend(loc = 'upper right')
 
+    if display_plot:
+        plt.ioff()
+        plt.show()
     return fig
     
 def replace_by_minus999(x, x_old, x_new = -999):
