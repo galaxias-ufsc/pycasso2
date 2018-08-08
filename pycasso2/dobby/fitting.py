@@ -143,7 +143,10 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             return 0
         
     # Normalize spectrum by the median, to avoid problems in the fit
-    med = np.median(_f_syn)
+    med = np.median(_f_syn.compressed())
+    if not np.isfinite(med):
+        raise Exception('Problems with synthetic spectra, median is non-finite.')
+    
     f_res = _f_res / np.abs(med)
     f_err = _f_err / np.abs(med)
     
