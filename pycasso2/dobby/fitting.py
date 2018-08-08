@@ -241,7 +241,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     
     el_extra['total_lc'] = total_lc
 
-    # ** Fitting Ha and [NII]
+    log.debug('Fitting Ha and [NII]...')
 
     # Parameters
     name = ['6563', '6548', '6584']
@@ -275,7 +275,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, mod_fit_HaN2(_ll)+lc)
 
 
-    # ** Fitting Hb and Hg
+    log.debug('Fitting Hb and Hg...')
 
     # Parameters
     name = ['4861', '4340']
@@ -321,7 +321,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_HbHg(_ll)+lc)
         
-    # ** Fitting [OIII]
+    log.debug('Fitting [OIII]...')
 
     # Parameters
     name = ['4959', '5007']
@@ -355,7 +355,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, mod_fit_O3(_ll)+lc)
 
         
-    # ** Fitting [OII]
+    log.debug('Fitting [OII]...')
 
     # Parameters
     name = ['3726', '3729']
@@ -387,8 +387,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O2(_ll)+lc)
 
-
-    # ** Fitting [SII]
+    log.debug('Fitting [SII]...')
 
     # Parameters
     name = ['6716', '6731']

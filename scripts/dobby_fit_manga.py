@@ -115,7 +115,6 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         y0 = c.y0
         x0 = c.x0
         
-    log.debug(f_res.shape, f_syn.shape, f_err.shape)
     # Pixels to fit
     if args.onlyCenter:
         log.warn('Fitting only central spaxel.')
