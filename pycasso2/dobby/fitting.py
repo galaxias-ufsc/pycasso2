@@ -125,12 +125,13 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         fitter = fitting.LevMarLSQFitter()
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
         good_fraction = good.sum() / lc.count()
-        if good_fraction < min_good_fraction:
-            log.warn('Too few data points for fitting (%.1f %%), flagging model.' % (good_fraction * 100.0))
+        if good_fraction > min_good_fraction:
+            fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=err[good]**-1, maxiter=500)
+            flag = interpret_fit_result(fitter.fit_info)
+            return fitted_model, flag
+        else:
+            log.warn('Too few data points for fitting (%.d / %d), flagged.' % (good.sum(), lc.count()))
             return model.copy(), flags.no_data
-        fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=err[good]**-1, maxiter=500)
-        flag = interpret_fit_result(fitter.fit_info)
-        return fitted_model, flag
     
     
     def interpret_fit_result(fit_info):
