@@ -356,14 +356,15 @@ class SynthesisAdapter(object):
                     log.warn('Found an integrated output, but the cube does not have integrated data.')
                     break
                 log.debug('Writing synthesis for integrated data.')
-                self._cube.integ_f_obs[:] = self._integ_f_obs
-                self._cube.integ_f_err[:] = self._integ_f_err
+                t = self._cube._getTableExtensionData(self._cube._ext_integ_spectra)
+                t['f_obs'] = self._integ_f_obs
+                t['f_err'] = self._integ_f_err
 
-                self._cube.integ_f_syn[slice_d] = spectra['f_syn'][slice_o] * f_obs_norm
+                t['f_syn'][slice_d] = spectra['f_syn'][slice_o] * f_obs_norm
                 f_wei = spectra['f_wei'][slice_o]
-                self._cube.integ_f_wei[slice_d] = f_wei
+                t['f_wei'][slice_d] = f_wei
 
-                f_flag = self._cube.integ_f_flag
+                f_flag = t['f_flag']
                 f_flag[:] = self._integ_f_flag
                 f_flag[slice_d] |= np.where(f_wei == -1.0, flags.starlight_clipped, 0)
                 f_flag[slice_d] |= np.where(f_wei == 0.0, flags.starlight_masked, 0)
