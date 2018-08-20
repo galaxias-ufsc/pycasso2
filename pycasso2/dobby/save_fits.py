@@ -4,8 +4,11 @@ import h5py
 import numpy as np
 from astropy.table import Table
 
-def save_fits_test(c, galname, outdir, el_dir, name_template, balLim=True, kinTies=True, model='GaussianIntELModel'):
-
+def save_fits_test_zonespixels(c, galname, outdir, el_dir, name_template, balLim=True, kinTies=True, model='GaussianIntELModel'):
+    '''
+    TO DO: Deal with zones in CALIFA
+    '''
+    
     # Define things that depend on pixels/zones
     inZones = (len(c.f_obs.shape) == 2)
 
@@ -131,7 +134,7 @@ def save_fits_test(c, galname, outdir, el_dir, name_template, balLim=True, kinTi
     '''
 
     
-def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model):
+def dobby_save_fits_pixels(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model):
 
     # Get the dimensions
     if c.hasSegmentationMask:
@@ -147,7 +150,7 @@ def save_fits(c, outfile, el_dir, name_template, suffix, kinTies, balLim, model)
     # Read the integrated spectra to find the emission lines fitted
     name = suffix + '.' + 'integ'
     filename = path.join(el_dir, '%s.hdf5' % name)
-        
+
     with h5py.File(filename, 'r') as f:
         El_lambda = f['elines']['lambda']
         El_name   = f['elines']['line']

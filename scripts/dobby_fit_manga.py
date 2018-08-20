@@ -24,6 +24,7 @@ from pycasso2 import flags
 from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
 from pycasso2.dobby.utils import plot_el
+from pycasso2.dobby.save_fits import dobby_save_fits_pixels
 
 
 ###############################################################################
@@ -167,9 +168,8 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         
     # After pixel-by-pixel fitting, read all individual files and
     # save to a super-fits file (including the original STARLIGHT file).
-    import dobby_save_fits
-    dobby_save_fits.save_fits(c, args.cubeOut, tmpdir, name_template,
-                              suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
+    dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
+                           suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
 
     
 # Fit!
