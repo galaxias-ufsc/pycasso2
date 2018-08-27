@@ -12,6 +12,7 @@ from os import path
 from tables import open_file, IsDescription, StringCol, Float64Col, Int32Col
 import numpy as np
 from pycasso2.resampling.core import find_nearest_index
+from pycasso2.starlight.synthesis import get_base_grid
 
 ###############################################################################
 
@@ -61,6 +62,7 @@ class StarlightBase(object):
         self._l_norm = l_norm
         self.fbase_norm = self._calc_Fnorm(l_norm)
         self.f_ssp /= self.fbase_norm[:, np.newaxis]
+        self._baseMask, self.metGrid, self.ageGrid = get_base_grid(self.ageBase, self.metBase)
         
 
     def _loadASCII(self, base_dir, base_file):
@@ -122,7 +124,10 @@ class StarlightBase(object):
                 r['sspfile'] = self.sspfile[i]
                 r['age_base'] = self.ageBase[i]
                 r['Z_base'] = self.metBase[i]
-                r['component'] = self.component[i]
+                try:
+                    r['component'] = self.component[i]
+                except TypeError:
+                    r['component'] = self.ageBase[i]
                 r['Mstars'] = self.Mstars[i]
                 r['YA_V'] = self.YA_V[i]
                 r['aFe'] = self.aFe[i]
@@ -171,6 +176,24 @@ class StarlightBase(object):
         return np.squeeze(f_syn) 
     
 
+    def toRectBase(self, a, fill_value=0.0):
+        shape = (self._baseMask.shape) + a.shape[1:]
+        a__Zt = np.ma.masked_all(shape, dtype=a.dtype)
+        a__Zt.fill_value = fill_value
+        a__Zt[self._baseMask, ...] = a
+        return np.swapaxes(a__Zt, 0, 1)
+        
+    
+    @property
+    def nMet(self):
+        return len(self.metGrid)
+
+    
+    @property
+    def nAges(self):
+        return len(self.ageGrid)
+
+    
     def QH0(self):
         lim = find_nearest_index(self._l_ssp, 912.0)
         K_Lsun_hc = (3.826 / (6.626 * 2.997925)) * 1.e2
