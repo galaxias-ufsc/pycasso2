@@ -119,7 +119,7 @@ def read_base(basefile, basedir='', read_spectra=False):
         colnames = ['wl', 'flux']
         f = []
         for ssp_file in bt['sspfile']:
-            
+
             t = ascii.read(os.path.join(basedir, ssp_file), names=colnames,
                            Reader=ascii.CommentedHeader, guess=False)
             f.append(t['flux'])
@@ -148,13 +148,13 @@ def read_output_tables(filename, read_chains=False):
              Some notes on the structure of STARLIGHT output files
     --------------------------------------------------------------------
 
-     Considering the 1st line to be number 1 (ATT: **subtract** 1 in python!!): 
+     Considering the 1st line to be number 1 (ATT: **subtract** 1 in python!!):
          * The pop-vector block starts at line 64 and has N_base entries from n1 to n2:
             n1 = 64
             n2 = n1 + N_base - 1
 
         * The Average & Chains light fractions block starts at line 64 + N_base + 5 and has N_par entries
-            n1 = 64 + N_base + 5 
+            n1 = 64 + N_base + 5
             n2 = n1 + N_par - 1, where N_par = N_base + 2 + N_exAV
         * then comes the chain-LAx-pop-vectors block, whose N_base elements go from
             n1 = 64 + N_base + 5 + N_par + 2
@@ -162,21 +162,21 @@ def read_output_tables(filename, read_chains=False):
         * and the chain-mu_cor-pop-vectors block, whose N_base elements go from
              n1 = 64 + N_base + 5 + N_par + 2 + N_base + 2
             n2 = n1 + N_base - 1
-        * The chain chi2's and masses are in lines    
+        * The chain chi2's and masses are in lines
              64 + N_base + 5 + N_par + 2 + N_base + 2 + N_base + 2, and
-             64 + N_base + 5 + N_par + 2 + N_base + 2 + N_base + 3, respectively, 
+             64 + N_base + 5 + N_par + 2 + N_base + 2 + N_base + 3, respectively,
              followed by 2 lines with v_0_before_EX0s and v_d_before_EX0s.
 
-        * The specral block starts with new line containing Nl_obs, index_Best_SSP, 
-         and i_SaveBestSingleCompFit at 
+        * The specral block starts with new line containing Nl_obs, index_Best_SSP,
+         and i_SaveBestSingleCompFit at
               64 + N_base + 5 + N_par + 2 + N_base + 2 + N_base + 10
-        * The l_obs , f_obs , f_syn , f_wei , Best_f_SSP info has Nl_obs entries, running from 
+        * The l_obs , f_obs , f_syn , f_wei , Best_f_SSP info has Nl_obs entries, running from
              n1 = 64 + N_base + 5 + N_par + 2 + N_base + 2 + N_base + 11
-            n2 = n1 + Nl_obs -1 
+            n2 = n1 + Nl_obs -1
 '''
     if not os.path.exists(filename):
         raise Exception('File not found: %s' % filename)
-    
+
 
     mode = 'rt'
     if filename.endswith('.gz'):
@@ -192,10 +192,10 @@ def read_output_tables(filename, read_chains=False):
     keywords = {}
     tables = {}
     tables['keywords'] = keywords
-    
+
     #Setting IsELROn in case QHRc are off.
     keywords['IsELROn'] = 0
-    
+
     keywords['file_version'] = fileVersion
     keywords['arq_synt'] = os.path.basename(filename)
 
@@ -212,24 +212,24 @@ def read_output_tables(filename, read_chains=False):
     keywords['N_base'] = int(data[9][0])
     keywords['N_exAV_components'] = int(data[10][0])
     keywords['N_exAV'] = int(data[10][1])
-    
+
     keywords['IsCFlawOn'] = int(data[10][2])
     keywords['a0_CFl'] = float(data[10][3])
     keywords['a1_CFl'] = float(data[10][4])
-    
-    
+
+
     keywords['IsFIRcOn'] = int(data[11][0])
     keywords['IsQHRcOn'] = int(data[11][1])
     keywords['IsPHOcOn'] = int(data[11][2])
     keywords['IsOPTimize_fn_OPT'] = int(data[11][3])
 
-    
+
     keywords['ETC_ESM'] = data[12][0]
     keywords['ETC_gamma'] = float(data[12][1])
     keywords['Np_PHO'] = int(data[12][2])
     keywords['Np_QHR'] = int(data[12][3])
     keywords['Np_FIR'] = int(data[12][4])
-    
+
     keywords['red_law_option'] = data[13][0]
     keywords['q_norm'] = float(data[14][0])
     keywords['flux_unit'] = float(data[14][1])
@@ -255,7 +255,7 @@ def read_output_tables(filename, read_chains=False):
     keywords['SN_normwin'] = float(data[31][0])
     keywords['SNerr_snwin'] = float(data[32][0])
     keywords['SNerr_normwin'] = float(data[33][0])
-           
+
     # etc...
     keywords['idum_orig'] = int(data[36][0])
     keywords['NOl_eff'] = int(data[37][0])
@@ -307,7 +307,7 @@ def read_output_tables(filename, read_chains=False):
     keywords['chi2_QHR'] = float(data[64][1])
     keywords['chi2_PHO'] = float(data[64][2])
     keywords['chi2_ETC'] = float(data[64][3])
-    
+
     # Reset populations lists
     popx = []    # column 2
     popmu_ini = []    # column 3
@@ -317,7 +317,6 @@ def read_output_tables(filename, read_chains=False):
     popfbase_norm = []    # column 7
     popexAV_flag = []    # column 8
     popMstars = []    # column 9
-    component = []    # column 10
     aFe = []    # column 11
     SSP_chi2r = []    # column 12
     SSP_adev = []    # column 13
@@ -339,7 +338,6 @@ def read_output_tables(filename, read_chains=False):
         popfbase_norm.append(float(data[i][6]))
         popexAV_flag.append(float(data[i][7]))
         popMstars.append(float(data[i][8]))
-        component.append(data[i][9])
         aFe.append(float(data[i][10]))
         SSP_chi2r.append(float(data[i][11]))
         SSP_adev.append(float(data[i][12]))
@@ -349,40 +347,29 @@ def read_output_tables(filename, read_chains=False):
         popLAx.append(float(data[i][16]))
 
     #WARNING: Ignoring Power-law fixes.
-   
-    cols = [popx,
-            popmu_ini,
-            popmu_cor,
-            popage_base,
-            popZ_base,
-            popfbase_norm,
-            popexAV_flag,
-            popMstars,
-            component,
-            aFe,
-            SSP_chi2r,
-            SSP_adev,
-            SSP_AV,
-            SSP_x,
-            popAV_tot]
 
-    names = ['popx',
-             'popmu_ini',
-             'popmu_cor',
-             'popage_base',
-             'popZ_base',
-             'popfbase_norm',
-             'popexAV_flag',
-             'popMstars',
-             'component',
-             'aFe',
-             'p_chi2r',
-             'p_adev',
-             'p_AV',
-             'p_x',
-             'popAV_tot']
-    
-    tables['population'] = Table(cols, names=names)
+    tables['population'] = Table()
+
+    tables['population']['popx']          = popx
+    tables['population']['popmu_ini']     = popmu_ini
+    tables['population']['popmu_cor']     = popmu_cor
+    tables['population']['popage_base']   = popage_base
+    tables['population']['popZ_base']     = popZ_base
+    tables['population']['popfbase_norm'] = popfbase_norm
+    tables['population']['popexAV_flag']  = popexAV_flag
+    tables['population']['popMstars']     = popMstars
+    tables['population']['aFe']           = aFe
+    tables['population']['p_chi2r']       = SSP_chi2r
+    tables['population']['p_adev']        = SSP_adev
+    tables['population']['p_AV']          = SSP_AV
+    tables['population']['p_x']           = SSP_x
+    tables['population']['popAV_tot']     = popAV_tot
+
+    #Column 10 may be the upper age bin for composite stellar populations, if so. this value is stored:
+    try:
+        tables['population']['popage_base_upp'] = [float(data[i][9]) for i in range(_n1, _n2)]
+    except Exception:
+        pass
 
     if read_chains == True:
         #--------------------------------------------------------------------
@@ -451,7 +438,7 @@ def read_output_tables(filename, read_chains=False):
         keywords['v_0_before_EX0s'] = float(data[i + 2][0])
         keywords['v_d_before_EX0s'] = float(data[i + 3][0])
 
-        
+
         # Store chains in tables.
         cols = [Best_Par, Ave_Par, Chain_Par]
         chains_names = ['best', 'average', 'chains']
@@ -562,7 +549,7 @@ def read_output_tables(filename, read_chains=False):
         R_Lya = []
         R_LCE = []
 
-        
+
 
         # Read FIR-related SSP arrays
         _n1 = _n3
@@ -578,8 +565,8 @@ def read_output_tables(filename, read_chains=False):
             R_Lya.append(float(data[i][13]))
             R_LCE.append(float(data[i][14]))
 
-               
-        tables['FIR'] = Table()       
+
+        tables['FIR'] = Table()
 
         tables['FIR']['x_FIR']    = x_FIR
         tables['FIR']['x_BOL']    = x_BOL
@@ -591,7 +578,7 @@ def read_output_tables(filename, read_chains=False):
         tables['FIR']['R_Lya']    = R_Lya
         tables['FIR']['R_LCE']    = R_LCE
 
-        
+
 
     #--------------------------------------------------------------------
     # Reading QHR-related output
@@ -610,7 +597,7 @@ def read_output_tables(filename, read_chains=False):
         # Skip FIR
         if (keywords['IsFIRcOn'] != 0):
             _n3 = _n3 + 26 + keywords['N_base']
-        
+
         keywords['QHRbeta_I'] = float(data[_n3][0])
         keywords['IsReadQHfromBaseFile'] = int(data[_n3][1])
         _n3 += 1
@@ -651,20 +638,20 @@ def read_output_tables(filename, read_chains=False):
             QHR_logY_low.append(float(data[i][9]))
             QHR_logY_upp.append(float(data[i][10]))
 
-        tables['QHR'] = Table()        
-        
-        tables['QHR']['lambda']          = QHR_lambda 
+        tables['QHR'] = Table()
+
+        tables['QHR']['lambda']          = QHR_lambda
         tables['QHR']['frecomb']         = QHR_frecomb
-        tables['QHR']['logY_tot']        = QHR_logY_TOT 
+        tables['QHR']['logY_tot']        = QHR_logY_TOT
         tables['QHR']['YFrac2Model']     = QHR_YFrac2Model
         tables['QHR']['ErrlogY']         = QHR_ErrlogY
-        tables['QHR']['RangelogY']       = QHR_RangelogY 
+        tables['QHR']['RangelogY']       = QHR_RangelogY
         tables['QHR']['Chi2ScaleFactor'] = QHR_Chi2ScaleFactor
-        tables['QHR']['logY_obs']        = QHR_logY_obs 
-        tables['QHR']['logY_low']        = QHR_logY_low 
-        tables['QHR']['logY_upp']        = QHR_logY_upp 
+        tables['QHR']['logY_obs']        = QHR_logY_obs
+        tables['QHR']['logY_low']        = QHR_logY_low
+        tables['QHR']['logY_upp']        = QHR_logY_upp
 
-        
+
 
         # Read Emission Line Ratio-related things
         _n3 = _n2 + 2
@@ -692,7 +679,7 @@ def read_output_tables(filename, read_chains=False):
         tables['ELR']['logR_obs'] = float(data[_n3][0])
         tables['ELR']['logR_mod'] = float(data[_n3][1])
         tables['ELR']['chi2_ELR'] = float(data[_n3][2])
-        
+
         _n3 += 3
 
         keywords['log_QH0_PhotPerSec'] = float(data[_n3][0])
@@ -708,7 +695,7 @@ def read_output_tables(filename, read_chains=False):
         QHR_q_lambda = []
         QHR_logY_mod = []
         QHR_chi2_Y = []
-        
+
         # Read QHR model
         _n1 = _n3
         _n2 = _n1 + keywords['NQHR_Ys']
@@ -716,11 +703,11 @@ def read_output_tables(filename, read_chains=False):
             QHR_q_lambda.append(float(data[i][2]))
             QHR_logY_mod.append(float(data[i][4]))
             QHR_chi2_Y.append(float(data[i][5]))
-            
+
         tables['QHR']['q_lambda'] = QHR_q_lambda
         tables['QHR']['logY_mod'] = QHR_logY_mod
         tables['QHR']['chi2_Y']   = QHR_chi2_Y
-                 
+
         _n3 = _n2 + 2
 
         # Reset & read FIR-related SSP arrays
@@ -754,7 +741,7 @@ def read_output_tables(filename, read_chains=False):
     # Reading PHO-related output
     #--------------------------------------------------------------------
     if (keywords['IsPHOcOn'] != 0):
-        
+
         #Creating PHO table
         tables['PHO'] = Table()
 
@@ -817,15 +804,15 @@ def read_output_tables(filename, read_chains=False):
             PHO_magY_upp.append(float(data[i][9]))
 
 
-        tables['PHO']['filter']           = PHO_name 
+        tables['PHO']['filter']           = PHO_name
         tables['PHO']['magY_TOT']         = PHO_magY_TOT
-        tables['PHO']['Yfrac2model']      = PHO_YFrac2Model 
-        tables['PHO']['magYErr']          = PHO_magYErr  
-        tables['PHO']['magYRange']        = PHO_magYRange 
-        tables['PHO']['Chi2ScaleFactor']  = PHO_Chi2ScaleFactor 
-        tables['PHO']['magY_obs']         = PHO_magY_obs 
-        tables['PHO']['magY_low']         = PHO_magY_low 
-        tables['PHO']['magY_upp']         = PHO_magY_upp 
+        tables['PHO']['Yfrac2model']      = PHO_YFrac2Model
+        tables['PHO']['magYErr']          = PHO_magYErr
+        tables['PHO']['magYRange']        = PHO_magYRange
+        tables['PHO']['Chi2ScaleFactor']  = PHO_Chi2ScaleFactor
+        tables['PHO']['magY_obs']         = PHO_magY_obs
+        tables['PHO']['magY_low']         = PHO_magY_low
+        tables['PHO']['magY_upp']         = PHO_magY_upp
 
 
         _n3 = _n2 + 2
@@ -873,7 +860,7 @@ def read_output_tables(filename, read_chains=False):
         tables['PHO']['fY_obs']     = PHO_fY_obs
         tables['PHO']['fY_mod']     = PHO_fY_mod
         tables['PHO']['chi2_Y']     = PHO_chi2_Y
-                
+
 
         _n3 = _n2 + 2
 
@@ -885,12 +872,11 @@ def read_output_tables(filename, read_chains=False):
         _n2 = _n1 + keywords['N_base']
         for i in range(_n1, _n2):
             Y_Perc.append([float(x) for x in data[i][6:]])
-        
+
         Y_Perc = np.array(Y_Perc)
 
         tables['PHO']['Y_Perc'] = np.zeros((keywords['NPHO_Ys'], keywords['N_base']))
         for i in range(keywords['NPHO_Ys']):
-            tables['PHO']['Y_Perc'][i] = Y_Perc[:,i] 
+            tables['PHO']['Y_Perc'][i] = Y_Perc[:,i]
 
     return tables
-
