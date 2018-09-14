@@ -16,11 +16,11 @@ __all__ = ['read_manga', 'read_drpall']
 CRITICAL_BIT = 1 << 30
 
 
-def read_drpall(filename, mangaid=None):
+def read_drpall(filename, plateifu=None):
     with fits.open(filename) as f:
         t = f[1].data
-    if mangaid is not None:
-        i = np.where(t['mangaid'] == mangaid)[0]
+    if plateifu is not None:
+        i = np.where(t['plateifu'] == plateifu)[0]
         t = t[i]
     return t
 
@@ -32,14 +32,14 @@ def read_manga(cube, name, cfg):
     if len(cube) != 1:
         raise Exception('Please specify a single cube.')
     cube = cube[0]
-
+    
     flux_unit = cfg.getfloat('import', 'flux_unit')
 
     # FIXME: sanitize file I/O
     log.debug('Loading header from cube %s.' % cube)
     header = safe_getheader(cube, ext='FLUX')
-    
-    drp = read_drpall(cfg.get('tables', 'master_table'), header['MANGAID'])
+
+    drp = read_drpall(cfg.get('tables', 'master_table'), header['PLATEIFU'])
     z = np.asscalar(drp['nsa_z'])
 
     if header['DRP3QUAL'] & CRITICAL_BIT:
