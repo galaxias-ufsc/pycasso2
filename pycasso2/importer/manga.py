@@ -62,6 +62,19 @@ def read_manga(cube, name, cfg):
     return obs
 
 
+def get_manga_center(h):
+    '''
+    Given the cube header, return the pixel coordinates (x0, y0)
+    of the object in the field of view. This is NOT equal to (CRPIX1, CRPIX2).
+    '''
+    from astropy.wcs import WCS
+    w = WCS(h).celestial
+    coords_world = np.array([[h['OBJRA'], h['OBJDEC']]])
+    coords_pix = w.wcs_world2pix(coords_world, 0)
+    x0, y0 = coords_pix[0]
+    return x0, y0
+
+
 def get_bitmask_indices(bitmask):
     if bitmask == 0:
         return 0
