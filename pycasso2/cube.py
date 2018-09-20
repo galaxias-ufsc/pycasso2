@@ -761,8 +761,10 @@ class FitsCube(object):
         flagged = ((self.f_flag & flags) > 0).astype(int).sum(axis=0)
         return flagged > (threshold * len(self.l_obs))
 
-    def LickIndex(self, index_id, calc_error=False):
-        if self.hasSynthesis:
+    def LickIndex(self, index_id, calc_error=False, use_obs=False):
+        if use_obs:
+            flux = self.f_obs
+        elif self.hasSynthesis:
             flux = self.f_syn
         else:
             log.warn('Synthetic spectra not found, calculating Lick index on observed spectra.')
