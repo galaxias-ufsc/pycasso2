@@ -297,6 +297,10 @@ def interp1d_spectra(l, flux, flags=None):
         if flags is None:
             raise Exception('flux must be a masked array if flags is not set.')
         flux = np.ma.array(flux, mask=flags > 0)
+    if flux.count() == 0:
+        fi = np.empty_like(l)
+        fi[:] = np.nan
+        return fi
     lc = l[~np.ma.getmaskarray(flux)]
     fc = flux.compressed()
     return np.interp(l, lc, fc)
