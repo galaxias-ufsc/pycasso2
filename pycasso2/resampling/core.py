@@ -295,9 +295,11 @@ def interp1d_spectra(l, flux, flags=None):
     '''
     if not isinstance(flux, np.ma.MaskedArray):
         if flags is None:
-            raise Exception('flux must be a masked array if flags is not set.')
+            flags = ~np.isfinite(flux)
         flux = np.ma.array(flux, mask=flags > 0)
-    if flux.count() == 0:
+    if flux.count() == len(flux):
+        return flux.copy()
+    elif flux.count() == 0:
         fi = np.empty_like(l)
         fi[:] = np.nan
         return fi
