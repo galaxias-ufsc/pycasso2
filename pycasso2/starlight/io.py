@@ -880,3 +880,183 @@ def read_output_tables(filename, read_chains=False):
             tables['PHO']['Y_Perc'][i] = Y_Perc[:,i]
 
     return tables
+
+
+def read_output_tables_v4(filename, read_header=True, read_spec=True, verbose=False):
+    '''
+        Returns an array w/ outputfile from StarlightChains_v05 
+                    (http://starlight.ufsc.br/)
+    '''
+    
+    mode = 'rt'
+    if filename.endswith('.gz'):
+        open_func = gzip.open
+    elif filename.endswith('.bz2'):
+        open_func = bz2.open
+    else:
+        open_func = open
+    with open_func(filename, mode) as f:
+        data = [l.split() for l in f.read().splitlines()]
+
+    fileVersion = data[1][5]
+    keywords = {}
+    tables = {}
+    tables['keywords'] = keywords
+
+    #Setting IsELROn in case QHRc are off.
+    keywords['IsELROn'] = 0
+
+    keywords['file_version'] = fileVersion
+    keywords['arq_synt'] = os.path.basename(filename)
+    
+    if(read_header):
+        if(verbose): print('read_header set to TRUE! Reading the spectra...')
+    
+        ## Some input info
+
+        keywords['arq_spec']    = np.str(data[5][0])
+        keywords['arq_base']    = np.str(data[6][0])
+        keywords['arq_masks']    = np.str(data[7][0])
+        keywords['arq_config']  = np.str(data[8][0])
+        keywords['N_base']        =    np.int(data[9][0])
+        keywords['N_YAV_components']  =    np.int(data[10][0])
+        keywords['iFitPowerLaw']      =    np.int(data[11][0])
+        keywords['alpha_PowerLaw']    =  np.float32(data[12][0])
+        keywords['red_law_option']    = np.str(data[13][0])
+        keywords['q_norm']            =  np.float32(data[14][0])
+
+        ## (Re)Sampling Parameters
+
+        keywords['l_ini']           = np.float32(data[17][0])
+        keywords['l_fin']           = np.float32(data[18][0])
+        keywords['dl']              = np.float32(data[19][0])
+
+        ## Normalization info
+
+        keywords['l_norm']          = np.float32(data[22][0])
+        keywords['llow_norm']       = np.float32(data[23][0])
+        keywords['lupp_norm']       = np.float32(data[24][0])
+        keywords['fobs_norm']       = np.float32(data[25][0])
+
+        ## S/N
+
+        keywords['llow_SN']         = np.float32(data[28][0])
+        keywords['lupp_SN']         = np.float32(data[29][0])
+        keywords['SN_snwin']        = np.float32(data[30][0])
+        keywords['SN_normwin']      = np.float32(data[31][0])
+        keywords['SNerr_snwin']     = np.float32(data[32][0])
+        keywords['SNerr_normwin']   = np.float32(data[33][0])
+        keywords['fscale_chi2']     = np.float32(data[34][0])
+
+        ## etc...
+
+        keywords['idum_orig']       = np.int(data[37][0])
+        keywords['NOl_eff']         = np.int(data[38][0])
+        keywords['Nl_eff']          = np.int(data[39][0])
+        keywords['Ntot_clipped']    = np.int(data[40][0])
+        keywords['Nglobal_steps']   = np.int(data[41][0])
+        keywords['N_chains']        = np.int(data[42][0])
+        keywords['NEX0s_base']      = np.int(data[43][0])
+
+        ## Synthesis Results - Best model ##
+
+        keywords['chi2']            = np.float32(data[49][0])
+        keywords['adev']            = np.float32(data[50][0])
+
+        keywords['sum_x']           = np.float32(data[52][0])
+        keywords['Flux_tot']        = np.float32(data[53][0])
+        keywords['Mini_tot']        = np.float32(data[54][0])
+        keywords['Mcor_tot']        = np.float32(data[55][0])
+
+        keywords['v_0']             = np.float32(data[57][0])
+        keywords['v_d']             = np.float32(data[58][0])
+        keywords['A_V']             = np.float32(data[59][0])
+        keywords['YA_V']            = np.float32(data[60][0])
+
+
+        # Read/define x, mu_ini, mu_cor, age_base, Z_base & YAV_flag arrays.
+        _nlast = 62+keywords['N_base']
+        # Reset populations lists
+        #popx 2 popmu_ini 3 popmu_cor 4 popage_base 5 popZ_base 6  popYAV_flag 8 popMstars 9
+        popx             = []    # column 2
+        popmu_ini        = []    # column 3
+        popmu_cor        = []    # column 4
+        popage_base      = []    # column 5
+        popZ_base        = []    # column 6
+        popfbase_norm    = []    # column 7
+        popYAV_flag      = []    # column 8
+        popMstars        = []    # column 9
+        
+        
+        for i in range(63,_nlast+1):
+            tmp = data[i]
+            popx.append(          float(tmp[1]))
+            popmu_ini.append(     float(tmp[2]))
+            popmu_cor.append(     float(tmp[3]))
+            popage_base.append(   float(tmp[4]))
+            popZ_base.append(     float(tmp[5]))
+            popfbase_norm.append( float(tmp[6]))
+            popYAV_flag.append(   float(tmp[7]))
+            popMstars.append(     float(tmp[8]))
+        
+        t = Table()
+        t['popx'] = np.array(popx)
+        t['popmu_ini'] = np.array(popmu_ini)
+        t['popmu_cor'] = np.array(popmu_cor)
+        t['popage_base'] = np.array(popage_base)
+        t['popZ_base'] = np.array(popZ_base)
+        t['popfbase_norm'] = np.array(popfbase_norm)
+        t['popYAV_flag'] = np.array(popYAV_flag)
+        t['popMstars'] = np.array(popMstars)
+        tables['population'] = t
+
+
+        # Renormalize x to 100% sum!!
+        #FIXME: Why not?
+        #pop[0] = 100.*pop[0]/np.sum(pop[0])
+
+
+        #FIXME: Skip this also...
+        # OBS: PL have age = 0 in the Starlight output file:(
+        #      Here I change it so that age_PL = 5e5 yr... & Z_PL = solar
+        #      This is all obsolete anyway. The built-in PL is not used anymore.
+        #if (int(self.keywords['iFitPowerLaw']) > 0):
+        #    print '@@> [Warning!] ...Fixing PL age & Z ...????? CHECK THIS ?????'
+        #    pop[3][self.keywords['N_base'] - 1] = 5e5 #popage_bae
+        #    pop[4][self.keywords['N_base'] - 1]   = 0.02 #popZ_base
+
+        #self.keywords['pop'] = pop
+    
+
+    if(read_spec == True):
+        if(verbose): print('read_spec set to TRUE! Reading the spectra...')
+        if(read_header == False):
+                keywords['N_base']      =    np.int(data[9][0])
+                keywords['fobs_norm']   = np.float32(data[25][0])
+
+        # Read spectra (l_obs, f_obs, f_syn & f_wei)
+        #l_obs 1 f_obs 2 f_syn 3 f_wei 4 Best_f_SSP 5
+        iaux1 = 62 + keywords['N_base'] + 5 + keywords['N_base'] + 2 + keywords['N_base'] + 11
+        keywords['Nl_obs'] = np.int(data[iaux1][0])
+        iaux2 = iaux1 + 1
+        #iaux3 = iaux1 + StarlightOut['Nl_obs']
+    
+        try:
+            dt = np.dtype([('wl', 'float32'), ('flux_obs', 'float32'), ('flux_syn', 'float32'), ('wei', 'float32'), ('Best_f_SSP', 'float32')])
+            out_spec = np.loadtxt(filename, dtype=dt, skiprows=iaux2)
+        except:
+            if(verbose): print('Warning: Did not read Best_f_SSP!')
+            dt = np.dtype([('wl', 'float32'), ('flux_obs', 'float32'), ('flux_syn', 'float32'), ('wei', 'float32')])
+            out_spec = np.loadtxt(filename, dtype=dt, skiprows=iaux2)
+        
+        t = Table()
+        t['l_obs'] = out_spec['wl']
+        t['f_obs'] = out_spec['flux_obs']
+        t['f_syn'] = out_spec['flux_syn']
+        t['f_wei'] = out_spec['wei']
+        if (len(out_spec.dtype.names) == 5):
+            t['Best_f_SSP'] = np.array(out_spec['Best_f_SSP'])     
+        tables['spectra'] = t
+    
+    return tables
+
