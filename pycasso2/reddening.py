@@ -120,6 +120,8 @@ def Cardelli_RedLaw(l, R_V=None):
 
 def Charlot_RedLaw(l, mu=0.3):
     '''
+    +++ TO DO +++ Natalia: not sure if this is correct! Why is the code returning tau and not q?
+
     Returns two-component dust model by Charlot and Fall 2000. 
     
     Parameters
@@ -143,6 +145,31 @@ def Charlot_RedLaw(l, mu=0.3):
     
     return t_lambda_Y, t_lambda_O
 
+
+def CharlotFall_RedLaw(l, mu=0.3):
+    '''
+    Returns the attenuation curve from the two-component dust model by Charlot & Fall (2000). 
+    
+    Parameters
+    ----------
+    l : 1-D sequence of floats
+        The \lambda wavelength array (in Angstroms). 
+    
+    mu : float
+         Fraction of extinction contributed by the ambient ISM
+            
+    Returns
+    -------
+    q = A_lambda / A_V for Charlot & Fall (2000) et al attenuation curve.
+
+    Natalia@St Andrews - 29/Nov/2018
+    '''
+    
+    q_ISM = mu * np.power((l/5500.),-0.7)
+    q_BC  = (1. - mu) * np.power((l/5500.),-1.3)
+    q = q_ISM + q_BC
+    
+    return q
 
 
 def Calzetti_RedLaw(l, R_V=None):
@@ -235,7 +262,7 @@ def CCC_RedLaw(l, R_V=None):
     return q
 
 
-def calc_redlaw(l, redlaw, R_V=None):
+def calc_redlaw(l, redlaw, R_V=None, **kwargs):
     l = np.atleast_1d(l)
     if redlaw == 'CCM':
         return Cardelli_RedLaw(l, R_V)
@@ -243,6 +270,8 @@ def calc_redlaw(l, redlaw, R_V=None):
         return Calzetti_RedLaw(l, R_V)
     elif redlaw == 'CCC':
         return CCC_RedLaw(l, R_V)
+    elif redlaw == 'CF00':
+        return CharlotFall_RedLaw(l, **kwargs)
     else:
         raise Exception('Unknown reddening law %s.' % redlaw)
 
