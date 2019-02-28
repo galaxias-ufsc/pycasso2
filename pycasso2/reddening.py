@@ -261,6 +261,106 @@ def CCC_RedLaw(l, R_V=None):
 
     return q
 
+def HowarthMW_RedLaw(l, R_V=None):
+    '''
+        @summary: Calculates q(lambda) for Howarth (1983) Milky Way reddening law.
+        UV: for LMC but based on Seaton's Galactic extinction.
+        Optical and IR: for MW.
+        Note he also has an optical LMC law (not implemented).
+        @param l: Wavelenght vector (Angstroms)
+        @param R_V: R_V factor. Default is R_V = 3.1.
+
+        TO INVESTIGATE: Discontinuity between UV and optical.
+    '''
+# ###########################################################################
+#     q = A_lambda / A_V
+#     l = lambda, in Angstrons
+#     x = 1 / lambda in 1/microns
+
+    if R_V is None:
+        R_V = 3.1
+
+    x = 1.e4 / np.array(l)
+    q = np.zeros_like(x)
+
+
+    # UV
+    ff = (x >= 2.75) & (x <= 9.0)
+    def q_UV(x):
+        print (x)
+        return R_V - 0.236 + 0.462 * x + 0.105 * x**2 + 0.454/ ((x - 4.557)**2 + 0.293)
+    q[ff] = q_UV(x[ff])
+    
+    # Optical
+    ff = (x >= 1.83) & (x <= 2.75)
+    def q_opt(x):
+        return R_V + 2.56 * (x - 1.83) - 0.993 * (x -1.83)**2
+    q[ff] = q_opt(x[ff])
+
+    # IR
+    ff = (x <= 1.83)
+    def q_IR(x):
+        return ((1.86 - 0.48 * x) * x - 0.1) * x
+    q[ff] = q_IR(x[ff])
+
+    # Normalize
+    q /= q_IR(1.e4/5500.)
+    
+    # Issue a warning if lambda falls outside >1111 Angs range
+    if (l < 1111.).any():
+        log.warn('[HowarthMW_RedLaw] WARNING! some lambda outside valid range (1111, infinity.)')
+    
+    return q
+    
+def bla():
+    a = np.zeros(np.shape(l))
+    b = np.zeros(np.shape(l))
+    F_a = np.zeros(np.shape(l))
+    F_b = np.zeros(np.shape(l))
+    x = np.zeros(np.shape(l))
+    y = np.zeros(np.shape(l))
+#
+    for i in range(0,len(l)):
+        x[i]=10000. / l[i]
+        y[i]=10000. / l[i] - 1.82
+#
+#    x = 10000. / l
+#
+#     Far-Ultraviolet: 8 <= x <= 10 ; 1000 -> 1250 Angs 
+    inter = np.bitwise_and(x >= 8, x <= 10)
+
+    a[inter] = -1.073 - 0.628 * (x[inter] - 8.) + 0.137 * (x[inter] - 8.)**2 - 0.070 * (x[inter] - 8.)**3
+    b[inter] = 13.670 + 4.257 * (x[inter] - 8.) - 0.420 * (x[inter] - 8.)**2 + 0.374 * (x[inter] - 8.)**3
+
+#     Ultraviolet: 3.3 <= x <= 8 ; 1250 -> 3030 Angs 
+
+    inter =  np.bitwise_and(x >= 5.9, x < 8)
+    F_a[inter] = -0.04473 * (x[inter] - 5.9)**2 - 0.009779 * (x[inter] - 5.9)**3
+    F_b[inter] =  0.2130 * (x[inter] - 5.9)**2 + 0.1207 * (x[inter] - 5.9)**3
+    
+    inter =  np.bitwise_and(x >= 3.3, x < 8)
+    
+    a[inter] =  1.752 - 0.316 * x[inter] - 0.104 / ((x[inter] - 4.67)**2 + 0.341) + F_a[inter]
+    b[inter] = -3.090 + 1.825 * x[inter] + 1.206 / ((x[inter] - 4.62)**2 + 0.263) + F_b[inter]
+
+#     Optical/NIR: 1.1 <= x <= 3.3 ; 3030 -> 9091 Angs ; 
+    inter = np.bitwise_and(x >= 1.1, x < 3.3)
+    
+#    y = 10000. / l - 1.82
+    
+    a[inter] = 1.+ 0.17699 * y[inter] - 0.50447 * y[inter]**2 - 0.02427 * y[inter]**3 + 0.72085 * y[inter]**4 + 0.01979 * y[inter]**5 - 0.77530 * y[inter]**6 + 0.32999 * y[inter]**7
+    b[inter] = 1.41338 * y[inter] + 2.28305 * y[inter]**2 + 1.07233 * y[inter]**3 - 5.38434 * y[inter]**4 - 0.62251 * y[inter]**5 + 5.30260 * y[inter]**6 - 2.09002 * y[inter]**7
+
+
+#     Infrared: 0.3 <= x <= 1.1 ; 9091 -> 33333 Angs ; 
+    inter = np.bitwise_and(x >= 0.3, x < 1.1)
+    
+    a[inter] =  0.574 * x[inter]**1.61
+    b[inter] = -0.527 * x[inter]**1.61
+    
+    q = a + b / R_V
+
+    return q
 
 def calc_redlaw(l, redlaw, R_V=None, **kwargs):
     l = np.atleast_1d(l)
@@ -272,6 +372,8 @@ def calc_redlaw(l, redlaw, R_V=None, **kwargs):
         return CCC_RedLaw(l, R_V)
     elif redlaw == 'CF00':
         return CharlotFall_RedLaw(l, **kwargs)
+    elif redlaw == 'HMW83':
+        return HowarthMW_RedLaw(l, R_V)
     else:
         raise Exception('Unknown reddening law %s.' % redlaw)
 
