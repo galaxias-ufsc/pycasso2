@@ -25,6 +25,7 @@ spec_table_dtype = [('l_obs', 'float64'),
                     ('f_syn', 'float64'),
                     ('f_wei', 'float64'),
                     ('f_flag', 'int32'),
+                    ('f_disp', 'float64'),
                     ]
 
 

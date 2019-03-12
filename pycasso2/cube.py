@@ -815,6 +815,12 @@ class FitsCube(object):
         return t['f_flag']
     
     @lazyproperty
+    def integ_f_disp(self):
+        t = self._getTableExtensionData(self._ext_integ_spectra)
+        flagged = (self.integ_f_flag & flags.no_obs) > 0
+        return np.ma.masked_where(flagged, t['f_disp'])
+    
+    @lazyproperty
     def integ_f_syn(self):
         t = self._getTableExtensionData(self._ext_integ_spectra)
         flagged = (self.integ_f_flag & flags.no_starlight) > 0

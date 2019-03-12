@@ -136,10 +136,12 @@ class SynthesisAdapter(object):
             self.f_obs = self._cube.f_obs[:, np.newaxis, :]
             self.f_err = self._cube.f_err[:, np.newaxis, :]
             self.f_flag = self._cube.f_flag[:, np.newaxis, :]
+            self.f_disp = self._cube.f_disp[:, np.newaxis, :]
         else:
             self.f_obs = self._cube.f_obs
             self.f_err = self._cube.f_err
             self.f_flag = self._cube.f_flag
+            self.f_disp = self._cube.f_disp
         self.spatialMask = self.getSpatialMask()
 
         if self._cube.isSpatializable:
@@ -149,10 +151,15 @@ class SynthesisAdapter(object):
             f_obs, f_err, good_frac = integrate_spectra(self.f_obs, self.f_err,
                                                     self.f_flag, self.spatialMask,
                                                     bin_size, A, B)
+            f_disp, _, _ = integrate_spectra(self.f_disp, self.f_err,
+                                             self.f_flag, self.spatialMask,
+                                             bin_size, 0.0, 1.0)
             nodata = good_frac == 0.0
+            Ng = np.sum(~self.spatialMask)
             self._integ_f_obs = np.ma.masked_where(nodata, f_obs)
             self._integ_f_err = np.ma.masked_where(nodata, f_err)
             self._integ_f_flag = np.where(nodata, flags.no_data, 0)
+            self._integ_f_disp = np.ma.masked_where(nodata, f_disp/Ng)
 
 
     def _getTemplates(self, cfg):
@@ -359,6 +366,7 @@ class SynthesisAdapter(object):
                 t = self._cube._getTableExtensionData(self._cube._ext_integ_spectra)
                 t['f_obs'] = self._integ_f_obs
                 t['f_err'] = self._integ_f_err
+                t['f_disp'] = self._integ_f_disp
 
                 t['f_syn'][slice_d] = spectra['f_syn'][slice_o] * f_obs_norm
                 f_wei = spectra['f_wei'][slice_o]
