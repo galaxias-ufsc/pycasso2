@@ -27,13 +27,14 @@ class ObservedCube(object):
     _hdr_prefix = 'HIERARCH PYCASSO'
 
     def __init__(self, name, l_obs, f_obs, f_err, f_flag, 
-                 flux_unit, redshift, header):
+                 flux_unit, redshift, header, f_disp=None):
         self.name = name
         self.header = header
         self.l_obs = l_obs
         self.f_obs = f_obs
         self.f_err = f_err
         self.f_flag = f_flag
+        self.f_disp = f_disp
         self.flux_unit = flux_unit
         self.redshift = redshift
         self.EBV = 0.0
@@ -89,8 +90,13 @@ class ObservedCube(object):
     def bin(self, bin_size, cov_factor_A=0, cov_factor_B=1.0):
         cov_factor = get_cov_factor(bin_size**2, cov_factor_A, cov_factor_B)
         log.info('Binning cube (%d x %d), cov. factor=%.2f.' % (bin_size, bin_size, cov_factor))
-        self.f_obs, self.f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
-                                                        bin_size, cov_factor_A, cov_factor_B)
+        f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
+                                              bin_size, cov_factor_A, cov_factor_B)
+        # Get mean intrumental dispersion; ignore covariance.
+        f_disp, _, _ =  bin_spectra(self.f_disp, self.f_err, self.f_flag,
+                                    bin_size, cov_factor_A=0., cov_factor_B=1.)
+        f_disp = f_disp / bin_size**2
+        self.f_obs, self.f_err, self.f_disp = f_obs, f_err, f_disp
         self.f_flag = np.where(good_frac == 0, flags.no_data, 0)
         self.wcs = scale_celestial_WCS(self.wcs, scaling=bin_size)
 
@@ -102,6 +108,7 @@ class ObservedCube(object):
         z_plus_1 = 1.0 + self.redshift
         self.f_obs *= z_plus_1
         self.f_err *= z_plus_1
+        # Note: do nothing to f_disp.
         self.l_obs /= z_plus_1
         self.inRestFrame = True
 
@@ -117,9 +124,13 @@ class ObservedCube(object):
         log.info('Resampling spectra in [%.1f, %.1f], dl=%.2f \AA.' % (l_ini, l_fin, dl))
         l_resam = np.arange(l_ini, l_fin + dl, dl)
         badpix = (self.f_flag & flags.no_obs) > 0
-        self.f_obs, self.f_err, self.f_flag = resample_spectra(self.l_obs, l_resam,
-                                                               self.f_obs, self.f_err, badpix,
-                                                               vectorized=vectorized)
+        f_obs, f_err, f_flag = resample_spectra(self.l_obs, l_resam,
+                                                self.f_obs, self.f_err, badpix,
+                                                vectorized=vectorized)
+        f_disp, _, _ = resample_spectra(self.l_obs, l_resam,
+                                        self.f_disp, self.f_err, badpix,
+                                        vectorized=vectorized)
+        self.f_obs, self.f_err, self.f_flag, self.f_disp = f_obs, f_err, f_flag, f_disp
         self.l_obs = l_resam
         self.wcs = replace_wave_WCS(self.wcs, crpix_wave=0, crval_wave=l_resam[0], cdelt_wave=dl)
 

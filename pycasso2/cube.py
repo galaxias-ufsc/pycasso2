@@ -35,6 +35,7 @@ class FitsCube(object):
     _ext_f_syn = 'F_SYN'
     _ext_f_wei = 'F_WEI'
     _ext_f_flag = 'F_FLAG'
+    _ext_f_disp = 'F_DISP'
     _ext_segmask = 'SEGMASK'
     _ext_seg_good_frac = 'SEG_GOOD_FRAC'
     _ext_fobs_norm = 'FOBS_NORM'
@@ -97,7 +98,7 @@ class FitsCube(object):
             obs = read(cubefile, name, import_cfg)
             self._fromObs(obs, import_cfg)
 
-    def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None):
+    def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None, f_disp=None):
         phdu = fits.PrimaryHDU(header=header)
         phdu.name = 'PRIMARY'
         self._HDUList = fits.HDUList([phdu])
@@ -110,6 +111,7 @@ class FitsCube(object):
             f_obs = f_obs.T
             f_err = f_err.T
             f_flag = f_flag.T
+            f_disp = f_disp.T
             good_frac = good_frac.T
             f_flag |= np.where(good_frac == 0, flags.no_data, 0)
             self._addExtension(FitsCube._ext_segmask, data=segmask, wcstype='segmask')
@@ -117,6 +119,8 @@ class FitsCube(object):
         self._addExtension(FitsCube._ext_f_obs, data=f_obs, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
+        if f_disp is not None:
+            self._addExtension(FitsCube._ext_f_disp, data=f_disp, wcstype='spectra')
         self._initMasks()
         self._readKeywords()
 
@@ -162,7 +166,7 @@ class FitsCube(object):
 
     def _fromObs(self, obs, cfg):
         preprocess_obs(obs, cfg)
-        self._initFits(obs.f_obs, obs.f_err, obs.f_flag, obs.header, obs.wcs, segmask=None)
+        self._initFits(obs.f_obs, obs.f_err, obs.f_flag, obs.header, obs.wcs, segmask=None, f_disp=obs.f_disp)
         self.flux_unit = obs.flux_unit
         self.lumDistMpc = obs.lumDist_Mpc
         self.redshift = obs.redshift
@@ -432,6 +436,10 @@ class FitsCube(object):
     def f_flag(self):
         return self._getExtensionData(self._ext_f_flag)
 
+    @lazyproperty
+    def f_disp(self):
+        return self._getExtensionData(self._ext_f_disp)
+    
     @lazyproperty
     def popage_base(self):
         return self._getExtensionData(self._ext_popage_base)

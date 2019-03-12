@@ -87,8 +87,12 @@ if seg_type is not None:
 
     f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err,
                                               cov_factor_A=A, cov_factor_B=B)
+    # Get mean intrumental dispersion; ignore covariance.
+    f_disp, _, _ =  seg.sum_spectra(segmask, g.f_disp, g.f_err,
+                                    cov_factor_A=0., cov_factor_B=1.)
+    
     gs = FitsCube()
-    gs._initFits(f_obs, f_err, None, g._header, g._wcs, segmask, good_frac)
+    gs._initFits(f_obs, f_err, None, g._header, g._wcs, segmask, good_frac, f_disp=f_disp)
     gs.name = g.name
     gs._header['HIERARCH PYCASSO SPAT_COV A'] = A
     gs._header['HIERARCH PYCASSO SPAT_COV B'] = B

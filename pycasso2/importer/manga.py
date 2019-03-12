@@ -54,9 +54,10 @@ def read_manga(cube, name, cfg):
         f_err = np.zeros_like(f_obs)
         f_err[goodpix] = f['IVAR'].data[goodpix]**-0.5
         f_flag = np.where(badpix, flags.no_data, 0)
+        f_disp = f['DISP'].data
         l_obs = f['WAVE'].data
 
-    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
+    obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header, f_disp=f_disp)
     obs.EBV = header['EBVGAL']
     obs.vaccuum_wl = True
     return obs
