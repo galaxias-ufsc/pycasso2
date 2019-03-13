@@ -58,10 +58,6 @@ def parse_args():
                         help='Enable kinematic ties.')
     parser.add_argument('--enable-balmer-lim', dest='enableBalmerLim', action='store_true',
                         help='Do not allow Ha/Hb < 2.0.')
-    parser.add_argument('--vd-inst', dest='vdInst', type=float, default=70.0,
-                        help='Instrumental velocity dispersion, in km/s.')
-    parser.add_argument('--vd-inst-angstrom', dest='vdInstAngstrom', action='store_true',
-                        help='The instrumental velocity dispersion informed is in Angstroms.')
 
     return parser.parse_args()
 ###############################################################################
@@ -106,6 +102,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         f_res = f_res[..., np.newaxis]
         f_syn = c.f_syn[..., np.newaxis]
         f_err = c.f_err[..., np.newaxis]
+        f_disp = c.f_disp[..., np.newaxis]
         Ny = c.Nzone
         Nx = 1
         y0 = 0
@@ -113,6 +110,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     else:
         f_syn = c.f_syn
         f_err = c.f_err
+        f_disp = c.f_disp
         Ny = c.Ny
         Nx = c.Nx
         y0 = c.y0
@@ -125,6 +123,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     else:
         iys, ixs = range(Ny), range(Nx)
 
+    # Fit only one spaxel
     for iy in iys:
         for ix in ixs:
     
@@ -136,13 +135,13 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
             outfile = path.join(tmpdir, '%s.hdf5' % name)
 
             if not (path.exists(outfile)):
-            
+
                 log.info('Fitting pixel [%d, %d]' % (iy, ix))
                 # Modelling the gaussian
-                el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = args.vdInst,
+                el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = f_disp[..., iy, ix],
                                       kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
                                       saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                                      vd_kms=not args.vdInstAngstrom)
+                                      vd_kms = False)
 
                 if args.debug:
                     # Plot spectrum
@@ -154,11 +153,13 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
     name = suffix + '.' + 'integ'
     outfile = path.join(tmpdir, '%s.hdf5' % name)
+            
+
     if not path.exists(outfile):
-        el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = args.vdInst,
+        el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = c.integ_f_disp,
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
                                saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                               vd_kms=not args.vdInstAngstrom)
+                               vd_kms = True)
         if args.debug:
             # Plot integrate spectrum
             fig = plot_el(ll, integ_f_res, el, ifig = 0, display_plot = args.displayPlots)
@@ -172,13 +173,6 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
                            suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
 
     
-# Fit!
-#++for kin_ties in [True, False]:
-#++    for balmer_lim in [True, False]:
-#++        for model in ['gaussian', 'resampled_gaussian']:
-#++            fit(kinematic_ties_on = kin_ties, balmer_limit_on = balmer_lim, model = model)
-
-
 fit(kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim, model=args.model)
 
 # EOF

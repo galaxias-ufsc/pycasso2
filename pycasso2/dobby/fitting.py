@@ -101,7 +101,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         return l0
     
     # Get vd_inst
-    def get_vd_inst(vd_inst, name, l0, vd_kms):
+    def get_vd_inst(vd_inst, name, l0, vd_kms, ll):
 
         if vd_inst is None:
             return [0. for n in name]
@@ -118,8 +118,16 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             else:
                 return [c * vd_inst[n] / l for l, n in zip(l0, name)]
 
+        elif isinstance(vd_inst, (np.ndarray, np.generic) ):
+            vdi = np.interp(l0, ll, vd_inst)
+            if vd_kms:
+                return vdi
+            else:
+                print(c * vdi / l0, l0)
+                return c * vdi / l0
+
         else:
-            raise Exception('Check vd_inst, must be a scalar a dictionary: %s' % vd_inst)
+            raise Exception('Check vd_inst, must be a scalar, a dictionary or a dispersion spectrum: %s' % vd_inst)
 
     def do_fit(model, ll, lc, flux, err, min_good_fraction=.5):
         fitter = fitting.LevMarLSQFitter()
@@ -246,7 +254,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Parameters
     name = ['6563', '6548', '6584']
     l0 = get_central_wavelength(name)
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
@@ -280,7 +288,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Parameters
     name = ['4861', '4340']
     l0 = get_central_wavelength(name)
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
         
@@ -326,7 +334,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Parameters
     name = ['4959', '5007']
     l0 = get_central_wavelength(name)
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
@@ -360,7 +368,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Parameters
     name = ['3726', '3729']
     l0 = get_central_wavelength(name)
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
@@ -392,7 +400,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Parameters
     name = ['6716', '6731']
     l0 = get_central_wavelength(name)
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
