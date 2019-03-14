@@ -123,7 +123,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             if vd_kms:
                 return vdi
             else:
-                print(c * vdi / l0, l0)
                 return c * vdi / l0
 
         else:
