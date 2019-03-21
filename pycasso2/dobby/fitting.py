@@ -31,29 +31,36 @@ def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree=16, de
     
     # Select window for Legendre polynomial fit
     flag_lc = (~_f_res.mask) & (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
-    x = np.linspace(-1, 1, np.sum(flag_lc))
-    coeffs = np.polynomial.legendre.legfit(x, _f_res[flag_lc], degree)
 
-    local_cont = np.zeros_like(_ll)
-    local_cont[flag_lc] = np.polynomial.legendre.legval(x, coeffs)
-    local_cont = np.interp(_ll, _ll[flag_lc], np.polynomial.legendre.legval(x, coeffs))
+    # Deal with completely masked windows
+    if (np.count_nonzero(flag_lc) == 0):
+        local_cont = np.zeros_like(_ll)
+
+    else:
+        # Fit legendre polynomials
+        x = np.linspace(-1, 1, np.sum(flag_lc))
+        coeffs = np.polynomial.legendre.legfit(x, _f_res[flag_lc], degree)
     
+        local_cont = np.zeros_like(_ll)
+        local_cont[flag_lc] = np.polynomial.legendre.legval(x, coeffs)
+        local_cont = np.interp(_ll, _ll[flag_lc], np.polynomial.legendre.legval(x, coeffs))
+        
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.figure('local_cont')
+            plt.clf()
+            plt.plot(_ll[flag_lc], _f_res[flag_lc], 'k', zorder=10)
+            plt.axhline(0)
+            plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%deg)
+            plt.plot(_ll[flag_cont], local_cont[flag_cont], 'x-')
+            plt.legend()
+
     # Get the blue and red continua
     flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
     flag_red  = (_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])
     flag_cont = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
     flag_windows = (flag_blue) | (flag_red)
-    
-    if debug:
-        import matplotlib.pyplot as plt
-        plt.figure('local_cont')
-        plt.clf()
-        plt.plot(_ll[flag_lc], _f_res[flag_lc], 'k', zorder=10)
-        plt.axhline(0)
-        plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%deg)
-        plt.plot(_ll[flag_cont], local_cont[flag_cont], 'x-')
-        plt.legend()
-    
+        
     return local_cont, flag_cont, flag_windows
             
 def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuum = True, debug = False):
