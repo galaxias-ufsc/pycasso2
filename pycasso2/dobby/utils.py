@@ -168,7 +168,8 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
 
     # Start full spectrum
-    m = np.full_like(ll, np.nan)
+    m  = np.full_like(ll, np.nan)
+    l = np.full_like(ll, np.nan)
     
     # Write fluxes in FHa units
     FHa =  mod_fit_HaN2['6563'].flux.value
@@ -182,7 +183,9 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
     plt.plot(ll[flag], mod_fit_O3(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
     m[flag] = mod_fit_O3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
     for i, name in enumerate(mod_fit_O3.submodel_names):
         ax2.text(0.99, 0.50 + i*0.45, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
                  % (name, mod_fit_O3[name].v0.value, mod_fit_O3[name].vd.value, mod_fit_O3[name].flux.value / FHa, good_fit),
@@ -198,6 +201,9 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
     plt.plot(ll[flag], mod_fit_HbHg(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
+    m[flag] = mod_fit_HbHg(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
     ax3.text(0.99, 0.95, '$\lambda_0 = 4861$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
              % (mod_fit_HbHg['4861'].v0.value, mod_fit_HbHg['4861'].vd.value, mod_fit_HbHg['4861'].flux.value / FHa, good_fit),
              horizontalalignment='right',
@@ -209,6 +215,7 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     lc = el_extra[mod_fit_HbHg.submodel_names[1]]['local_cont']
     flag = ~lc.mask
     m[flag] = mod_fit_HbHg(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
     
     # Plot [NII, Halpha]
     ax4 = plt.subplot(gs[1, 2])
@@ -218,7 +225,9 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
     plt.plot(ll[flag], mod_fit_HaN2(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
     m[flag] = mod_fit_HaN2(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
     for i, name in enumerate(mod_fit_HaN2.submodel_names):
         xlab, ylab = 0.99, 0.55 + (i-1)*0.40
         if name == '6563':
@@ -234,17 +243,20 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     good_fit = el_extra[mod_fit_O2.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     m[flag] = mod_fit_O2(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
         
     # Plot [SII]
     lc = el_extra[mod_fit_S2.submodel_names[0]]['local_cont']
     good_fit = el_extra[mod_fit_S2.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     m[flag] = mod_fit_S2(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
     
     # Plot the full spectrum
     ax1 = plt.subplot(gs[0, :])
     plt.plot(ll, f_res, 'k', label = 'Residual', drawstyle = 'steps-mid')
     plt.plot(ll, m, 'r', label = 'Fit', drawstyle = 'steps-mid')
+    plt.plot(ll, l, 'grey', label = 'Local continuum', drawstyle = 'steps-mid', zorder=-1, alpha=0.5)
     plt.legend(loc = 'upper right')
 
     if display_plot:
