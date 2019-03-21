@@ -58,6 +58,8 @@ def parse_args():
                         help='Enable kinematic ties.')
     parser.add_argument('--enable-balmer-lim', dest='enableBalmerLim', action='store_true',
                         help='Do not allow Ha/Hb < 2.0.')
+    parser.add_argument('--degree', dest='degree', type=int, default=16,
+                        help='Degree for Legendre polynomial fits in the local continuum. Default: 16')
 
     return parser.parse_args()
 ###############################################################################
@@ -140,6 +142,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
                 # Modelling the gaussian
                 el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = f_disp[..., iy, ix],
                                       kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                                      degree = args.degree,
                                       saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
                                       vd_kms = False)
 
@@ -158,6 +161,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     if not path.exists(outfile):
         el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = c.integ_f_disp,
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                               degree = args.degree,
                                saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
                                vd_kms = True)
         if args.debug:
