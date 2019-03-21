@@ -25,7 +25,7 @@ def calc_cont_EW(_ll, _f_syn, flux_integrated, linename, lines_windows):
     return EW
 
 
-def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree=16, debug = False):
+def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug = False):
     # Select a line from our red/blue continua table
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
     
@@ -111,7 +111,7 @@ def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuu
 def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      kinematic_ties_on = True, balmer_limit_on = True,
                      model = 'resampled_gaussian', vd_inst = None, vd_kms = True,
-                     lines_windows_file = None, degree=16,
+                     lines_windows_file = None, degree=16, min_good_fraction=.2, 
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False, **kwargs):
 
@@ -166,7 +166,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         else:
             raise Exception('Check vd_inst, must be a scalar, a dictionary or a dispersion spectrum: %s' % vd_inst)
 
-    def do_fit(model, ll, lc, flux, err, min_good_fraction=.5):
+    def do_fit(model, ll, lc, flux, err, min_good_fraction):
         fitter = fitting.LevMarLSQFitter()
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
         good_fraction = good.sum() / lc.count()
@@ -214,7 +214,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         
     lc = np.ma.masked_array(np.zeros_like(_ll))
     mod_init_all = elModel(l0, flux=0.0, v0=0., vd=100., vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
-    mod_fit_all, _flag = do_fit(mod_init_all, _ll, lc, f_res, f_err)
+    mod_fit_all, _flag = do_fit(mod_init_all, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
 
     # Remove emission lines detected to calculate the continuum with Legendre polynomials
     flag_lc = (mod_fit_all(_ll) < 1e-5)
@@ -334,7 +334,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_HaN2['6548'].vd.tied = lambda m: m['6584'].vd
 
     # Fit
-    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, lc, f_res, f_err)
+    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag 
 
@@ -344,7 +344,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_HaN2(_ll)+lc)
-
 
     log.debug('Fitting Hb and Hg...')
 
@@ -363,9 +362,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         lc[fc] = el_extra[n]['local_cont'][fc]
         lc.mask[fc] = False
     lc /= np.abs(med)
-    
+
     # Start model
-    # Fitting Ha too because the single model has a problem,
+    # Fitting Hg too because the single model has a problem,
     # and many things are based on the compounded model.
     mod_init_HbHg = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6563'].v0, vd=mod_fit_HaN2['6563'].vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
     
@@ -381,7 +380,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_HbHg['4340'].flux.max = mod_fit_HaN2['6563'].flux / 5.5
     
     # Fit
-    mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, lc, f_res, f_err)
+    mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag 
 
@@ -414,7 +413,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_O3['4959'].vd.tied = lambda m: m['5007'].vd
 
     # Fit
-    mod_fit_O3, _flag = do_fit(mod_init_O3, _ll, lc, f_res, f_err)
+    mod_fit_O3, _flag = do_fit(mod_init_O3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag 
 
@@ -447,7 +446,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_O2['3726'].vd.tied = lambda m: m['3729'].vd
 
     # Fit
-    mod_fit_O2, _flag = do_fit(mod_init_O2, _ll, lc, f_res, f_err)
+    mod_fit_O2, _flag = do_fit(mod_init_O2, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag 
 
@@ -479,7 +478,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_S2['6716'].vd.tied = lambda m: m['6731'].vd
 
     # Fit
-    mod_fit_S2, _flag = do_fit(mod_init_S2, _ll, lc, f_res, f_err)
+    mod_fit_S2, _flag = do_fit(mod_init_S2, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag 
 
@@ -498,6 +497,18 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             model[name].flux.value *= np.abs(med)
 
 
+    # Recheck flags.no_data, because all models fit more than one emission line
+    min_good_fraction = 0.3
+    for model in el:
+        for l in model.submodel_names:
+            lc = el_extra[l]['local_cont']
+            good = ~np.ma.getmaskarray(_f_res) & ~np.ma.getmaskarray(lc)
+            good_fraction = good.sum() / lc.count()
+            print(l, good_fraction)
+            if good_fraction <= min_good_fraction:
+                el_extra[l]['flag'] = flags.no_data
+
+        
     # TO DO
     # Integrate fluxes (be careful not to use the one normalized)
     flag = (_ll > 6554) & (_ll < 6573)
