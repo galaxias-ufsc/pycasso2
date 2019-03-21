@@ -18,14 +18,45 @@ c = const.c.to('km/s').value
 
 def calc_cont_EW(_ll, _f_syn, flux_integrated, linename, lines_windows):
     # Calculate continuum and equivalent width
-    a, b, central_lambda = local_continuum(_ll, _f_syn, linename, lines_windows, return_continuum = False)
+    a, b, central_lambda = local_continuum_linear(_ll, _f_syn, linename, lines_windows, return_continuum = False)
     C  = a * central_lambda + b
     EW = flux_integrated / C
 
     return EW
 
 
-def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = True, debug = False):
+def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree=16, debug = False):
+    # Select a line from our red/blue continua table
+    flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
+    
+    # Select window for Legendre polynomial fit
+    flag_lc = (~_f_res.mask) & (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    x = np.linspace(-1, 1, np.sum(flag_lc))
+    coeffs = np.polynomial.legendre.legfit(x, _f_res[flag_lc], degree)
+
+    local_cont = np.zeros_like(_ll)
+    local_cont[flag_lc] = np.polynomial.legendre.legval(x, coeffs)
+    local_cont = np.interp(_ll, _ll[flag_lc], np.polynomial.legendre.legval(x, coeffs))
+    
+    # Get the blue and red continua
+    flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
+    flag_red  = (_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    flag_cont = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    flag_windows = (flag_blue) | (flag_red)
+    
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('local_cont')
+        plt.clf()
+        plt.plot(_ll[flag_lc], _f_res[flag_lc], 'k', zorder=10)
+        plt.axhline(0)
+        plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%deg)
+        plt.plot(_ll[flag_cont], local_cont[flag_cont], 'x-')
+        plt.legend()
+    
+    return local_cont, flag_cont, flag_windows
+            
+def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuum = True, debug = False):
     # Select a line from our red/blue continua table
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
 
@@ -54,10 +85,10 @@ def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = Tru
     local_cont = a * _ll + b
 
     flag_windows = (flag_blue) | (flag_red)
-    
+
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit2')
+        plt.figure()
         plt.clf()
         plt.plot(_ll, _f_res)
         plt.plot(blue_lambda, blue_median, 'xb')
@@ -73,7 +104,7 @@ def local_continuum(_ll, _f_res, linename, lines_windows, return_continuum = Tru
 def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      kinematic_ties_on = True, balmer_limit_on = True,
                      model = 'resampled_gaussian', vd_inst = None, vd_kms = True,
-                     lines_windows_file = None,
+                     lines_windows_file = None, degree=16,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False, **kwargs):
 
@@ -162,10 +193,31 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc = np.ma.zeros(len(_ll))
     total_lc.mask = True
 
-    # Continuum only for Ha
-    l, f, fw = local_continuum(_ll, _f_res, '6563', lines_windows)
+
+
+    # Fit all lines just to remove them from the local continuum calculation with Legendre polynomials
+    name = np.char.mod('%d', lines_windows['namel'])
+    linename = lines_windows['name']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename' : ln }
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+        
+    lc = np.ma.masked_array(np.zeros_like(_ll))
+    mod_init_all = elModel(l0, flux=0.0, v0=0., vd=100., vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
+    mod_fit_all, _flag = do_fit(mod_init_all, _ll, lc, f_res, f_err)
+
+    # Remove emission lines detected to calculate the continuum with Legendre polynomials
+    flag_lc = (mod_fit_all(_ll) < 1e-5)
+    _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
+
+    # Continuum only for Ha - Legendre for continuum, linear for rms (because Legendre may overfit the noise)
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6563', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    l, f, fw = local_continuum_linear(_ll, _f_res, '6563', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
     name     = ['6563',   '6548',      '6584']
     linename = ['Halpha', '[NII]6548', '[NII]6584' ]
     for n, ln in zip(name, linename):
@@ -176,10 +228,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
 
-    # Continuum for Hb
-    l, f, fw = local_continuum(_ll, _f_res, '4861', lines_windows)
+    # Continuum for Hb - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4861', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    l, f, fw = local_continuum_linear(_ll, _f_res, '4861', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
     name     = ['4861'  ]
     linename = ['Hbeta' ]
     for n, ln in zip(name, linename):
@@ -190,10 +243,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
         
-    # Continuum for Hg
-    l, f, fw = local_continuum(_ll, _f_res, '4340', lines_windows)
+    # Continuum for Hg - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4340', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    l, f, fw = local_continuum_linear(_ll, _f_res, '4340', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
     name     = ['4340'   ]
     linename = ['Hgamma' ]
     for n, ln in zip(name, linename):
@@ -204,10 +258,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
         
-    # Continuum only for [OIII]5007
-    l, f, fw = local_continuum(_ll, _f_res, '5007', lines_windows)
+    # Continuum only for [OIII]5007 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5007', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    l, f, fw = local_continuum_linear(_ll, _f_res, '5007', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
     name     = ['4959',       '5007']
     linename = ['[OIII]4959', '[OIII]5007']
     for n, ln in zip(name, linename):
@@ -218,10 +273,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
 
-    # Continuum only for [OII]3726
-    l, f, fw = local_continuum(_ll, _f_res, '3726', lines_windows)
+    # Continuum only for [OII]3726 - linear - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '3726', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    l, f, fw = local_continuum_linear(_ll, _f_res, '3726', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
     name     = ['3726'     , '3729'      ]
     linename = ['[OII]3726', '[OII]3729' ]
     for n, ln in zip(name, linename):
@@ -232,10 +288,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
     
-    # Continuum only for [SII]6716
-    l, f, fw = local_continuum(_ll, _f_res, '6716', lines_windows)
+    # Continuum only for [SII]6716 - linear - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6716', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
-    lc_rms = np.ma.std((_f_res - lc)[(f)&(fw)])
+    l, f, fw = local_continuum_linear(_ll, _f_res, '6716', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
     name     = ['6716'     , '6731'      ]
     linename = ['[SII]6716', '[SII]6731' ]
     for n, ln in zip(name, linename):
