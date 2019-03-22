@@ -97,6 +97,8 @@ class FitsCube(object):
                 cubefile = [cubefile]
             obs = read(cubefile, name, import_cfg)
             self._fromObs(obs, import_cfg)
+        self._l_norm = None
+        self._dl_norm = None
 
     def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None, f_disp=None):
         phdu = fits.PrimaryHDU(header=header)
@@ -531,16 +533,28 @@ class FitsCube(object):
     
     @property
     def l_norm(self):
+        if self._l_norm is not None:
+            return self._l_norm
         if not self.hasSynthesis:
-            raise Exception('Cube does not have synthesis data.')
+            raise Exception('l_norm unset, and cube does not have synthesis data.')
         return self.synthKeywords['l_norm']
 
+    @l_norm.setter
+    def l_norm(self, l):
+        self._l_norm = l
+        
     @property
     def dl_norm(self):
+        if self._dl_norm is not None:
+            return self._dl_norm
         if not self.hasSynthesis:
-            raise Exception('Cube does not have synthesis data.')
+            raise Exception('dl_norm not set, and cube does not have synthesis data.')
         return self.synthKeywords['lupp_norm'] - self.synthKeywords['llow_norm']
 
+    @dl_norm.setter
+    def dl_norm(self, dl):
+        self._dl_norm = dl
+        
     def statFluxWindow(self, flux, ll, dl):
         l1, l2 = find_nearest_index(self.l_obs, [ll - dl, ll + dl])
         y = modeling.cube_continuum(self.l_obs[l1:l2], flux[l1:l2], degr=1, niterate=0)
