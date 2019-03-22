@@ -404,7 +404,7 @@ class fitsQ3DataCube(IQ3DataCube):
 
     @lazyproperty
     def Nwave(self):
-        axis = 1
+        axis = 3
         return get_Naxis(self._hdulist[self._ext_f_obs].header, axis)
 
 
