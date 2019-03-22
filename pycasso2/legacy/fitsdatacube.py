@@ -7,7 +7,7 @@ Created on Mar 8, 2012
 
 from .q3datacube_intf import IQ3DataCube
 from ..geometry import convex_hull_mask as convexHullMask
-from ..wcs import get_pixel_scale_rad, get_Naxis, get_reference_pixel
+from ..wcs import get_pixel_scale_rad, get_Naxis, get_reference_pixel, get_wavelength_coordinates
 from .. import flags, modeling
 from ..resampling import find_nearest_index
 from ..starlight.synthesis import get_base_grid
@@ -368,10 +368,6 @@ class fitsQ3DataCube(IQ3DataCube):
         self.pycassoVersion = self.keywords.get('VERSION', '0.8')
         logger.debug('PyCASSO version %s'% self.pycassoVersion)
 
-        self.l_obs = np.arange(self.keywords['L_INI'],
-                               self.keywords['L_FIN'] + self.keywords['DL'],
-                               self.keywords['DL'])
-
         if self._hasZoneCube:
             self.qVersion = self._zoneCube.qVersion
             self.galaxyName = self._zoneCube.galaxyName
@@ -405,6 +401,16 @@ class fitsQ3DataCube(IQ3DataCube):
         self.flux_unit = self.keywords['FLUX_UNIT']
         self.Nl_obs = self.keywords['NL_OBS']
 
+
+    @lazyproperty
+    def Nwave(self):
+        axis = 1
+        return get_Naxis(self._hdulist[self._ext_f_obs].header, axis)
+
+
+    @lazyproperty
+    def l_obs(self):
+        return get_wavelength_coordinates(self._wcs, self.Nwave)
 
     def _toRectBase(self, a, fill_value=0.0):
         shape = (self._baseMask.shape) + a.shape[1:]
