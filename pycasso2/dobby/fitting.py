@@ -504,7 +504,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             lc = el_extra[l]['local_cont']
             good = ~np.ma.getmaskarray(_f_res) & ~np.ma.getmaskarray(lc)
             good_fraction = good.sum() / lc.count()
-            print(l, good_fraction)
             if good_fraction <= min_good_fraction:
                 el_extra[l]['flag'] = flags.no_data
 
