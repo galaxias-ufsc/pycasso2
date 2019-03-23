@@ -43,7 +43,7 @@ def read_gmos(cube, name, cfg):
     f_flag = np.where(badpix, flags.no_data, 0)
 
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
-    obs.EBV = header['EBVGAL']
+    obs.EBV = ml['EBVGAL']
     obs.lumDist_Mpc = np.asscalar(ml['DL'])
     return obs
 
@@ -83,7 +83,7 @@ def gmos_read_masterlist(filename, galaxy_id=None):
     '''
     ml = np.genfromtxt(filename, masterlist_dtype, skip_header=1, delimiter=',')
     if galaxy_id is not None:
-        index = np.where(ml['id'] == galaxy_id)[0]
+        index = np.where(ml['id'] == bytes(galaxy_id, 'utf-8'))[0]
         if len(index) == 0:
             raise Exception(
                 'Entry %s not found in masterlist %s.' % (galaxy_id, filename))
