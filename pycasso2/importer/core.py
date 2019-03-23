@@ -92,11 +92,12 @@ class ObservedCube(object):
         log.info('Binning cube (%d x %d), cov. factor=%.2f.' % (bin_size, bin_size, cov_factor))
         f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
                                               bin_size, cov_factor_A, cov_factor_B)
-        # Get mean intrumental dispersion; ignore covariance.
-        f_disp, _, _ =  bin_spectra(self.f_disp, self.f_err, self.f_flag,
-                                    bin_size, cov_factor_A=0., cov_factor_B=1.)
-        f_disp = f_disp / bin_size**2
-        self.f_obs, self.f_err, self.f_disp = f_obs, f_err, f_disp
+        self.f_obs, self.f_err = f_obs, f_err
+        if self.f_disp is not None:
+            # Get mean intrumental dispersion; ignore covariance.
+            f_disp, _, _ =  bin_spectra(self.f_disp, self.f_err, self.f_flag,
+                                        bin_size, cov_factor_A=0., cov_factor_B=1.)
+            self.f_disp = f_disp / bin_size**2
         self.f_flag = np.where(good_frac == 0, flags.no_data, 0)
         self.wcs = scale_celestial_WCS(self.wcs, scaling=bin_size)
 
@@ -127,10 +128,12 @@ class ObservedCube(object):
         f_obs, f_err, f_flag = resample_spectra(self.l_obs, l_resam,
                                                 self.f_obs, self.f_err, badpix,
                                                 vectorized=vectorized)
-        f_disp, _, _ = resample_spectra(self.l_obs, l_resam,
-                                        self.f_disp, self.f_err, badpix,
-                                        vectorized=vectorized)
-        self.f_obs, self.f_err, self.f_flag, self.f_disp = f_obs, f_err, f_flag, f_disp
+        self.f_obs, self.f_err, self.f_flag = f_obs, f_err, f_flag
+        if self.f_disp is not None:
+            f_disp, _, _ = resample_spectra(self.l_obs, l_resam,
+                                            self.f_disp, self.f_err, badpix,
+                                            vectorized=vectorized)
+            self.f_disp = f_disp
         self.l_obs = l_resam
         self.wcs = replace_wave_WCS(self.wcs, crpix_wave=0, crval_wave=l_resam[0], cdelt_wave=dl)
 
