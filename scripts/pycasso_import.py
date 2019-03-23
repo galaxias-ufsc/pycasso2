@@ -74,6 +74,10 @@ if seg_type is not None:
     elif seg_type == 'voronoi':
         sn = cfg.getfloat('import', 'seg_target_sn')
         log.info('Creating voronoi zones with S/N = %.1f.' % sn)
+        llow_SN = cfg.getfloat('starlight', 'llow_SN')
+        lupp_SN = cfg.getfloat('starlight', 'lupp_SN')
+        g.l_norm = (lupp_SN + llow_SN) / 2.0
+        g.dl_norm = lupp_SN - llow_SN
         segmask = seg.voronoi_segmentation(g.flux_norm_window, g.noise_norm_window, sn)
     else:
         log.info('Loading segmentation from file %s.' % seg_type)
