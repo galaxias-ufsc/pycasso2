@@ -31,7 +31,7 @@ class PycassoExplorer:
         plotpars = {'legend.fontsize': 8,
                     'xtick.labelsize': 11,
                     'ytick.labelsize': 11,
-                    'text.fontsize': 11,
+                    'font.size': 11,
                     'axes.titlesize': 12,
                     'lines.linewidth': 0.5,
                     'font.family': 'Times New Roman',
@@ -63,6 +63,8 @@ class PycassoExplorer:
                       'v_d': self.c.v_d,
                       }
         else:
+            c.l_norm = 5635.0
+            c.dl_norm = 90.0
             images = {'light': c.flux_norm_window,
                       'mass': np.zeros_like(c.flux_norm_window),
                       'sfr':  np.zeros_like(c.flux_norm_window),
