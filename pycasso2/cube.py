@@ -108,6 +108,8 @@ class FitsCube(object):
         self._wcs = wcs
         if f_flag is None:
             f_flag = np.ones_like(f_obs, dtype='int32')
+        if f_disp is None:
+            f_disp = np.zeros_like(f_obs)
         if segmask is not None:
             self.hasSegmentationMask = True
             f_obs = f_obs.T
@@ -121,8 +123,7 @@ class FitsCube(object):
         self._addExtension(FitsCube._ext_f_obs, data=f_obs, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
-        if f_disp is not None:
-            self._addExtension(FitsCube._ext_f_disp, data=f_disp, wcstype='spectra')
+        self._addExtension(FitsCube._ext_f_disp, data=f_disp, wcstype='spectra')
         self._initMasks()
         self._readKeywords()
 
