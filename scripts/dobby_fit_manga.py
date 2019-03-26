@@ -163,7 +163,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
                                degree = args.degree,
                                saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                               vd_kms = True)
+                               vd_kms = False)
         if args.debug:
             # Plot integrate spectrum
             fig = plot_el(ll, integ_f_res, el, ifig = 0, display_plot = args.displayPlots)
