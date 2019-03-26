@@ -58,6 +58,7 @@ def read_muse(cube, name, cfg):
  
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = float(ml['E(B-V)'])
+    obs.lumDist_Mpc = ml['D (Mpc)']
     return obs
 
 
