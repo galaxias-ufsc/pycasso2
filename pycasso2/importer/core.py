@@ -42,7 +42,11 @@ class ObservedCube(object):
         self.inRestFrame = False
         self._lumDist_Mpc = None
         self._wcs = None
-    
+
+        if self.redshift <= 0.:
+            log.warn('Your redshift is %.4f; this will cause problems when running Starlight.' % self.redshift)
+
+        
     def addKeyword(self, key, value):
         key = self._hdr_prefix + ' ' + key
         self.header[key] = value
