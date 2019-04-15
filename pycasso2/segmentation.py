@@ -76,7 +76,7 @@ def prune_segmask(segmask, spatial_mask):
     return segmask[good_zones]
 
 
-def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor_A=0.0, cov_factor_B=1.0):
+def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
     if not isinstance(f_obs, np.ma.MaskedArray):
         if f_flag is None:
             raise Exception('f_flag must be specified if f_obs is not a masked array.')
@@ -95,13 +95,40 @@ def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor_A=0.0, cov_factor
     zone_flux = np.tensordot(f_obs, segmask, axes=[[1, 2], [1, 2]])
     valid = N_good > 0
     zone_flux[valid] /= good_frac[valid]
-    zone_error = np.tensordot(f_err**2, segmask, axes=[[1, 2], [1, 2]])
-    zone_error[valid] /= good_frac[valid]
-    np.sqrt(zone_error, out=zone_error)
-    f = get_cov_factor(N_pix, cov_factor_A, cov_factor_B)
-    zone_error *= f
+    if cov_matrix is None:
+        zone_error = np.tensordot(f_err**2, segmask, axes=[[1, 2], [1, 2]])
+        zone_error[valid] /= good_frac[valid]
+        np.sqrt(zone_error, out=zone_error)
+        f = get_cov_factor(N_pix, cov_factor_A, cov_factor_B)
+        zone_error *= f
+    else:
+        C  = cov_matrix[0]
+        fC = cov_matrix[1]
+        Cg, Cr, Ci, Cz =  C['g'],  C['r'],  C['i'],  C['z']
+        fg, fr, fi, fz = fC['g'], fC['r'], fC['i'], fC['z']
+        zone_error_g = calc_ferr_covMatrix(Cg, segmask, f_err)
+        zone_error_r = calc_ferr_covMatrix(Cr, segmask, f_err)
+        zone_error_i = calc_ferr_covMatrix(Ci, segmask, f_err)
+        zone_error_z = calc_ferr_covMatrix(Cz, segmask, f_err)
+        zone_error     = zone_error_g
+        zone_error[fr] = zone_error_r[fr]
+        zone_error[fi] = zone_error_i[fi]
+        zone_error[fz] = zone_error_z[fz]
     return zone_flux, zone_error, good_frac
 
+def calc_ferr_covMatrix(C, segmask, f_err):
+    Nz = segmask.shape[0]
+    Nl = f_err.shape[0]
+    err = np.zeros((Nl, Nz))
+    for iz in np.arange(Nz):
+        i = np.where(segmask.reshape(Nz, -1)[iz] > 0)
+        ij = np.meshgrid(i, i)
+        C_segmask = C[ij[0], ij[1]]
+        f_err_segmask = f_err.reshape(Nl, -1)[..., i].reshape(Nl, -1)
+        A = np.tensordot(C_segmask.toarray(), f_err_segmask, axes=[[0], [1]])
+        V = np.sum(A * f_err_segmask.T, axis=0)
+        err[..., iz] = np.sqrt(V)
+    return err
 
 def spatialize(x, segmask, extensive=False):
     good_zones = ~np.ma.getmaskarray(x)
@@ -134,12 +161,12 @@ def read_segmentation_map(fitsfile):
     return segmask
 
 
-def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor_A=0.0, cov_factor_B=1.0):
+def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
     Nl = f_obs.shape[0]
     spatial_shape = f_obs.shape[1:]
     segmask = mosaic_segmentation(spatial_shape, bin_size)
     f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, f_flag,
-                                          cov_factor_A, cov_factor_B)
+                                          cov_factor_A, cov_factor_B, cov_matrix)
     Ny_b = np.ceil(spatial_shape[0] / bin_size)
     Nx_b = np.ceil(spatial_shape[1] / bin_size)
     shape = (Nl, int(Ny_b), int(Nx_b))
@@ -147,7 +174,7 @@ def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor_A=0.0, cov_factor_B=1
     f_err = f_err.reshape(shape)
     good_frac = good_frac.reshape(shape)
     return f_obs, f_err, good_frac
-    
+
 
 def get_cov_factor(N, A, B):
     return 1.0 + A * np.log10(N)**B
@@ -164,4 +191,3 @@ def integrate_spectra(f_obs, f_err, f_flag, mask, bin_size=1, cov_factor_A=0.0, 
     f_err = f_err.squeeze()
     good_frac = good_frac.squeeze()
     return f_obs, f_err, good_frac
-    

@@ -45,6 +45,7 @@ def read_manga(cube, name, cfg):
     if header['DRP3QUAL'] & CRITICAL_BIT:
         log.warn('Critical bit set. There are problems with this cube.')
 
+    cov_matrix = cfg.getboolean('import', 'spat_cov_matrix', fallback=False)
     log.debug('Loading data from %s.' % cube)
     with fits.open(cube) as f:
         f_obs = f['FLUX'].data
@@ -56,13 +57,58 @@ def read_manga(cube, name, cfg):
         f_flag = np.where(badpix, flags.no_data, 0)
         f_disp = f['DISP'].data
         l_obs = f['WAVE'].data
-
+        if cov_matrix:
+            Nl, Ny, Nx = f['FLUX'].data.shape
+            C, flagC = get_cov_matrices(l_obs, f=f, Ny=Ny, Nx=Nx)
+            
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header, f_disp=f_disp)
     obs.EBV = header['EBVGAL']
     obs.vaccuum_wl = True
+    if cov_matrix:
+        obs.C = C
+        obs.flagC = flagC
     return obs
 
+def get_cov_matrix(band, f, Ny, Nx):
+    from scipy.sparse import coo_matrix
+    log.debug('Reading spatial covariance matrix for %s.' % band)
 
+    # Read correlation table for a given band
+    ix1 = f[band].data['INDXI_C1']
+    iy1 = f[band].data['INDXI_C2']
+    ix2 = f[band].data['INDXJ_C1']
+    iy2 = f[band].data['INDXJ_C2']
+    cij = f[band].data['RHOIJ']
+    
+    # Flat indexing of y, x matrix
+    ii = np.arange(Ny*Nx).reshape(Ny, Nx)
+    i = ii[iy1, ix1]
+    j = ii[iy2, ix2]
+
+    # Create sparse table
+    C = coo_matrix((cij, (i, j)), shape=(Ny*Nx, Ny*Nx)).asformat('csr')
+
+    return C
+
+def get_cov_matrices(l_obs, **kwargs):
+    Cg = get_cov_matrix(band='GCORREL', **kwargs)
+    Cr = get_cov_matrix(band='RCORREL', **kwargs)
+    Ci = get_cov_matrix(band='ICORREL', **kwargs)
+    Cz = get_cov_matrix(band='ZCORREL', **kwargs)
+    C = {'g': Cg, 'r': Cr, 'i': Ci, 'z': Cz}
+
+    # From https://www.sdss.org/instruments/camera/#Filters and the plot below
+    gr_lim = 5448.
+    ri_lim = 6826.
+    iz_lim = 8283.
+    fg = (l_obs <  gr_lim)
+    fr = (l_obs >= gr_lim) & (l_obs < ri_lim)
+    fi = (l_obs >= ri_lim) & (l_obs < iz_lim)
+    fz = (l_obs >= iz_lim)
+    flagC = {'g': fg, 'r': fr, 'i': fi, 'z': fz}
+
+    return C, flagC
+    
 def get_manga_center(h):
     '''
     Given the cube header, return the pixel coordinates (x0, y0)

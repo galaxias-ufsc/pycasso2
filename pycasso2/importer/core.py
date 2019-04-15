@@ -27,7 +27,7 @@ class ObservedCube(object):
     _hdr_prefix = 'HIERARCH PYCASSO'
 
     def __init__(self, name, l_obs, f_obs, f_err, f_flag, 
-                 flux_unit, redshift, header, f_disp=None):
+                 flux_unit, redshift, header, f_disp=None, cov_matrix=False):
         self.name = name
         self.header = header
         self.l_obs = l_obs
@@ -38,6 +38,7 @@ class ObservedCube(object):
         self.flux_unit = flux_unit
         self.redshift = redshift
         self.EBV = 0.0
+        self.cov_matrix = cov_matrix
         self.vaccuum_wl = False
         self.inRestFrame = False
         self._lumDist_Mpc = None
@@ -91,11 +92,16 @@ class ObservedCube(object):
         self.wcs = shift_celestial_WCS(self.wcs, dx=x_slice.start, dy=y_slice.start)
         log.debug('New shape: %s.' % str(self.f_obs.shape))
 
-    def bin(self, bin_size, cov_factor_A=0, cov_factor_B=1.0):
-        cov_factor = get_cov_factor(bin_size**2, cov_factor_A, cov_factor_B)
-        log.info('Binning cube (%d x %d), cov. factor=%.2f.' % (bin_size, bin_size, cov_factor))
-        f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
-                                              bin_size, cov_factor_A, cov_factor_B)
+    def bin(self, bin_size, cov_factor_A=0, cov_factor_B=1.0, cov_matrix=False):
+        if not cov_matrix:
+            cov_factor = get_cov_factor(bin_size**2, cov_factor_A, cov_factor_B)
+            log.info('Binning cube (%d x %d), cov. factor=%.2f.' % (bin_size, bin_size, cov_factor))
+            f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
+                                                  bin_size, cov_factor_A, cov_factor_B)
+        else:
+            log.info('Binning cube (%d x %d), cov. matrices.' % (bin_size, bin_size))
+            f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
+                                                  bin_size, cov_matrix=cov_matrix)
         if self.f_disp is not None:
             # Get mean intrumental dispersion; ignore covariance.
             f_disp, _, _ =  bin_spectra(self.f_disp, self.f_err, self.f_flag,
@@ -173,9 +179,14 @@ def preprocess_obs(obs, cfg):
     if bin_size > 1:
         A = cfg.getfloat(cfg_import_sec, 'spat_cov_a', fallback=0.0)
         B = cfg.getfloat(cfg_import_sec, 'spat_cov_b', fallback=1.0)
-        obs.bin(bin_size, A, B)
+        cov_matrix = cfg.getboolean(cfg_import_sec, 'spat_cov_matrix', fallback=False)
+        if cov_matrix:
+            obs.bin(bin_size, A, B, cov_matrix=[obs.C, obs.flagC])
+        else:
+            obs.bin(bin_size, A, B)
         obs.addKeyword('SPAT_COV A', A)
         obs.addKeyword('SPAT_COV B', B)
+        obs.addKeyword('SPAT_COV MATRIX', cov_matrix)
         obs.addKeyword('BIN SIZE', bin_size)
     
     obs.deredden()
