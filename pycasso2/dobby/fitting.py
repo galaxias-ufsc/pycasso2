@@ -44,16 +44,17 @@ def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug
         local_cont = np.zeros_like(_ll)
         local_cont[flag_lc] = np.polynomial.legendre.legval(x, coeffs)
         local_cont = np.interp(_ll, _ll[flag_lc], np.polynomial.legendre.legval(x, coeffs))
-        
+
         if debug:
             import matplotlib.pyplot as plt
-            plt.figure('local_cont')
+            plt.figure('local_cont%s' % linename)
             plt.clf()
+            plt.plot(_ll, _f_res.data, 'red')
             plt.plot(_ll[flag_lc], _f_res[flag_lc], 'k', zorder=10)
-            plt.axhline(0)
-            plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%deg)
-            plt.plot(_ll[flag_cont], local_cont[flag_cont], 'x-')
+            plt.axhline(0, color='grey')
+            plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%degree)
             plt.legend()
+            plt.xlim(lines_windows[flag_line]['blue1'], lines_windows[flag_line][ 'red2'])
 
     # Get the blue and red continua
     flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
