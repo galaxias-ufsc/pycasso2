@@ -167,23 +167,24 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         else:
             raise Exception('Check vd_inst, must be a scalar, a dictionary or a dispersion spectrum: %s' % vd_inst)
 
-    def do_fit(model, ll, lc, flux, err, min_good_fraction):
+    def do_fit(model, ll, lc, flux, err, min_good_fraction, ignore_warning=False):
         fitter = fitting.LevMarLSQFitter()
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
         good_fraction = good.sum() / lc.count()
         if good_fraction > min_good_fraction:
             fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=err[good]**-1, maxiter=500)
-            flag = interpret_fit_result(fitter.fit_info)
+            flag = interpret_fit_result(fitter.fit_info, ignore_warning=ignore_warning)
             return fitted_model, flag
         else:
             log.warn('Too few data points for fitting (%.d / %d), flagged.' % (good.sum(), lc.count()))
             return model.copy(), flags.no_data
     
     
-    def interpret_fit_result(fit_info):
+    def interpret_fit_result(fit_info, ignore_warning=False):
         log.debug('nfev: %d, ierr: %d' % (fit_info['nfev'], fit_info['ierr']))
         if fit_info['ierr'] not in [1, 2, 3, 4]:
-            log.warn('Bad fit, cause: %s' % fit_info['message'])
+            if not ignore_warning:
+                log.warn('Bad fit, cause: %s' % fit_info['message'])
             return flags.bad_fit
         else:
             return 0
@@ -214,8 +215,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
         
     lc = np.ma.masked_array(np.zeros_like(_ll))
-    mod_init_all = elModel(l0, flux=0.0, v0=0., vd=100., vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
-    mod_fit_all, _flag = do_fit(mod_init_all, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    import warnings
+    with warnings.catch_warnings():
+        # Ignore model linearity warning from the fitter
+        warnings.simplefilter('ignore')
+        mod_init_all = elModel(l0, flux=0.0, v0=0., vd=100., vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
+        mod_fit_all, _flag = do_fit(mod_init_all, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction, ignore_warning=True)
 
     # Remove emission lines detected to calculate the continuum with Legendre polynomials
     flag_lc = (mod_fit_all(_ll) < 1e-5)
@@ -235,7 +240,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
-
+    
     # Continuum for Hb - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4861', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
@@ -250,7 +255,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
-        
+
     # Continuum for Hg - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4340', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
