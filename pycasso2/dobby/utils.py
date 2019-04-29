@@ -2,8 +2,11 @@
 Natalia@UFSC - 29/Nov/2017
 '''
 
-import h5py
+import sys
 from os import path, remove
+from astropy import log
+
+import h5py
 import numpy as np
 from astropy.table import Table
 
@@ -118,6 +121,24 @@ def save_summary_to_file(el, outdir, outname, saveHDF5 = False, saveTXT = False,
     #    f.write(footer)
     #    f.write('# Emission lines measured by dobby | 27/Sep/2017\n' % os.path.basename(__file__))
 
+def read_summary_from_file(filename, readHDF5 = True):
+
+    if readHDF5:
+        elines = Table.read(filename, path='elines')
+        spec   = Table.read(filename, path='spec')
+    else:
+        elines = Table.read(filename, format = 'ascii.fixed_width_two_line')    
+        spec = None
+    
+    return elines, spec
+    
+def get_el_info(elines, line, info):
+    '''
+    Get emission line info
+    '''
+    f = (elines['lambda'] == line)
+    return elines[info][f]
+    
 def fit_strong_lines_starlight(tc, ts, **kwargs):
     # Reading from fits
     ll = ts.spectra.l_obs
