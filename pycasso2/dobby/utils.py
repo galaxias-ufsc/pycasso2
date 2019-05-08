@@ -307,3 +307,16 @@ def replace_nan_inf_by_minus999(x):
     
     return y2
 
+def safe_pow(a, b):
+    a = safe_x(a)
+    b = safe_x(b)
+    apb = np.where( ((a > -999.) & (b > -999.)), a**b + (a <= -999.), -999. )
+    apb = np.where( ((a == 0.) & (b < 0.)), -999., apb )
+    apb = np.ma.masked_where((apb < -990), apb)
+    return apb
+
+def safe_x(x):
+    x = np.where(np.isfinite(x), x, -999.)
+    x = np.ma.masked_where((x < -990), x)
+    return x
+

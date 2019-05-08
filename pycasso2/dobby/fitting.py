@@ -12,6 +12,7 @@ import astropy.constants as const
 from astropy import log
 from pycasso2.dobby import flags
 
+from .utils import safe_pow
 
 c = const.c.to('km/s').value
 
@@ -50,7 +51,7 @@ def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug
             plt.figure('local_cont%s' % linename)
             plt.clf()
             plt.plot(_ll, _f_res.data, 'red')
-            plt.plot(_ll[flag_lc], _f_res[flag_lc], 'k', zorder=10)
+            #plt.plot(_ll[flag_lc], _f_res[flag_lc], 'k', zorder=10)
             plt.axhline(0, color='grey')
             plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%degree)
             plt.legend()
@@ -172,7 +173,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
         good_fraction = good.sum() / lc.count()
         if good_fraction > min_good_fraction:
-            fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=err[good]**-1, maxiter=500)
+            fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=safe_pow(err[good], -1), maxiter=500)
             flag = interpret_fit_result(fitter.fit_info, ignore_warning=ignore_warning)
             return fitted_model, flag
         else:
@@ -558,7 +559,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         save_summary_to_file(el, outdir, outname, saveHDF5 = saveHDF5, saveTXT = saveTXT, **kwargs)
 
     return el
-
 
 if __name__ == "__main__":
 
