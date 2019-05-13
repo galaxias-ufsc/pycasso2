@@ -58,15 +58,8 @@ def read_muse(cube, name, cfg):
  
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = float(ml['E(B-V)'])
-    obs.lumDist_Mpc = ml['D (Mpc)']
+    obs.lumDist_Mpc = ml['D [Mpc]']
     return obs
-
-
-masterlist_dtype = [('Name', '|S05'),
-                    ('Galaxy name', '|S12'),
-                    ('V_r [km/s]', 'float64'),
-                    ('D (Mpc)', 'float64'),
-                    ]
 
 def muse_save_masterlist(header, ml):
     header_ignored = ['cube', 'cube_obs']
