@@ -155,9 +155,6 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     else:
         iys, ixs = range(Ny), range(Nx)
 
-    iys= np.arange(58, 75)
-    ixs = iys
-        
     kwargs = {'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : tmpdir,
