@@ -85,31 +85,34 @@ name_template = 'p%04i-%04i'
 ########################################################################
 # Fit emission lines in all pixels and save the results into one file per pixel
 def fit_spaxel(iy, ix,
-               suffix, name_template, tmpdir,
+               c, suffix, name_template, tmpdir,
                ll, f_res, f_syn, f_err, f_disp,
                kinematic_ties_on, balmer_limit_on, model,
                degree, debug, display_plot):
     '''
     Fit only one spaxel
     '''
-    # Output name
-    name = suffix + '.' + name_template % (iy, ix)
-    outfile = path.join(tmpdir, '%s.hdf5' % name)
+    # Only measure emission lines if STARLIGHT was run on that pixel
+    if ~(not c.hasSegmentationMask and c.synthImageMask[iy, ix]):
 
-    if not (path.exists(outfile)):
-
-        log.info('Fitting pixel [%d, %d]' % (iy, ix))
-        # Modelling the gaussian
-        el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = f_disp[..., iy, ix],
-                              kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
-                              degree = degree,
-                              saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                              vd_kms = False)
-
-        if debug:
-            # Plot spectrum
-            fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0, display_plot = display_plot)
-            fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
+        # Output name
+        name = suffix + '.' + name_template % (iy, ix)
+        outfile = path.join(tmpdir, '%s.hdf5' % name)
+    
+        if not (path.exists(outfile)):
+    
+            log.info('Fitting pixel [%d, %d]' % (iy, ix))
+            # Modelling the gaussian
+            el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = f_disp[..., iy, ix],
+                                  kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                                  degree = degree,
+                                  saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
+                                  vd_kms = False)
+    
+            if debug:
+                # Plot spectrum
+                fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0, display_plot = display_plot)
+                fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
             
     return None
 
@@ -155,7 +158,8 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     else:
         iys, ixs = range(Ny), range(Nx)
 
-    kwargs = {'suffix' : suffix,
+    kwargs = {'c' : c,
+              'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : tmpdir,
               'll' : ll,
@@ -176,27 +180,32 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         
         for iy in iys:
             for ix in ixs:    
-                # Only measure emission lines if STARLIGHT was run on that pixel
-                if not c.hasSegmentationMask and c.synthImageMask[iy, ix]:
-                    continue
                 fit_spaxel(iy, ix, **kwargs)
             
     else:
 
         log.info('Starting multithreading...')
-        processes = []
 
+        processes = []
         for iy in iys:
             for ix in ixs:    
-                # Only measure emission lines if STARLIGHT was run on that pixel
-                if not c.hasSegmentationMask and c.synthImageMask[iy, ix]:
-                    continue
                 p = mp.Process(target=fit_spaxel, args=(ix, iy), kwargs = kwargs)
-                p.start()
                 processes.append(p)
 
-        for p in processes:
-            p.join()
+        # Makeshift multithreading. Works ok, but not perfect.
+        # Could not get p.map() to work with kwargs.
+        # https://stackoverflow.com/questions/14822184/is-there-a-ceiling-equivalent-of-operator-in-python
+        Np = len(processes)
+        Nw = -(-Np // args.nProc)
+        for iw in range(Nw):
+            ii = np.arange(args.nProc * iw, args.nProc * (iw+1))
+            for i in ii:
+                if (i < Np):
+                    p = processes[i]
+                    p.start()
+            for i in ii:
+                if (i < Np):
+                    p.join()
         
     log.debug('Fitting integrated spectrum...')
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
