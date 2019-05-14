@@ -15,9 +15,11 @@ Natalia@UFSC - 20/Sep/2017
 
 from os import path, makedirs
 import numpy as np
-from multiprocessing import cpu_count
 import argparse
 from astropy import log
+
+from multiprocessing import cpu_count
+import multiprocessing as mp
 
 from pycasso2 import FitsCube
 from pycasso2 import flags
@@ -40,7 +42,7 @@ def parse_args():
                         help='Rename the output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
-    parser.add_argument('--nproc', dest='nproc', type=int, default=cpu_count() - 1,
+    parser.add_argument('--nproc', dest='nProc', type=int, default=cpu_count() - 1,
                         help='Number of worker processes.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
@@ -82,6 +84,34 @@ name_template = 'p%04i-%04i'
     
 ########################################################################
 # Fit emission lines in all pixels and save the results into one file per pixel
+def fit_spaxel(iy, ix,
+               suffix, name_template, tmpdir,
+               ll, f_res, f_syn, f_err, f_disp,
+               kinematic_ties_on, balmer_limit_on, model,
+               degree, debug, display_plot):
+    '''
+    Fit only one spaxel
+    '''
+    # Output name
+    name = suffix + '.' + name_template % (iy, ix)
+    outfile = path.join(tmpdir, '%s.hdf5' % name)
+
+    if not (path.exists(outfile)):
+
+        log.info('Fitting pixel [%d, %d]' % (iy, ix))
+        # Modelling the gaussian
+        el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = f_disp[..., iy, ix],
+                              kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
+                              degree = degree,
+                              saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
+                              vd_kms = False)
+
+        if debug:
+            # Plot spectrum
+            fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0, display_plot = display_plot)
+            fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
+            
+    return None
 
 def fit(kinematic_ties_on, balmer_limit_on, model):
 
@@ -125,39 +155,57 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     else:
         iys, ixs = range(Ny), range(Nx)
 
-    # Fit only one spaxel
-    for iy in iys:
-        for ix in ixs:
-    
-            # Only measure emission lines if STARLIGHT was run on that pixel
-            if not c.hasSegmentationMask and c.synthImageMask[iy, ix]:
-                continue
-            # Output name
-            name = suffix + '.' + name_template % (iy, ix)
-            outfile = path.join(tmpdir, '%s.hdf5' % name)
+    iys= np.arange(58, 75)
+    ixs = iys
+        
+    kwargs = {'suffix' : suffix,
+              'name_template' : name_template,
+              'tmpdir' : tmpdir,
+              'll' : ll,
+              'f_res' : f_res,
+              'f_syn' : f_syn,
+              'f_err' : f_err,
+              'f_disp' : f_disp,
+              'kinematic_ties_on' : kinematic_ties_on,
+              'balmer_limit_on' : balmer_limit_on,
+              'model' : model,
+              'degree' : args.degree,
+              'debug' : args.debug,
+              'display_plot' : args.displayPlots,
+             }
+                
+    # Fit spaxel by spaxel
+    if args.nProc == 1:
+        
+        for iy in iys:
+            for ix in ixs:    
+                # Only measure emission lines if STARLIGHT was run on that pixel
+                if not c.hasSegmentationMask and c.synthImageMask[iy, ix]:
+                    continue
+                fit_spaxel(iy, ix, **kwargs)
+            
+    else:
 
-            if not (path.exists(outfile)):
+        log.info('Starting multithreading...')
+        processes = []
 
-                log.info('Fitting pixel [%d, %d]' % (iy, ix))
-                # Modelling the gaussian
-                el = fit_strong_lines(ll, f_res[..., iy, ix], f_syn[..., iy, ix], f_err[..., iy, ix], vd_inst = f_disp[..., iy, ix],
-                                      kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
-                                      degree = args.degree,
-                                      saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                                      vd_kms = False)
+        for iy in iys:
+            for ix in ixs:    
+                # Only measure emission lines if STARLIGHT was run on that pixel
+                if not c.hasSegmentationMask and c.synthImageMask[iy, ix]:
+                    continue
+                p = mp.Process(target=fit_spaxel, args=(ix, iy), kwargs = kwargs)
+                p.start()
+                processes.append(p)
 
-                if args.debug:
-                    # Plot spectrum
-                    fig = plot_el(ll, f_res[..., iy, ix], el, ifig = 0, display_plot = args.displayPlots)
-                    fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
-    
-    
+        for p in processes:
+            p.join()
+        
     log.debug('Fitting integrated spectrum...')
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
     name = suffix + '.' + 'integ'
     outfile = path.join(tmpdir, '%s.hdf5' % name)
             
-
     if not path.exists(outfile):
         el = fit_strong_lines( ll, integ_f_res, c.integ_f_syn, c.integ_f_err, vd_inst = c.integ_f_disp,
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
@@ -173,10 +221,10 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         
     # After pixel-by-pixel fitting, read all individual files and
     # save to a super-fits file (including the original STARLIGHT file).
-    dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
-                           suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
+    #dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
+    #                       suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
 
-    
 fit(kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim, model=args.model)
+
 
 # EOF
