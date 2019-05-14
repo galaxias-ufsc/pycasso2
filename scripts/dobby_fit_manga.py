@@ -218,8 +218,8 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         
     # After pixel-by-pixel fitting, read all individual files and
     # save to a super-fits file (including the original STARLIGHT file).
-    #dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
-    #                       suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
+    dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
+                           suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
 
 fit(kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim, model=args.model)
 
