@@ -66,6 +66,7 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
+###############################################################################
 log.setLevel('DEBUG')
 
 args = parse_args()
@@ -81,11 +82,23 @@ if not path.exists(tmpdir):
 
 # TODO: read from config
 name_template = 'p%04i-%04i'
-    
-########################################################################
+###############################################################################
+
+###############################################################################
+# Multiprocessing functions
+def func_with_kwargs(iy, ix, kwargs):
+    return fit_spaxel(iy, ix, **kwargs)
+
+def iter_with_kwargs(args, **kwargs):
+    for x in args:
+        yield x.tolist() + [kwargs,]
+###############################################################################
+
+###############################################################################
 # Fit emission lines in all pixels and save the results into one file per pixel
 def fit_spaxel(iy, ix,
-               c, suffix, name_template, tmpdir,
+               hasSegmentationMask, synthImageMask,
+               suffix, name_template, tmpdir,
                ll, f_res, f_syn, f_err, f_disp,
                kinematic_ties_on, balmer_limit_on, model,
                degree, debug, display_plot):
@@ -93,7 +106,7 @@ def fit_spaxel(iy, ix,
     Fit only one spaxel
     '''
     # Only measure emission lines if STARLIGHT was run on that pixel
-    if ~(not c.hasSegmentationMask and c.synthImageMask[iy, ix]):
+    if ~(not hasSegmentationMask and synthImageMask[iy, ix]):
 
         # Output name
         name = suffix + '.' + name_template % (iy, ix)
@@ -115,9 +128,9 @@ def fit_spaxel(iy, ix,
                 fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
             
     return None
-########################################################################
+###############################################################################
 
-########################################################################
+###############################################################################
 # Fit all data cube
 def fit(kinematic_ties_on, balmer_limit_on, model):
 
@@ -161,15 +174,16 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     else:
         iys, ixs = np.arange(Ny), np.arange(Nx)
 
-    kwargs = {'c' : c,
+    kwargs = {'hasSegmentationMask' : c.hasSegmentationMask,
+              'synthImageMask' : c.synthImageMask.copy(),
               'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : tmpdir,
-              'll' : ll,
-              'f_res' : f_res,
-              'f_syn' : f_syn,
-              'f_err' : f_err,
-              'f_disp' : f_disp,
+              'll' : ll.copy(),
+              'f_res' : f_res.copy(),
+              'f_syn' : f_syn.copy(),
+              'f_err' : f_err.copy(),
+              'f_disp' : f_disp.copy(),
               'kinematic_ties_on' : kinematic_ties_on,
               'balmer_limit_on' : balmer_limit_on,
               'model' : model,
@@ -192,26 +206,12 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
 
         log.info('Starting multithreading...')
 
-        processes = []
-        for iy in iys:
-            for ix in ixs:    
-                p = mp.Process(target=fit_spaxel, args=(ix, iy), kwargs = kwargs)
-                processes.append(p)
-
-        # Makeshift multithreading. Works ok, but not perfect.
-        # Could not get p.map() to work with kwargs.
-        # https://stackoverflow.com/questions/14822184/is-there-a-ceiling-equivalent-of-operator-in-python
-        Np = len(processes)
-        Nw = -(-Np // args.nProc)
-        for iw in range(Nw):
-            ii = np.arange(args.nProc * iw, args.nProc * (iw+1))
-            for i in ii:
-                if (i < Np):
-                    p = processes[i]
-                    p.start()
-            for i in ii:
-                if (i < Np):
-                    p.join()
+        _ixs, _iys = np.meshgrid(ixs, iys)
+        ixs_iys = np.vstack([_ixs.flatten(), _iys.flatten()]).T
+        
+        pool = mp.Pool(args.nProc)
+        pool.starmap(func_with_kwargs, iter_with_kwargs(ixs_iys, **kwargs), chunksize=100)
+        pool.close()
         
     log.debug('Fitting integrated spectrum...')
     integ_f_res = (c.integ_f_obs - c.integ_f_syn)
@@ -235,13 +235,12 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     # save to a super-fits file (including the original STARLIGHT file).
     dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
                            suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
-########################################################################
+###############################################################################
 
-
-########################################################################
+###############################################################################
 # Call function to fit all data cube
 
 fit(kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim, model=args.model)
 
 # EOF
-########################################################################
+###############################################################################
