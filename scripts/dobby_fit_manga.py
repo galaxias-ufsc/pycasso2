@@ -115,7 +115,10 @@ def fit_spaxel(iy, ix,
                 fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
             
     return None
+########################################################################
 
+########################################################################
+# Fit all data cube
 def fit(kinematic_ties_on, balmer_limit_on, model):
 
     _k = 1 * kinematic_ties_on
@@ -156,7 +159,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
         log.warn('Fitting only central spaxel.')
         iys, ixs = [y0,], [x0,]
     else:
-        iys, ixs = range(Ny), range(Nx)
+        iys, ixs = np.arange(Ny), np.arange(Nx)
 
     kwargs = {'c' : c,
               'suffix' : suffix,
@@ -177,9 +180,12 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
                 
     # Fit spaxel by spaxel
     if args.nProc == 1:
+
+        np.random.shuffle(iys)
+        np.random.shuffle(ixs)
         
         for iy in iys:
-            for ix in ixs:    
+            for ix in ixs:
                 fit_spaxel(iy, ix, **kwargs)
             
     else:
@@ -229,8 +235,13 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
     # save to a super-fits file (including the original STARLIGHT file).
     dobby_save_fits_pixels(c, args.cubeOut, tmpdir, name_template,
                            suffix, kinTies = kinematic_ties_on, balLim = balmer_limit_on, model = model)
+########################################################################
+
+
+########################################################################
+# Call function to fit all data cube
 
 fit(kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim, model=args.model)
 
-
 # EOF
+########################################################################
