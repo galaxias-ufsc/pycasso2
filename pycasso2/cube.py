@@ -502,9 +502,7 @@ class FitsCube(object):
 
     @lazyproperty
     def pixelArea_pc2(self):
-        lum_dist_pc = self.lumDistMpc * 1e6
-        solid_angle = get_pixel_area_srad(self._wcs)
-        return solid_angle * lum_dist_pc * lum_dist_pc
+        return self.pixelScale_pc**2
 
     @lazyproperty
     def pixelScale_pc(self):
