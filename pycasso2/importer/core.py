@@ -159,7 +159,7 @@ class ObservedCube(object):
         self.f_flag[:, ~high_sn] |= flags.low_sn
 
 
-def preprocess_obs(obs, cfg):
+def preprocess_obs(obs, cfg, mask_file=None):
     cfg_import_sec = 'import'
     cfg_starlight_sec = 'starlight'
     
@@ -167,6 +167,7 @@ def preprocess_obs(obs, cfg):
     obs.addKeyword('GITHASH', get_git_hash())
 
     obs.toAirWavelength()
+    obs._wcs = wcs.WCS(obs.header)
 
     sl_string = cfg.get(cfg_import_sec, 'slice', fallback=None)
     sl = parse_slice(sl_string)
@@ -175,6 +176,15 @@ def preprocess_obs(obs, cfg):
         y_slice, x_slice = sl
         obs.slice(x_slice, y_slice)
 
+    if mask_file is not None:
+        # Get mask
+        log.info('Reading mask file %s' % mask_file)
+        _hdu = fits.open(mask_file)
+        m = _hdu['mask'].data
+        obs.f_flag[:, (m == 1)] |= flags.overlapping_spaxel
+        # Fix wcs
+        obs._wcs.wcs.crval[:2] = wcs.WCS(_hdu[0].header).wcs.crval
+        
     bin_size = cfg.getint(cfg_import_sec, 'binning', fallback=1)
     if bin_size > 1:
         A = cfg.getfloat(cfg_import_sec, 'spat_cov_a', fallback=0.0)

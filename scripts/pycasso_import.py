@@ -37,6 +37,8 @@ def parse_args():
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
+    parser.add_argument('--mask', dest='mask_file', default=None,
+                        help='Fits file with spatial mask for overlapping spaxels. Default: None')
 
     return parser.parse_args()
 ###############################################################################
@@ -54,7 +56,7 @@ if args.cubeType not in read_type.keys():
     log.error('Unknown cube type %s' % args.cubeType)
     sys.exit()
 
-g = FitsCube(args.cubeIn, cube_type=args.cubeType, name=name,
+g = FitsCube(args.cubeIn, cube_type=args.cubeType, name=name, mask_file=args.mask_file,
              import_cfg=cfg)
 
 seg_type = cfg.get('import', 'segmentation', fallback=None)

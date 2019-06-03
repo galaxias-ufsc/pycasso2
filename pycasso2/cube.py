@@ -77,7 +77,7 @@ class FitsCube(object):
                          'Av', 'v0', 'vd', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
-    def __init__(self, cubefile=None, name=None, cube_type='pycasso', import_cfg=None):
+    def __init__(self, cubefile=None, name=None, cube_type='pycasso', mask_file=None, import_cfg=None):
         self._pop_len = None
         if cubefile is None:
             # FIXME: needed by segmentation code, which should moved here.
@@ -96,6 +96,7 @@ class FitsCube(object):
             if type(cubefile) is not list:
                 cubefile = [cubefile]
             obs = read(cubefile, name, import_cfg)
+            self.mask_file = mask_file
             self._fromObs(obs, import_cfg)
         self._l_norm = None
         self._dl_norm = None
@@ -168,7 +169,7 @@ class FitsCube(object):
         self._readKeywords()
 
     def _fromObs(self, obs, cfg):
-        preprocess_obs(obs, cfg)
+        preprocess_obs(obs, cfg, self.mask_file)
         self._initFits(obs.f_obs, obs.f_err, obs.f_flag, obs.header, obs.wcs, segmask=None, f_disp=obs.f_disp)
         self.flux_unit = obs.flux_unit
         self.lumDistMpc = obs.lumDist_Mpc
