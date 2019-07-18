@@ -58,7 +58,7 @@ class PycassoExplorer:
                       'tau_V': self.c.tau_V,
                       'd4000': self.c.LickIndex('D4000'),
                       'age': self.c.at_flux,
-                      'met': self.c.alogZ_flux,
+                      'met': self.c.alogZ_mass,
                       'v_0': self.c.v_0,
                       'v_d': self.c.v_d,
                       }
