@@ -74,7 +74,7 @@ class FitsCube(object):
     _Z_sun = 0.019
 
     _ext_keyword_list = ['Lobs_norm', 'Mini_tot', 'Mcor_tot', 'fobs_norm',
-                         'Av', 'v0', 'vd', 'adev', 'Ntot_clipped',
+                         'Av', 'exAv', 'v0', 'vd', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
     def __init__(self, cubefile=None, name=None, cube_type='pycasso', mask_file=None, import_cfg=None):
@@ -654,6 +654,10 @@ class FitsCube(object):
     def A_V(self):
         return self._getSynthExtension('Av')
 
+    @lazyproperty
+    def exA_V(self):
+        return self._getSynthExtension('exAv')
+    
     @lazyproperty
     def q_norm(self):
         return self.synthKeywords['q_norm']
