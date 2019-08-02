@@ -177,10 +177,10 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
         x0 = c.x0
 
     if correct_good_frac:
-        f_obs *= c.seg_good_frac
-        f_syn *= c.seg_good_frac
-        f_res *= c.seg_good_frac
-        f_err *= c.seg_good_frac
+        f_obs = f_obs.copy() * c.seg_good_frac
+        f_syn = f_syn.copy() * c.seg_good_frac
+        f_res = f_res.copy() * c.seg_good_frac
+        f_err = f_err.copy() * c.seg_good_frac
         
     # Pixels to fit
     if args.onlyCenter:
