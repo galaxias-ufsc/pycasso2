@@ -27,7 +27,8 @@ class ObservedCube(object):
     _hdr_prefix = 'HIERARCH PYCASSO'
 
     def __init__(self, name, l_obs, f_obs, f_err, f_flag, 
-                 flux_unit, redshift, header, f_disp=None, cov_matrix=False):
+                 flux_unit, redshift, header, f_disp=None,
+                 good_frac=None, cov_matrix=False):
         self.name = name
         self.header = header
         self.l_obs = l_obs
@@ -35,6 +36,7 @@ class ObservedCube(object):
         self.f_err = f_err
         self.f_flag = f_flag
         self.f_disp = f_disp
+        self.good_frac = good_frac
         self.flux_unit = flux_unit
         self.redshift = redshift
         self.EBV = 0.0
@@ -109,6 +111,7 @@ class ObservedCube(object):
             self.f_disp = f_disp / bin_size**2
         # This needs to be assigned *after* the f_disp binning.
         self.f_obs, self.f_err = f_obs, f_err
+        self.good_frac = good_frac
         self.f_flag = np.where(good_frac == 0, flags.no_data, 0)
         self.wcs = scale_celestial_WCS(self.wcs, scaling=bin_size)
 
@@ -139,6 +142,11 @@ class ObservedCube(object):
         f_obs, f_err, f_flag = resample_spectra(self.l_obs, l_resam,
                                                 self.f_obs, self.f_err, badpix,
                                                 vectorized=vectorized)
+        if good_frac is not None:
+            good_frac, _, _ = resample_spectra(self.l_obs, l_resam,
+                                               self.good_frac, self.f_err, badpix,
+                                               vectorized=vectorized)
+            self.good_frac = good_frac
         if self.f_disp is not None:
             f_disp, _, _ = resample_spectra(self.l_obs, l_resam,
                                             self.f_disp, self.f_err, badpix,

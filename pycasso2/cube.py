@@ -111,6 +111,8 @@ class FitsCube(object):
             f_flag = np.ones_like(f_obs, dtype='int32')
         if f_disp is None:
             f_disp = np.zeros_like(f_obs)
+        if good_frac is not None:
+            self._addExtension(FitsCube._ext_seg_good_frac, data=good_frac, wcstype='spectra')
         if segmask is not None:
             self.hasSegmentationMask = True
             f_obs = f_obs.T
@@ -170,7 +172,7 @@ class FitsCube(object):
 
     def _fromObs(self, obs, cfg):
         preprocess_obs(obs, cfg, self.mask_file)
-        self._initFits(obs.f_obs, obs.f_err, obs.f_flag, obs.header, obs.wcs, segmask=None, f_disp=obs.f_disp)
+        self._initFits(obs.f_obs, obs.f_err, obs.f_flag, obs.header, obs.wcs, segmask=None, f_disp=obs.f_disp, good_frac=obs.good_frac)
         self.flux_unit = obs.flux_unit
         self.lumDistMpc = obs.lumDist_Mpc
         self.redshift = obs.redshift
@@ -393,6 +395,10 @@ class FitsCube(object):
             raise Exception('Cube does not have segmentantion mask.')
         return self.segmentationMask.shape[0]
 
+    @lazyproperty
+    def seg_good_frac(self):
+        return self._getExtensionData(self._ext_seg_good_frac)
+    
     @lazyproperty
     def segmentationMask(self):
         return self._getExtensionData(self._ext_segmask)
