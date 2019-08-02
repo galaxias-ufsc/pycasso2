@@ -142,7 +142,7 @@ class ObservedCube(object):
         f_obs, f_err, f_flag = resample_spectra(self.l_obs, l_resam,
                                                 self.f_obs, self.f_err, badpix,
                                                 vectorized=vectorized)
-        if good_frac is not None:
+        if self.good_frac is not None:
             good_frac, _, _ = resample_spectra(self.l_obs, l_resam,
                                                self.good_frac, self.f_err, badpix,
                                                vectorized=vectorized)
