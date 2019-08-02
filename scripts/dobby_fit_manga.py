@@ -225,7 +225,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model):
                                saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
                                vd_kms = False)
         if args.debug:
-            # Plot integrate spectrum
+            # Plot integrated spectrum
             fig = plot_el(ll, integ_f_res, el, ifig = 0, display_plot = args.displayPlots)
             fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
     

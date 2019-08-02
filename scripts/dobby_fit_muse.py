@@ -229,7 +229,6 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
         pool.close()
         
     log.debug('Fitting integrated spectrum...')
-    integ_f_res = (c.integ_f_obs - c.integ_f_syn)
     name = suffix + '.' + 'integ'
     outfile = path.join(tmpdir, '%s.hdf5' % name)
             
@@ -255,7 +254,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
                                saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
                                vd_kms = True)
         if args.debug:
-            # Plot integrate spectrum
+            # Plot integrated spectrum
             fig = plot_el(ll, f_res, el, ifig = 0, display_plot = args.displayPlots)
             fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
 
