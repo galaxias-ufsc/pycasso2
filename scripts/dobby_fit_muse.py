@@ -137,8 +137,6 @@ def fit_spaxel(iy, ix,
 # Fit all data cube
 def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
 
-    print(correct_good_frac)
-    
     _k = 1 * kinematic_ties_on
     _b = 1 * balmer_limit_on
     if model == 'gaussian':
