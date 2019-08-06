@@ -90,7 +90,7 @@ if seg_type is not None:
 
     A = cfg.getfloat('import', 'spat_cov_a', fallback=0.0)
     B = cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
-    cov_matrix = cfg.getbool('import', 'spat_cov_matrix', fallback=False)
+    cov_matrix = cfg.getboolean('import', 'spat_cov_matrix', fallback=False)
 
     f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err,
                                               cov_factor_A=A, cov_factor_B=B)
