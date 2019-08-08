@@ -224,7 +224,7 @@ def preprocess_obs(obs, cfg, mask_file=None):
     convex_hull = cfg.getboolean(cfg_import_sec, 'convex_hull_mask', fallback=False)
     clean_mask_sn = cfg.getboolean(cfg_import_sec, 'clean_mask_sn', fallback=False)
     sn_largest = cfg.getboolean(cfg_import_sec, 'sn_largest', fallback=True)
-    sn_minsize = cfg.getboolean(cfg_import_sec, 'sn_minsize', fallback=2)
+    sn_minsize = cfg.getint(cfg_import_sec, 'sn_minsize', fallback=2)
     if sn_min > 0.0:
         obs.addKeyword('MASK SN_MIN', sn_min)
         obs.addKeyword('MASK LLOW', l1)
