@@ -9,7 +9,7 @@ from ..resampling import vac2air, resample_spectra, find_nearest_index
 from ..reddening import Galactic_reddening_corr
 from ..config import parse_slice
 from ..modeling import cube_continuum
-from ..segmentation import bin_spectra, get_cov_factor
+from ..segmentation import bin_spectra, get_cov_factor, clean_mask_polygons
 from ..geometry import convex_hull_mask
 from ..cosmology import redshift2lum_distance
 from .. import flags
@@ -157,10 +157,13 @@ class ObservedCube(object):
         self.l_obs = l_resam
         self.wcs = replace_wave_WCS(self.wcs, crpix_wave=0, crval_wave=l_resam[0], cdelt_wave=dl)
 
-    def flagLowSN(self, llow_sn, lupp_sn, sn_min, convex_hull=False):
+    def flagLowSN(self, llow_sn, lupp_sn, sn_min, convex_hull=False, clean_mask=False, largest=True, nmin=0):
         log.info('Masking pixels with S/N < %.1f (%.1f-%.1f AA)' % (sn_min, llow_sn, lupp_sn))
         sn = _calc_sn(self.l_obs, self.f_obs, self.f_flag, llow_sn, lupp_sn)
         high_sn = (sn > sn_min).filled(False)
+        if clean_mask:
+            log.info('Cleaning S/N mask.')
+            high_sn = clean_mask_polygons(high_sn, largest=largest, nmin=nmin, masked_value=False)
         if convex_hull:
             log.info('Calculating convex hull of S/N mask.')
             high_sn = convex_hull_mask(high_sn)
@@ -219,11 +222,14 @@ def preprocess_obs(obs, cfg, mask_file=None):
     l2 = cfg.getfloat(cfg_starlight_sec, 'lupp_SN')
     sn_min = cfg.getfloat(cfg_import_sec, 'SN_min', fallback=0.0)
     convex_hull = cfg.getboolean(cfg_import_sec, 'convex_hull_mask', fallback=False)
+    clean_mask_sn = cfg.getboolean(cfg_import_sec, 'clean_mask_sn', fallback=False)
+    sn_largest = cfg.getboolean(cfg_import_sec, 'sn_largest', fallback=True)
+    sn_minsize = cfg.getboolean(cfg_import_sec, 'sn_minsize', fallback=2)
     if sn_min > 0.0:
         obs.addKeyword('MASK SN_MIN', sn_min)
         obs.addKeyword('MASK LLOW', l1)
         obs.addKeyword('MASK LUPP', l2)
-        obs.flagLowSN(l1, l2, sn_min, convex_hull)
+        obs.flagLowSN(l1, l2, sn_min, convex_hull, clean_mask_sn, sn_largest, sn_minsize)
     
     obs.updateHeaderWCS()
     

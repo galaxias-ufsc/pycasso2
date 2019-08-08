@@ -8,6 +8,46 @@ from .geometry import get_image_distance
 from . import flags
 
 
+def clean_mask_polygons(mask, largest=True, nmin=2, masked_value=False):
+    '''
+    Removes polygons (islands) from a mask (image)
+
+    Parameters
+    ----------
+    mask : array
+        2-D image where the ``True`` pixels mark the data.
+
+    largest : bool
+        Get the largest polygon in the image and remove everything else
+
+    nmin : integer
+        If ``largest`` is False, ``nmin`` is the minimum number of pixels (size) of the 
+        polygons to keep. Polygons with less pixels than ``nmin`` will be removed 
+
+    masked_value : float, integer, np.ma.masked
+        Value to fill the removed polygons of ``mask`` 
+
+    Returns
+    -------
+    cleaned_mask : array
+        2-D image of same shape and type as ``mask``,
+        where the values of remain polygons of ``mask`` 
+        are marked as ``True`` values.
+    '''
+    import scipy.ndimage
+    mask = mask.copy()
+    labels, num = scipy.ndimage.label(mask)
+    objects     = scipy.ndimage.find_objects(labels)
+    size = np.zeros(num)
+    for i, islice in enumerate(objects):
+        size[i] = len(mask[islice].flatten())
+    nmax = size.max() if largest else nmin
+    for isize, islice in zip(size, objects):
+     if isize < nmax:
+         mask[islice] = masked_value
+    return mask
+
+
 def mosaic_segmentation(shape, bin_size=10):
     Ny, Nx = shape
     xb = np.arange(0, Nx, bin_size)
