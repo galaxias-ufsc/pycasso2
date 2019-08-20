@@ -122,7 +122,7 @@ class FitsCube(object):
             good_frac = good_frac.T
             f_flag |= np.where(good_frac == 0, flags.no_data, 0)
             self._addExtension(FitsCube._ext_segmask, data=segmask, wcstype='segmask')
-            self._addExtension(FitsCube._ext_seg_good_frac, data=good_frac, wcstype='spectra')
+            self._addExtension(FitsCube._ext_seg_good_frac, data=good_frac, wcstype='spectra', overwrite=True)
         self._addExtension(FitsCube._ext_f_obs, data=f_obs, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_err, data=f_err, wcstype='spectra')
         self._addExtension(FitsCube._ext_f_flag, data=f_flag, wcstype='spectra')
