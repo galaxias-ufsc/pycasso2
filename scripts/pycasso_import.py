@@ -95,7 +95,7 @@ if seg_type is not None:
     f_obs, f_err, good_frac = seg.sum_spectra(segmask, g.f_obs, g.f_err,
                                               cov_factor_A=A, cov_factor_B=B)
     # Get mean intrumental dispersion; ignore covariance.
-    f_disp, _, _ =  seg.sum_spectra(segmask, g.f_disp, g.f_err,
+    f_disp, _, _ =  seg.sum_spectra(segmask, g.f_disp, g.f_err, f_flag=g.f_flag,
                                     cov_factor_A=0., cov_factor_B=1.)
     
     gs = FitsCube()

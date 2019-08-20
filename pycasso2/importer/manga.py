@@ -8,6 +8,7 @@ from .core import safe_getheader, ObservedCube
 
 from astropy import log
 from astropy.io import fits
+from astropy.table import Table
 import numpy as np
 
 
@@ -17,8 +18,10 @@ CRITICAL_BIT = 1 << 30
 
 
 def read_drpall(filename, plateifu=None):
-    with fits.open(filename) as f:
-        t = f[1].data
+    try:
+        t = Table.read(filename)
+    except:
+        t = Table.read(filename, format='ascii')
     if plateifu is not None:
         i = np.where(t['plateifu'] == plateifu)[0]
         t = t[i]
