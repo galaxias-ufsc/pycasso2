@@ -59,7 +59,7 @@ def download_manga_image(plate, ifudsgn, objid, imdir, thumb=False):
 
     else:
 
-        url = 'http://data.sdss.org/sas/dr14/manga/spectro/redux/v2_1_2/'
+        url = 'http://data.sdss.org/sas/dr15/manga/spectro/redux/v2_4_3/'
         if thumb:
             image_name = str(ifudsgn).strip() + '_thumb.png'
         else:
