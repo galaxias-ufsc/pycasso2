@@ -115,8 +115,8 @@ class SynthesisAdapter(object):
         self._base_data_saved = False
         
     def getSpatialMask(self, snwin_max_bad_fraction=0.5):
-        # FIXME: Starlight has a bug when calculating the fllux normalization factor.
-        #        It uses the median, but does net take flags into account.
+        # FIXME: Starlight has a bug when calculating the flux normalization factor.
+        #        It uses the median, but does not take flags into account.
         #        That means, if more than half the flux is zero, the median is zero.
         mask = self._cube.getSpatialMask(flags.before_starlight)
         l1 = self._gridTemplate.lLow_SN

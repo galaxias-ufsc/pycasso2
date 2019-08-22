@@ -85,7 +85,12 @@ if seg_type is not None:
         log.info('Loading segmentation from file %s.' % seg_type)
         segmask = seg.read_segmentation_map(seg_type)
     
-    spatial_mask = g.getSpatialMask(flags.no_obs)
+   
+    spatial_flags = flags.no_obs
+    if cfg.getboolean('import', 'seg_low_sn', fallback=False):
+        spatial_flags |= flags.low_sn
+    threshold_flag = cfg.getfloat('import', 'threshold_flag', fallback=0.8)
+    spatial_mask = g.getSpatialMask(spatial_flags, threshold=threshold_flag)
     segmask = seg.prune_segmask(segmask, spatial_mask)
 
     A = cfg.getfloat('import', 'spat_cov_a', fallback=0.0)
