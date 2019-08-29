@@ -41,7 +41,7 @@ def read_muse(cube, name, cfg):
     try:
         badpix = fits.getdata(cube, extname='DQ') != 0
     except:
-        badpix = ~np.isfinite(f_obs)
+        badpix = ~np.isfinite(f_obs) | ~np.isfinite(f_err)
         badpix |= (f_obs <= 0.0)
         badpix |= (f_err <= 0.0)
     f_obs[badpix] = 0.0
