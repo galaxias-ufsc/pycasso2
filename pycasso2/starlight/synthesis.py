@@ -331,7 +331,10 @@ class SynthesisAdapter(object):
 
     def updateSynthesis(self, grid):
         for fr in grid.failed:
-            log.warn('Failed run for pixel (%d, %d)' % (fr.y, fr.x))
+            if fr.x is None or fr.y is None:
+                log.warn('Failed run for integrated spectrum.')
+            else:
+                log.warn('Failed run for pixel (%d, %d)' % (fr.y, fr.x))
             self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run
 
         keyword_data = {}
