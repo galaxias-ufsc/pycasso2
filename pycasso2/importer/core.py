@@ -157,9 +157,13 @@ class ObservedCube(object):
         self.l_obs = l_resam
         self.wcs = replace_wave_WCS(self.wcs, crpix_wave=0, crval_wave=l_resam[0], cdelt_wave=dl)
 
-    def flagLowSN(self, llow_sn, lupp_sn, sn_min, convex_hull=False, clean_mask=False, largest=True, nmin=0):
-        log.info('Masking pixels with S/N < %.1f (%.1f-%.1f AA)' % (sn_min, llow_sn, lupp_sn))
-        sn = _calc_sn(self.l_obs, self.f_obs, self.f_flag, llow_sn, lupp_sn)
+    def flagLowSN(self, llow_sn, lupp_sn, sn_min, convex_hull=False, clean_mask=False, largest=True, 
+                  formal_sn=False, nmin=0):
+        log.info('Masking pixels with S/N < %.1f (%.1f-%.1f AA) [Formal SN: %s]' % (sn_min, llow_sn, lupp_sn, formal_sn))
+        if formal_sn:
+            sn = _calc_formal_sn(self.l_obs, self.f_obs, self.f_err, self.f_flag, llow_sn, lupp_sn)
+        else:
+            sn = _calc_sn(self.l_obs, self.f_obs, self.f_flag, llow_sn, lupp_sn)
         high_sn = (sn > sn_min).filled(False)
         if clean_mask:
             log.info('Cleaning S/N mask.')
@@ -218,18 +222,20 @@ def preprocess_obs(obs, cfg, mask_file=None):
     dl = cfg.getfloat(cfg_import_sec, 'dl')
     obs.resample(l_ini, l_fin, dl)
 
-    l1 = cfg.getfloat(cfg_starlight_sec, 'llow_SN')
-    l2 = cfg.getfloat(cfg_starlight_sec, 'lupp_SN')
+    l1 = cfg.getfloat(cfg_starlight_sec, 'llow_SN', fallback=obs.l_obs.min())
+    l2 = cfg.getfloat(cfg_starlight_sec, 'lupp_SN', fallback=obs.l_obs.max())
     sn_min = cfg.getfloat(cfg_import_sec, 'SN_min', fallback=0.0)
     convex_hull = cfg.getboolean(cfg_import_sec, 'convex_hull_mask', fallback=False)
     clean_mask_sn = cfg.getboolean(cfg_import_sec, 'clean_mask_sn', fallback=False)
     sn_largest = cfg.getboolean(cfg_import_sec, 'sn_largest', fallback=True)
     sn_minsize = cfg.getint(cfg_import_sec, 'sn_minsize', fallback=2)
+    formal_sn  = cfg.getboolean(cfg_import_sec, 'formal_sn', fallback=False)
     if sn_min > 0.0:
         obs.addKeyword('MASK SN_MIN', sn_min)
         obs.addKeyword('MASK LLOW', l1)
         obs.addKeyword('MASK LUPP', l2)
-        obs.flagLowSN(l1, l2, sn_min, convex_hull, clean_mask_sn, sn_largest, sn_minsize)
+        obs.flagLowSN(l1, l2, sn_min, convex_hull=convex_hull, clean_mask=clean_mask_sn, 
+                      largest=sn_largest, formal_sn=formal_sn, nmin=sn_minsize)
     
     obs.updateHeaderWCS()
     
@@ -252,6 +258,21 @@ def _calc_sn(l_obs, f_obs, f_flag, l1, l2):
     signal = y.mean(axis=0)
     noise = (f_obs - y).std(axis=0)
     return signal / noise
+
+def _calc_formal_sn(l_obs, f_obs, f_err, f_flag, l1=None, l2=None):
+    if l1 is None:
+        l1 = l_obs.min()
+    if l2 is None:
+        l2 = l_obs.max()
+    i1, i2 = find_nearest_index(l_obs, [l1, l2])
+    l_obs = l_obs[i1:i2]
+    f_obs = f_obs[i1:i2]
+    f_err = f_err[i1:i2]
+    f_flag = f_flag[i1:i2]
+    bad = (f_flag & flags.no_obs) > 0
+    f_obs = np.ma.masked_where(bad, f_obs)
+    f_err = np.ma.masked_where(bad, f_err)
+    return (f_obs / f_err).mean(axis=0)
 
 def get_git_hash():
     module = sys.argv[0]
