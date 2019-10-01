@@ -41,8 +41,8 @@ def read_muse(cube, name, cfg):
         sl = parse_slice(sl_string)
         if sl is not None:
             y_slice, x_slice = sl
-        log.debug('Slice will be: %d:%d, %d:%d' % (y_slice.start, y_slice.stop, x_slice.start, x_slice.stop))
-        w = shift_celestial_WCS(w, dx=x_slice.start, dy=y_slice.start)
+            log.debug('Slice will be: %d:%d, %d:%d' % (y_slice.start, y_slice.stop, x_slice.start, x_slice.stop))
+            w = shift_celestial_WCS(w, dx=x_slice.start, dy=y_slice.start)
 
     with fits.open(cube) as f:
         f_obs = f['DATA'].section[:, y_slice, x_slice].astype('float64')
