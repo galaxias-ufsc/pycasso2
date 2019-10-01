@@ -36,14 +36,17 @@ def read_muse(cube, name, cfg):
 
     # We slice the cube early here. Some MUSE cubes are huge and will thrash the system memory.    
     sl_string = cfg.get('import', 'slice', fallback=None)
-    if sl_string is not None:
+    sl = parse_slice(sl_string)
+    if sl is not None:
         log.info('Slicing cube while reading.')
-        sl = parse_slice(sl_string)
-        if sl is not None:
-            y_slice, x_slice = sl
-            log.debug('Slice will be: %d:%d, %d:%d' % (y_slice.start, y_slice.stop, x_slice.start, x_slice.stop))
-            w = shift_celestial_WCS(w, dx=x_slice.start, dy=y_slice.start)
-
+        y_slice, x_slice = sl
+        log.debug('Slice will be: %d:%d, %d:%d' % (y_slice.start, y_slice.stop, x_slice.start, x_slice.stop))
+        w = shift_celestial_WCS(w, dx=x_slice.start, dy=y_slice.start)
+    else:
+        Nx = w.pixel_shape[0]
+        x_slice = slice(Nx)
+        Ny = w.pixel_shape[1]
+        y_slice = slice(Ny)
     with fits.open(cube) as f:
         f_obs = f['DATA'].section[:, y_slice, x_slice].astype('float64')
         f_err = f['STAT'].section[:, y_slice, x_slice].astype('float64')
