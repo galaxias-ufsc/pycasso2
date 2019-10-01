@@ -338,6 +338,11 @@ class SynthesisAdapter(object):
         self.popaFe_base = self._cube.popaFe_base
         self.Mstars = self._cube.Mstars
         self.fbase_norm = self._cube.fbase_norm
+        
+        self.keywordData = {}
+        for k in self._cube._ext_keyword_list:
+            self.keywordData[k] = self._cube._getSynthExtension(k)
+        
 
     def updateSynthesis(self, grid):
         for fr in grid.failed:
@@ -347,11 +352,14 @@ class SynthesisAdapter(object):
                 log.warn('Failed run for pixel (%d, %d)' % (fr.y, fr.x))
             self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run
 
-        keyword_data = {}
-        for k in self._cube._ext_keyword_list:
-            keyword_data[k] = self._cube._getSynthExtension(k)
-
         for x, y, ts in grid.getTables():
+            if not self._cube.hasSynthesis:
+                pop_len = len(ts['population']['popx'])
+                log.info('Creating synthesis cubes.')
+                self.createSynthesisCubes(pop_len)
+                log.info('Writing synthesis headers.')
+                self.writeSynthesisHeaders(ts)
+
             population = ts['population']
             spectra = ts['spectra']
             keywords = ts['keywords']
@@ -417,9 +425,10 @@ class SynthesisAdapter(object):
                 self.popmu_cor[:, y, x] = population['popmu_cor']
                 for k in self._cube._ext_keyword_list:
                     if self.isSegmented:
-                        keyword_data[k][x] = keywords[k]
+                        self.keywordData[k][x] = keywords[k]
                     else:
-                        keyword_data[k][y, x] = keywords[k]
+                        self.keywordData[k][y, x] = keywords[k]
+
 
     def writeSynthesisHeaders(self, ts):
         keywords = ts['keywords']

@@ -51,17 +51,6 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
-def get_first_output(grids):
-    for g in grids:
-        if len(g.completed) == 0:
-            continue
-        ts = g.getTables()[0][2]
-        return ts
-    raise Exception('No output found in grids.')
-
-def get_pop_len(ts):
-    return len(ts['population']['popx'])
-
 log.setLevel('DEBUG')
 args = parse_args()
 cfg = get_config(args.configFile)
@@ -83,13 +72,6 @@ for grid in sa.gridIterator(chunk_size=args.chunkSize, use_errors_flags=not args
 log.info('Waiting jobs completion.')
 runner.wait()
 output_grids = runner.getOutputGrids()
-first_ts = get_first_output(output_grids)
-log.info('Creating synthesis cubes.')
-sa.createSynthesisCubes(pop_len=get_pop_len(first_ts))
-
-log.info('Writing synthesis headers.')
-sa.writeSynthesisHeaders(first_ts)
-
 
 for grid in output_grids:
     log.debug('Reading results of %s.' % grid.name)
