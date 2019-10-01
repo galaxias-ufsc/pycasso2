@@ -64,19 +64,30 @@ class PGridFile(GridFile):
 
     def getTables(self):
         tables = []
+        out_dir = self.outDirAbs
         for run in self.completed:
-            outfile = path.join(self.outDirAbs, run.outFileCompressed)
+            outfile = path.join(out_dir, run.outFileCompressed)
             ts = read_output_tables(outfile)
             tables.append((run.x, run.y, ts))
         return tables
 
+    def writeInput(self):
+        obs_dir = self.obsDirAbs
+        for r in self.runs:
+            log.debug('Writing input file for spaxel (%d,%d)' % (r.x, r.y))
+            write_input(r.l_obs, r.f_obs, r.f_err, r.f_flag, path.join(obs_dir, r.inFile))
+        
 
 class PGridRun(GridRun):
 
-    def __init__(self, x=None, y=None, *args):
+    def __init__(self, x=None, y=None, l_obs=None, f_obs=None, f_err=None, f_flag=None, *args):
         GridRun.__init__(self, *args)
         self.x = x
         self.y = y
+        self.l_obs = l_obs
+        self.f_obs = f_obs
+        self.f_err = f_err
+        self.f_flag = f_flag
 
 
 def makedirs(the_path):
@@ -246,16 +257,16 @@ class SynthesisAdapter(object):
             new_run.maskFile = self._arqMaskFormat % (self.name, y, x)
         new_run.x = x
         new_run.y = y
-        f_obs = self.f_obs[:, y, x]
+        new_run.l_obs = self.l_obs
+        new_run.f_obs = self.f_obs[:, y, x]
         if use_errors_flags:
-            f_err = self.f_err[:, y, x]
-            f_flag = self.f_flag[:, y, x]
+            new_run.f_err = self.f_err[:, y, x]
+            new_run.f_flag = self.f_flag[:, y, x]
             if synth_sn is not None:
-                f_err = np.sqrt(f_err**2 + (f_obs / synth_sn)**2)
+                new_run.f_err = np.sqrt(new_run.f_err**2 + (new_run.f_obs / synth_sn)**2)
         else:
-            f_err = None
-            f_flag = None
-        write_input(self.l_obs, f_obs, f_err, f_flag, path.join(self.obsDir, new_run.inFile))
+            new_run.f_err = None
+            new_run.f_flag = None
         return new_run
 
     def _getIntegGrid(self, use_errors_flags, use_custom_masks, synth_sn):
@@ -281,17 +292,16 @@ class SynthesisAdapter(object):
         new_run.outFile = 'integrated.out'
         new_run.x = None
         new_run.y = None
-
-        f_obs = self._integ_f_obs
+        new_run.l_obs = self.l_obs
+        new_run.f_obs = self._integ_f_obs
         if use_errors_flags:
-            f_err = self._integ_f_err
+            new_run.f_err = self._integ_f_err
             if synth_sn is not None:
-                f_err = np.sqrt(f_err**2 + (f_obs / synth_sn)**2)
-            f_flag = self._integ_f_flag
+                new_run.f_err = np.sqrt(new_run.f_err**2 + (new_run.f_obs / synth_sn)**2)
+            new_run.f_flag = self._integ_f_flag
         else:
-            f_err = None
-            f_flag = None
-        write_input(self.l_obs, f_obs, f_err, f_flag, path.join(self.obsDir, new_run.inFile))
+            new_run.f_err = None
+            new_run.f_flag = None
         return new_run
 
     def gridIterator(self, chunk_size, use_errors_flags=True,

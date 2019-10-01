@@ -82,10 +82,13 @@ def run_starlight_and_check(exec_path, grid, timeout, compress=True):
 
     # First check, maybe some files were already run.
     grid.checkOutput(compress)
-    if len(grid.completed) > 0:
+    
+    already_done = len(grid.completed)
+    if already_done > 0:
         log.warn('Skipped %d completed runs from %s.' %
                  (len(grid.completed), grid.name))
 
+    grid.writeInput()
     t0 = time.time()
     while len(grid.runs) > 0 and its < max_iterations:
         grid_fname = path.join(
@@ -94,7 +97,7 @@ def run_starlight_and_check(exec_path, grid, timeout, compress=True):
         grid.write(grid_fname)
         result = -1
         with open(log_fname, 'w') as logfile:
-            log.debug('Starting starlight process for %s, %d to go...' %
+            log.info('Starting starlight process for %s, %d to go...' %
                       (grid.name, len(grid.runs)))
             result = run_starlight(
                 exec_path, grid.starlightDir, str(grid), timeout, logfile)
@@ -113,9 +116,10 @@ def run_starlight_and_check(exec_path, grid, timeout, compress=True):
             grid.name, len(grid.runs)))
         grid.failRuns()
 
-    if len(grid.completed) > 0:
-        log.debug('Took %.1f s to run %s (%d spectra).' %
-                  (time.time() - t0, grid.name, len(grid.completed)))
+    done_here = len(grid.completed) - already_done
+    if done_here > 0:
+        log.info('Took %.1f s to run %s (%d spectra).' %
+                  (time.time() - t0, grid.name, done_here))
     return grid
 ###############################################################################
 

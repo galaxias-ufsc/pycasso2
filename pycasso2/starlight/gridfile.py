@@ -388,7 +388,7 @@ class GridFile(object):
         --------
         failRuns
         '''
-        bad_run = self.runs.pop(0)
+        bad_run = self.runs.pop(ix)
         self.failed.append(bad_run)
 
     def failRuns(self):
