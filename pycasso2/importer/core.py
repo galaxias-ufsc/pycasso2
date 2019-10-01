@@ -186,7 +186,7 @@ def preprocess_obs(obs, cfg, mask_file=None):
 
     sl_string = cfg.get(cfg_import_sec, 'slice', fallback=None)
     sl = parse_slice(sl_string)
-    if sl is not None:
+    if 'PYCASSO SLICE' not in obs.header and sl is not None:
         obs.addKeyword('SLICE', sl_string)
         y_slice, x_slice = sl
         obs.slice(x_slice, y_slice)

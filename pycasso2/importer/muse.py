@@ -3,9 +3,10 @@ Created on 08/12/2015
 
 @author: andre
 '''
-from ..wcs import get_wavelength_coordinates, get_Naxis
+from ..wcs import get_wavelength_coordinates, get_Naxis, shift_celestial_WCS
 from ..cosmology import velocity2redshift
 from .. import flags
+from ..config import parse_slice
 from .core import safe_getheader,  ObservedCube
 
 from astropy import log, wcs
@@ -32,18 +33,27 @@ def read_muse(cube, name, cfg):
     l_obs = get_wavelength_coordinates(w, get_Naxis(header, 3))
 
     log.debug('Loading data from %s.' % cube)
-    f_obs = fits.getdata(cube, extname='DATA').astype('float64')
-    f_err = fits.getdata(cube, extname='STAT').astype('float64')
+
+    # We slice the cube early here. Some MUSE cubes are huge and will thrash the system memory.    
+    sl_string = cfg.get('import', 'slice', fallback=None)
+    if sl_string is not None:
+        log.info('Slicing cube while reading.')
+        sl = parse_slice(sl_string)
+        if sl is not None:
+            y_slice, x_slice = sl
+        log.debug('Slice will be: %d:%d, %d:%d' % (y_slice.start, y_slice.stop, x_slice.start, x_slice.stop))
+        w = shift_celestial_WCS(w, dx=x_slice.start, dy=y_slice.start)
+
+    with fits.open(cube) as f:
+        f_obs = f['DATA'].section[:, y_slice, x_slice].astype('float64')
+        f_err = f['STAT'].section[:, y_slice, x_slice].astype('float64')
+
     np.sqrt(f_err, out=f_err)
-    # Try to get bad pixel extension. If not, follow the MUSE pipeline manual 1.6.2,
-    # > DQ The data quality flags encoded in an integer value according to the Euro3D standard (cf. [RD05]).
-    # > However, by default, the data quality extension is not present, instead pixels which do not have a clean data quality status are directly encoded as Not-a-Number (NaN) values in the DATA extension itself.
-    try:
-        badpix = fits.getdata(cube, extname='DQ') != 0
-    except:
-        badpix = ~np.isfinite(f_obs) | ~np.isfinite(f_err)
-        badpix |= (f_obs <= 0.0)
-        badpix |= (f_err <= 0.0)
+
+    badpix = ~np.isfinite(f_obs)
+    badpix |= ~np.isfinite(f_err)
+    badpix |= (f_obs <= 0.0)
+    badpix |= (f_err <= 0.0)
     f_obs[badpix] = 0.0
     f_err[badpix] = 0.0
 
@@ -59,6 +69,8 @@ def read_muse(cube, name, cfg):
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = float(ml['E(B-V)'])
     obs.lumDist_Mpc = ml['D [Mpc]']
+    if sl is not None:
+        obs.addKeyword('SLICE', sl_string)
     return obs
 
 def muse_save_masterlist(header, ml):
