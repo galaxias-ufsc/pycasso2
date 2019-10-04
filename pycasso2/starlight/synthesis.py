@@ -73,7 +73,10 @@ class PGridFile(GridFile):
     def writeInput(self):
         obs_dir = self.obsDirAbs
         for r in self.runs:
-            log.debug('Writing input file for spaxel (%d,%d)' % (r.x, r.y))
+            if r.x is not None and r.y is not None:
+                log.debug('Writing input file for spaxel (%d,%d)' % (r.x, r.y))
+            else:
+                log.debug('Writing input file for integrated spectra.')
             write_input(r.l_obs, r.f_obs, r.f_err, r.f_flag, path.join(obs_dir, r.inFile))
         
 
