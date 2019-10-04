@@ -53,6 +53,11 @@ def parse_args():
     return parser.parse_args()
 ###############################################################################
 
+def run_starlight(exec_path, grid, timeout, compress=True):
+    g = run_starlight_and_check(exec_path, grid, timeout, compress)
+    g.readTables()
+    return g
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -70,7 +75,7 @@ if __name__ == '__main__':
     
     map_args = ((exec_path, g, timeout, True) for g in gridfiles)
     with MPIPoolExecutor(args.maxWorkers) as executor:
-        output_grids = executor.starmap(run_starlight_and_check, map_args, unordered=True)
+        output_grids = executor.starmap(run_starlight, map_args, unordered=True)
 
     for grid in output_grids:
         log.debug('Reading results of %s.' % grid.name)

@@ -162,6 +162,7 @@ class StarlightThread(Thread):
                     grid.name = 'grid_%d' % self.ident
                 _output_grid = run_starlight_and_check(
                     self._exec_path, grid, self._timeout, compress=self._compress)
+                _output_grid.readTables()
                 self._outputGrids.append(_output_grid)
             except Exception as e:
                 log.error(str(e))

@@ -61,15 +61,14 @@ class PGridFile(GridFile):
 
     def __init__(self, *args):
         GridFile.__init__(self, *args)
+        self.tables = []
 
-    def getTables(self):
-        tables = []
+    def readTables(self):
         out_dir = self.outDirAbs
         for run in self.completed:
             outfile = path.join(out_dir, run.outFileCompressed)
             ts = read_output_tables(outfile)
-            tables.append((run.x, run.y, ts))
-        return tables
+            self.tables.append((run.x, run.y, ts))
 
     def writeInput(self):
         obs_dir = self.obsDirAbs
@@ -352,7 +351,7 @@ class SynthesisAdapter(object):
                 log.warn('Failed run for pixel (%d, %d)' % (fr.y, fr.x))
             self.f_flag[:, fr.y, fr.x] |= flags.starlight_failed_run
 
-        for x, y, ts in grid.getTables():
+        for x, y, ts in grid.tables:
             if not self._cube.hasSynthesis:
                 pop_len = len(ts['population']['popx'])
                 log.info('Creating synthesis cubes.')
