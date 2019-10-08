@@ -237,13 +237,13 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         for _l_cen, _sig_l in zip(l_cen, sig_l):
             flag_line = (_ll >= (_l_cen - Nsig * _sig_l)) & (_ll <= (_l_cen + Nsig * _sig_l))
             flag_lc[flag_line] = False
+        _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
         if debug:
             import matplotlib.pyplot as plt
             plt.figure(10)
             plt.plot(_ll, f_res, 'b')
             plt.plot(_ll[flag_lc], f_res[flag_lc], 'k')
             plt.plot(_ll, mod_fit_all(_ll), 'r')
-            _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
 
     
     # Continuum only for Ha - Legendre for continuum, linear for rms (because Legendre may overfit the noise)
