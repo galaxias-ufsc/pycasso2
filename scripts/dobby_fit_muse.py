@@ -104,7 +104,8 @@ def fit_spaxel(iy, ix,
                suffix, name_template, tmpdir,
                ll, f_res, f_syn, f_err, vd_inst,
                kinematic_ties_on, balmer_limit_on, model,
-               degree, debug, display_plot):
+               degree, debug, display_plot,
+               stellar_v0=0., stellar_vd=0., legendre_stellar_mask=True):
     '''
     Fit only one spaxel
     '''
@@ -123,7 +124,8 @@ def fit_spaxel(iy, ix,
                                   kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
                                   degree = degree,
                                   saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                                  vd_kms = True)
+                                  vd_kms = True,
+                                  stellar_v0=stellar_v0[iy, ix], stellar_vd=stellar_vd[iy, ix], legendre_stellar_mask=legendre_stellar_mask)
     
             if debug:
                 # Plot spectrum
@@ -148,9 +150,7 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
     suffix = 'El%sk%ib%i' % (_m, _k, _b)
 
     ll = c.l_obs
-    f_res = (c.f_obs - c.f_syn)
     f_flagged = ((flags.no_starlight & c.f_flag) > 0)
-    f_res[f_flagged] = np.ma.masked
 
     # Calc vd_inst. Hard-coded for now!
     vdi_R2000 = 64.
@@ -159,7 +159,6 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
     vd_inst = np.where(ll <= llim, vdi_R2000, vdi_R4000)
 
     if c.hasSegmentationMask:
-        f_res = f_res[..., np.newaxis]
         f_syn = c.f_syn[..., np.newaxis]
         f_obs = c.f_obs[..., np.newaxis]
         f_err = c.f_err[..., np.newaxis]
@@ -177,11 +176,13 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
         x0 = c.x0
 
     if correct_good_frac:
-        f_obs = f_obs.copy() * c.seg_good_frac
         f_syn = f_syn.copy() * c.seg_good_frac
-        f_res = f_res.copy() * c.seg_good_frac
+        f_obs = f_obs.copy() * c.seg_good_frac
         f_err = f_err.copy() * c.seg_good_frac
         
+    f_res = (f_obs - f_syn)
+    f_res[f_flagged] = np.ma.masked
+    
     # Pixels to fit
     if args.onlyCenter:
         log.warn('Fitting only central spaxel.')
@@ -205,6 +206,8 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
               'degree' : args.degree,
               'debug' : args.debug,
               'display_plot' : args.displayPlots,
+              'stellar_v0' : c.v_0,
+              'stellar_vd' : c.v_d,
              }
                 
     # Fit spaxel by spaxel
@@ -252,7 +255,9 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
                                kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
                                degree = args.degree,
                                saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                               vd_kms = True)
+                               vd_kms = True,
+                               stellar_v0=c.synthIntegKeywords['v0'], stellar_vd=c.synthIntegKeywords['vd'], legendre_stellar_mask=True)
+                               
         if args.debug:
             # Plot integrated spectrum
             fig = plot_el(ll, f_res, el, ifig = 0, display_plot = args.displayPlots)

@@ -115,7 +115,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      model = 'resampled_gaussian', vd_inst = None, vd_kms = True,
                      lines_windows_file = None, degree=16, min_good_fraction=.2, 
                      saveAll = False, saveHDF5 = False, saveTXT = False,
-                     outname = None, outdir = None, debug = False, **kwargs):
+                     outname = None, outdir = None, debug = False,
+                     stellar_v0=0., stellar_vd=0., legendre_stellar_mask=False,
+                     **kwargs):
 
     if lines_windows_file is None:
         lines_windows = Table.read(path.join(path.dirname(__file__), 'lines.dat'), format = 'ascii.commented_header')
@@ -204,14 +206,13 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask = True
 
 
-
     # Fit all lines just to remove them from the local continuum calculation with Legendre polynomials
     name = np.char.mod('%d', lines_windows['namel'])
     linename = lines_windows['name']
     l0 = get_central_wavelength(name)
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename' : ln }
+        el_extra[n] = {'linename' : ln}
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
         
@@ -227,6 +228,24 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     flag_lc = (mod_fit_all(_ll) < 1e-5)
     _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
 
+    # Mask out all lines based on stellar v0, vd to help the Legendre continuum
+    if legendre_stellar_mask:
+        log.debug('Using stellar v0, vd to mask out emission lines for the pseudocontinuum fit.')
+        l_cen = l0 * (1. + stellar_v0 / c)
+        sig_l = l0 * (stellar_vd / c)
+        Nsig = 4
+        for _l_cen, _sig_l in zip(l_cen, sig_l):
+            flag_line = (_ll >= (_l_cen - Nsig * _sig_l)) & (_ll <= (_l_cen + Nsig * _sig_l))
+            flag_lc[flag_line] = False
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.figure(10)
+            plt.plot(_ll, f_res, 'b')
+            plt.plot(_ll[flag_lc], f_res[flag_lc], 'k')
+            plt.plot(_ll, mod_fit_all(_ll), 'r')
+            _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
+
+    
     # Continuum only for Ha - Legendre for continuum, linear for rms (because Legendre may overfit the noise)
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6563', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
