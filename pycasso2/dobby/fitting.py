@@ -21,9 +21,10 @@ def calc_cont_EW(_ll, _f_syn, flux_integrated, linename, lines_windows):
     # Calculate continuum and equivalent width
     a, b, central_lambda = local_continuum_linear(_ll, _f_syn, linename, lines_windows, return_continuum = False)
     C  = a * central_lambda + b
-    EW = flux_integrated / C
-
-    return EW
+    if C > 0:
+        return flux_integrated / C
+    else:
+        return np.nan
 
 
 def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug = False):
@@ -69,17 +70,17 @@ def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuu
     # Select a line from our red/blue continua table
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
 
+    def safe_median(x, l, l1, l2):
+        mask = (l >= l1) & (l <= l2)
+        if mask.any():
+            median = np.ma.median(x[mask])
+        else:
+            median = 0.0
+        return median, mask
+        
     # Get the blue and red continuum median
-    flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
-    flag_red  = (_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])
-    blue_median = np.ma.median(_f_res[flag_blue])
-    red_median  = np.ma.median(_f_res[flag_red ])
-
-    # Deal with completely masked windows
-    if np.ma.is_masked(blue_median):
-        blue_median = 0.
-    if np.ma.is_masked(red_median):
-        red_median = 0.
+    blue_median, flag_blue = safe_median(_f_res, _ll, lines_windows[flag_line]['blue1'], lines_windows[flag_line]['blue2'])
+    red_median, flag_red   = safe_median(_f_res, _ll, lines_windows[flag_line][ 'red1'], lines_windows[flag_line][ 'red2'])
         
     # Get the midpoint wavelengths
     blue_lambda = (lines_windows[flag_line]['blue1'] + lines_windows[flag_line]['blue2'])[0] / 2.
@@ -171,10 +172,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             raise Exception('Check vd_inst, must be a scalar, a dictionary or a dispersion spectrum: %s' % vd_inst)
 
     def do_fit(model, ll, lc, flux, err, min_good_fraction, ignore_warning=False):
-        fitter = fitting.LevMarLSQFitter()
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
-        good_fraction = good.sum() / lc.count()
-        if good_fraction > min_good_fraction:
+        Nl_cont = lc.count()
+        N_good = good.sum()
+        if Nl_cont > 0 and (N_good / Nl_cont) > min_good_fraction:
+            fitter = fitting.LevMarLSQFitter()
             fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=safe_pow(err[good], -1), maxiter=500)
             flag = interpret_fit_result(fitter.fit_info, ignore_warning=ignore_warning)
             return fitted_model, flag
@@ -206,7 +208,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask = True
 
 
-    # Fit all lines just to remove them from the local continuum calculation with Legendre polynomials
+    log.debug('Pre-fitting all lines for the continuum calculation.')
     name = np.char.mod('%d', lines_windows['namel'])
     linename = lines_windows['name']
     l0 = get_central_wavelength(name)
@@ -529,8 +531,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         for l in model.submodel_names:
             lc = el_extra[l]['local_cont']
             good = ~np.ma.getmaskarray(_f_res) & ~np.ma.getmaskarray(lc)
-            good_fraction = good.sum() / lc.count()
-            if good_fraction <= min_good_fraction:
+            Nl_cont = lc.count()
+            N_good = good.sum()
+            if Nl_cont == 0 or (N_good / Nl_cont) <= min_good_fraction:
                 el_extra[l]['flag'] = flags.no_data
 
         

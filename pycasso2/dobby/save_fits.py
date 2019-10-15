@@ -3,6 +3,7 @@ from os import path
 import h5py
 import numpy as np
 from astropy.table import Table
+from astropy import log
 
 def save_fits_test_zonespixels(c, galname, outdir, el_dir, name_template, balLim=True, kinTies=True, model='GaussianIntELModel'):
     '''
@@ -234,8 +235,9 @@ def dobby_save_fits_pixels(c, outfile, el_dir, name_template, suffix, kinTies, b
     filename = path.join(el_dir, '%s.hdf5' % name)
         
     with h5py.File(filename, 'r') as f:
-        c._addTableExtension('El_integ', data=Table(f['elines'].value), overwrite=True)
+        c._addTableExtension('El_integ', data=Table(f['elines'][:]), overwrite=True)
         c._addTableExtension('El_integ_lc', data=Table({'l_obs': ll, 'total_lc': f['spec']['total_lc']}), overwrite=True)
     
+    log.info('Saving output to %s' % outfile)
     c.write(outfile, overwrite=True)
 
