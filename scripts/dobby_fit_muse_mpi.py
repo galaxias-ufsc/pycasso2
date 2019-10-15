@@ -18,9 +18,9 @@ import numpy as np
 import argparse
 from astropy import log
 from contextlib import closing
-
+from mpi4py.futures import MPIPoolExecutor
+from itertools import islice
 from multiprocessing import cpu_count
-import multiprocessing as mp
 
 from pycasso2 import FitsCube
 from pycasso2.segmentation import sum_spectra
@@ -28,6 +28,8 @@ from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
 from pycasso2.dobby.utils import plot_el
 from pycasso2.dobby.save_fits import dobby_save_fits_pixels
+
+log.setLevel('DEBUG')
 
 
 ###############################################################################
@@ -43,8 +45,10 @@ def parse_args():
                         help='Rename the output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
-    parser.add_argument('--nproc', dest='nProc', type=int, default=cpu_count() - 1,
-                        help='Number of worker processes.')
+    parser.add_argument('--max-workers', dest='maxWorkers', type=int, default=cpu_count() - 1,
+                        help='Maximum mumber of worker processes.')
+    parser.add_argument('--queue-length', dest='queueLength', type=int, default=-1,
+                        help='Worker queue length. Default: 10 * max workers.')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true',
                         help='Overwrite output.')
     parser.add_argument('--debug', dest='debug', action='store_true',
@@ -156,12 +160,9 @@ def get_suffix(model, kinematic_ties_on, balmer_limit_on):
 
 ###############################################################################
 # Multiprocessing functions
-def func_with_kwargs(j, i, f_res, f_syn, f_err, v_0, v_d, kwargs):
+def fit_spaxel_kwargs(j, i, f_res, f_syn, f_err, v_0, v_d, kwargs):
     return fit_spaxel(j, i, f_res, f_syn, f_err, v_0, v_d, **kwargs)
 
-def iter_with_kwargs(args, **kwargs):
-    for x in args:
-        yield list(x) + [kwargs,]
 ###############################################################################
 
 ###############################################################################
@@ -195,6 +196,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
             # Plot spectrum
             fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
             fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
+    return
 ###############################################################################
 
 ###############################################################################
@@ -216,15 +218,6 @@ def fit(cubefile, suffix):
     vd_inst = np.where(data.ll <= llim, vdi_R2000, vdi_R4000)
 
     
-    # Pixels to fit
-    if args.onlyCenter:
-        data.x0=2
-        data.y0=3
-        log.warning('Fitting only central spaxel.')
-        data_iter = [data.getArgs(data.y0, data.x0)]
-    else:
-        data_iter = data
-
     kwargs = {'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : el_dir,
@@ -237,17 +230,32 @@ def fit(cubefile, suffix):
               'debug' : args.debug,
               'display_plot' : args.displayPlots,
              }
-                
-    # Fit spaxel by spaxel
-    if args.nProc == 1:
-        for a in data_iter:
-            fit_spaxel(*a, **kwargs)
-    else:
-        log.info('Using %d processes.' % args.nProc)
-        with mp.Pool(args.nProc) as pool:
-            pool.starmap(func_with_kwargs, iter_with_kwargs(data_iter, **kwargs), chunksize=10)
 
-        
+    
+    queue_length = args.queueLength
+    if queue_length <= 0:
+        queue_length = args.maxWorkers * 10
+        log.debug('Setting queue length to %d.' % queue_length)
+    
+                    
+    log.debug('Starting execution pool.')
+    map_args = ((*a , kwargs) for a in data)
+
+    with MPIPoolExecutor(args.maxWorkers) as executor:
+        while True:
+            chunk = list(islice(map_args, queue_length))
+            if len(chunk) == 0:
+                log.debug('Exceution completed.')
+                break
+            log.debug('Dispatching %d runs.' % len(chunk))
+            result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
+            
+            # TODO: make fit_spaxel return the data, not save to a file.
+            # This hack is to exaust the results.
+            waiting = [_ for _ in result]
+            log.info('Completed %d runs.' % len(waiting))
+            
+            
     log.info('Fitting integrated spectrum...')
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
@@ -275,7 +283,6 @@ def fit(cubefile, suffix):
 
 ###############################################################################
 if __name__ == '__main__':
-    log.setLevel('DEBUG')
     
     args = parse_args()
     cube_in = args.cubeIn[0]
