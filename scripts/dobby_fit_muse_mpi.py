@@ -112,8 +112,21 @@ class EmLineInput(object):
             
         self.f_res = (f_obs - self.f_syn)
         assert not (np.ma.getmaskarray(self.f_res) ^ (np.ma.getmaskarray(self.f_syn) | np.ma.getmaskarray(f_obs))).any()
+    
+    
+    def getArgs(self, j, i):
+        return j, i, self.f_res[:, j, i], self.f_syn[:, j, i], self.f_err[:, j, i], self.v_0[j, i], self.v_d[j, i]
+    
+    
+    def __iter__(self):
+        for j in range(self.Ny):
+            for i in range(self.Nx):
+                yield self.getArgs(j, i)
+    
 ###############################################################################
 
+
+###############################################################################
 def calc_integrated(f_obs, f_syn, f_err, integ_mask):
     # Add all spaxels (to take into account the seg_good_frac if using)
     f_obs, _, _ = sum_spectra(integ_mask, f_obs, f_err, cov_factor_A=0.0, cov_factor_B=1.0)
@@ -123,6 +136,7 @@ def calc_integrated(f_obs, f_syn, f_err, integ_mask):
     f_err = np.ma.masked_where((good_frac <= 0.5), f_err).squeeze()
     f_res = f_obs - f_syn
     return f_res, f_syn, f_err
+###############################################################################
 
 
 ###############################################################################
@@ -142,32 +156,21 @@ def get_suffix(model, kinematic_ties_on, balmer_limit_on):
 
 ###############################################################################
 # Multiprocessing functions
-def func_with_kwargs(iy, ix, kwargs):
-    return fit_spaxel(iy, ix, **kwargs)
+def func_with_kwargs(j, i, f_res, f_syn, f_err, v_0, v_d, kwargs):
+    return fit_spaxel(j, i, f_res, f_syn, f_err, v_0, v_d, **kwargs)
 
 def iter_with_kwargs(args, **kwargs):
     for x in args:
-        yield x.tolist() + [kwargs,]
+        yield list(x) + [kwargs,]
 ###############################################################################
 
 ###############################################################################
 # Fit emission lines in all pixels and save the results into one file per pixel
-def fit_spaxel(iy, ix,
+def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                suffix, name_template, tmpdir,
-               ll, f_res, f_syn, f_err, vd_inst,
+               ll, vd_inst,
                kinematic_ties_on, balmer_limit_on, model,
-               degree, debug, display_plot,
-               stellar_v0=0., stellar_vd=0., legendre_stellar_mask=True):
-    '''
-    Fit only one spaxel
-    '''
-
-    f_res = f_res[..., iy, ix]
-    f_syn = f_syn[..., iy, ix]
-    f_err = f_err[..., iy, ix]
-    stellar_v0 = stellar_v0[iy, ix]
-    stellar_vd = stellar_vd[iy, ix]
-    
+               degree, debug, display_plot, legendre_stellar_mask=True):
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
         log.debug('Skipping masked spaxel [%d, %d]' % (iy, ix))
@@ -215,18 +218,17 @@ def fit(cubefile, suffix):
     
     # Pixels to fit
     if args.onlyCenter:
+        data.x0=2
+        data.y0=3
         log.warn('Fitting only central spaxel.')
-        iys, ixs = [data.y0,], [data.x0,]
+        data_iter = [data.getArgs(data.y0, data.x0)]
     else:
-        iys, ixs = np.arange(data.Ny), np.arange(data.Nx)
+        data_iter = data
 
     kwargs = {'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : el_dir,
               'll' : data.ll,
-              'f_res' : data.f_res,
-              'f_syn' : data.f_syn,
-              'f_err' : data.f_err,
               'vd_inst' : vd_inst,
               'kinematic_ties_on' : args.enableKinTies,
               'balmer_limit_on' : args.enableBalmerLim,
@@ -234,29 +236,16 @@ def fit(cubefile, suffix):
               'degree' : args.degree,
               'debug' : args.debug,
               'display_plot' : args.displayPlots,
-              'stellar_v0' : data.v_0,
-              'stellar_vd' : data.v_d,
              }
                 
     # Fit spaxel by spaxel
     if args.nProc == 1:
-
-        np.random.shuffle(iys)
-        np.random.shuffle(ixs)
-        
-        for iy in iys:
-            for ix in ixs:
-                fit_spaxel(iy, ix, **kwargs)
-            
+        for a in data_iter:
+            fit_spaxel(*a, **kwargs)
     else:
-
-        log.info('Starting multithreading...')
-
-        _ixs, _iys = np.meshgrid(ixs, iys)
-        ixs_iys = np.vstack([_ixs.flatten(), _iys.flatten()]).T
-        
+        log.info('Using %d processes.' % args.nProc)
         with mp.Pool(args.nProc) as pool:
-            pool.starmap(func_with_kwargs, iter_with_kwargs(ixs_iys, **kwargs), chunksize=100)
+            pool.starmap(func_with_kwargs, iter_with_kwargs(data_iter, **kwargs), chunksize=10)
 
         
     log.info('Fitting integrated spectrum...')
