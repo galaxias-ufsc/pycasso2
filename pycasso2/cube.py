@@ -5,7 +5,7 @@ Created on 22/06/2015
 '''
 
 from .wcs import get_wavelength_coordinates, get_celestial_coordinates, write_WCS, get_reference_pixel
-from .wcs import get_pixel_area_srad, get_pixel_scale_rad, get_wavelength_sampling, get_Naxis
+from .wcs import get_pixel_scale_rad, get_wavelength_sampling, get_Naxis
 from .cosmology import get_angular_distance
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
@@ -77,13 +77,13 @@ class FitsCube(object):
                          'Av', 'exAv', 'v0', 'vd', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
-    def __init__(self, cubefile=None, name=None, cube_type='pycasso', mask_file=None, import_cfg=None):
+    def __init__(self, cubefile=None, name=None, cube_type='pycasso', mask_file=None, import_cfg=None, memmap=True):
         self._pop_len = None
         if cubefile is None:
             # FIXME: needed by segmentation code, which should moved here.
             return
         if cube_type is 'pycasso':
-            self._load(cubefile)
+            self._load(cubefile, memmap)
             if name is not None:
                 self.name = name
         else:
@@ -100,6 +100,9 @@ class FitsCube(object):
             self._fromObs(obs, import_cfg)
         self._l_norm = None
         self._dl_norm = None
+
+    def close(self):
+        self._HDUList.close()
 
     def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None, f_disp=None):
         phdu = fits.PrimaryHDU(header=header)
@@ -148,10 +151,11 @@ class FitsCube(object):
                 return
         self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
 
-    def _load(self, cubefile):
-        self._HDUList = fits.open(cubefile, memmap=True)
+    def _load(self, cubefile, memmap=True):
+        self._HDUList = fits.open(cubefile, memmap=memmap)
         self._header = self._HDUList[0].header
         if self.hasSegmentationMask:
+            log.debug('Cube has segmentation data.')
             w = WCS(naxis=3)
             w_xy = WCS(self._HDUList[self._ext_segmask].header).celestial
             w_l = WCS(self._HDUList[self._ext_f_obs].header).sub([1])
@@ -167,7 +171,9 @@ class FitsCube(object):
             self._wcs = w
         else:
             self._wcs = WCS(self._HDUList[self._ext_f_obs].header)
+        log.debug('Initializing masks.')
         self._initMasks()
+        log.debug('Reading keywords.')
         self._readKeywords()
 
     def _fromObs(self, obs, cfg):
