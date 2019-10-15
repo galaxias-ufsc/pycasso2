@@ -37,8 +37,8 @@ def parse_args():
 
     parser.add_argument('cubeIn', type=str, nargs=1,
                         help='Cube. Ex.: T001.fits')
-    parser.add_argument('--out', dest='cubeOut', required=True,
-                        help='Output cube.')
+    parser.add_argument('--out', dest='cubeOut',
+                        help='Output cube. If not set, will update the input.')
     parser.add_argument('--name', dest='newName',
                         help='Rename the output cube.')
     parser.add_argument('--config', dest='configFile', default=default_config_path,
@@ -220,7 +220,7 @@ def fit(cubefile, suffix):
     if args.onlyCenter:
         data.x0=2
         data.y0=3
-        log.warn('Fitting only central spaxel.')
+        log.warning('Fitting only central spaxel.')
         data_iter = [data.getArgs(data.y0, data.x0)]
     else:
         data_iter = data
@@ -279,6 +279,10 @@ if __name__ == '__main__':
     
     args = parse_args()
     cube_in = args.cubeIn[0]
+    
+    if args.cubeOut is None:
+        log.warning('Output not set, this will update the input file!')
+    
     # TODO: read from config
     name_template = 'p%04i-%04i'
     suffix = get_suffix(args.model, args.enableKinTies, args.enableBalmerLim)
@@ -288,7 +292,7 @@ if __name__ == '__main__':
     
     log.info('Reading fit results from %s' % el_dir)
     log.debug('Reloading cube %s' % cube_in)
-    with closing(FitsCube(cube_in)) as c:
+    with closing(FitsCube(cube_in, mode='append')) as c:
         dobby_save_fits_pixels(c, args.cubeOut, el_dir, name_template, suffix,
                                kinTies=args.enableKinTies, balLim=args.enableBalmerLim, model=args.model)
 

@@ -77,13 +77,14 @@ class FitsCube(object):
                          'Av', 'exAv', 'v0', 'vd', 'adev', 'Ntot_clipped',
                          'Nglobal_steps', 'chi2', 'SN_normwin']
 
-    def __init__(self, cubefile=None, name=None, cube_type='pycasso', mask_file=None, import_cfg=None, memmap=True):
+    def __init__(self, cubefile=None, name=None, cube_type='pycasso', mask_file=None, import_cfg=None,
+                 memmap=True, mode='readonly'):
         self._pop_len = None
         if cubefile is None:
             # FIXME: needed by segmentation code, which should moved here.
             return
         if cube_type is 'pycasso':
-            self._load(cubefile, memmap)
+            self._load(cubefile, memmap, mode)
             if name is not None:
                 self.name = name
         else:
@@ -103,6 +104,9 @@ class FitsCube(object):
 
     def close(self):
         self._HDUList.close()
+        
+    def flush(self):
+        self._HDUList.flush()
 
     def _initFits(self, f_obs, f_err, f_flag, header, wcs, segmask=None, good_frac=None, f_disp=None):
         phdu = fits.PrimaryHDU(header=header)
@@ -151,8 +155,8 @@ class FitsCube(object):
                 return
         self.pa, self.ba = get_ellipse_params(image, self.x0, self.y0)
 
-    def _load(self, cubefile, memmap=True):
-        self._HDUList = fits.open(cubefile, memmap=memmap)
+    def _load(self, cubefile, memmap=True, mode='readonly'):
+        self._HDUList = fits.open(cubefile, memmap=memmap, mode=mode)
         self._header = self._HDUList[0].header
         if self.hasSegmentationMask:
             log.debug('Cube has segmentation data.')

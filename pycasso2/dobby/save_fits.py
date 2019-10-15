@@ -238,6 +238,10 @@ def dobby_save_fits_pixels(c, outfile, el_dir, name_template, suffix, kinTies, b
         c._addTableExtension('El_integ', data=Table(f['elines'][:]), overwrite=True)
         c._addTableExtension('El_integ_lc', data=Table({'l_obs': ll, 'total_lc': f['spec']['total_lc']}), overwrite=True)
     
-    log.info('Saving output to %s' % outfile)
-    c.write(outfile, overwrite=True)
-
+    if outfile is not None:
+        log.info('Saving output to %s' % outfile)
+        c.write(outfile, overwrite=True)
+    else:
+        log.info('Saving cube (in place).')
+        c.flush()
+        
