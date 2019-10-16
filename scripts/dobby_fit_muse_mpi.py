@@ -23,7 +23,7 @@ from itertools import islice
 from multiprocessing import cpu_count
 
 from pycasso2 import FitsCube
-from pycasso2.segmentation import sum_spectra
+from pycasso2.segmentation import unsafe_sum_spectra
 from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
 from pycasso2.dobby.utils import plot_el
@@ -110,9 +110,9 @@ class EmLineInput(object):
             f_obs *= c.seg_good_frac
             self.f_syn *= c.seg_good_frac
             self.f_err *= c.seg_good_frac
-        
+        self.f_obs = f_obs
         log.debug('Calculating integrated data.')
-        self.f_res_i, self.f_syn_i, self.f_err_i = calc_integrated(f_obs, self.f_syn, self.f_err, self.integ_mask)
+        self.f_res_i, self.f_syn_i, self.f_err_i, self.f_obs_i = calc_integrated(f_obs, self.f_syn, self.f_err, self.integ_mask)
             
         self.f_res = (f_obs - self.f_syn)
         assert not (np.ma.getmaskarray(self.f_res) ^ (np.ma.getmaskarray(self.f_syn) | np.ma.getmaskarray(f_obs))).any()
@@ -133,13 +133,15 @@ class EmLineInput(object):
 ###############################################################################
 def calc_integrated(f_obs, f_syn, f_err, integ_mask):
     # Add all spaxels (to take into account the seg_good_frac if using)
-    f_obs, _, _ = sum_spectra(integ_mask, f_obs, f_err, cov_factor_A=0.0, cov_factor_B=1.0)
-    f_syn, f_err, good_frac = sum_spectra(integ_mask, f_syn, f_err, cov_factor_A=0.0, cov_factor_B=1.0)
-    f_obs = np.ma.masked_where((good_frac <= 0.5), f_obs).squeeze()
-    f_syn = np.ma.masked_where((good_frac <= 0.5), f_syn).squeeze()
-    f_err = np.ma.masked_where((good_frac <= 0.5), f_err).squeeze()
+    good = ~np.ma.getmaskarray(f_obs)
+    f_obs, f_err, good_frac = unsafe_sum_spectra(integ_mask, f_obs.data, f_err.data, good, cov_factor_A=0.0, cov_factor_B=1.0)
+    f_syn = np.tensordot(f_syn, integ_mask, axes=[[1, 2], [1, 2]])
+    bad = (good_frac <= 0.5)
+    f_obs = np.ma.masked_where(bad, f_obs).squeeze()
+    f_syn = np.ma.masked_where(bad, f_syn).squeeze()
+    f_err = np.ma.masked_where(bad, f_err).squeeze()
     f_res = f_obs - f_syn
-    return f_res, f_syn, f_err
+    return f_res, f_syn, f_err, f_obs
 ###############################################################################
 
 

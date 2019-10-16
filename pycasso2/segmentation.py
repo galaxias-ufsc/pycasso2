@@ -127,6 +127,13 @@ def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor_A=0.0, cov_factor
         good = ~np.ma.getmaskarray(f_obs)
         f_obs = f_obs.filled(0.0)
         f_err = f_err.filled(0.0)
+    return unsafe_sum_spectra(segmask, f_obs, f_err, good, cov_factor_A, cov_factor_B, cov_matrix)
+
+
+def unsafe_sum_spectra(segmask, f_obs, f_err, good, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
+    '''
+    Same as sum_spectra(), but without input sanitizing.
+    '''
 
     N_good = np.tensordot(good.astype('float'), segmask, axes=[[1, 2], [1, 2]])
 
