@@ -209,7 +209,7 @@ def fit(cubefile, suffix):
     data = EmLineInput(cubefile, correct_good_frac=args.correct_good_frac)
 
     el_dir = path.join(args.tmpDir, data.galname)
-    if not path.exists(args.tmpDir):
+    if not path.exists(el_dir):
         log.debug('Creating directory %s.' % el_dir)
         makedirs(el_dir)
 
