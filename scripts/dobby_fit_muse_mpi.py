@@ -110,9 +110,9 @@ class EmLineInput(object):
             f_obs *= c.seg_good_frac
             self.f_syn *= c.seg_good_frac
             self.f_err *= c.seg_good_frac
-        self.f_obs = f_obs
+        
         log.debug('Calculating integrated data.')
-        self.f_res_i, self.f_syn_i, self.f_err_i, self.f_obs_i = calc_integrated(f_obs, self.f_syn, self.f_err, self.integ_mask)
+        self.f_res_i, self.f_syn_i, self.f_err_i = calc_integrated(f_obs, self.f_syn, self.f_err, self.integ_mask)
             
         self.f_res = (f_obs - self.f_syn)
         assert not (np.ma.getmaskarray(self.f_res) ^ (np.ma.getmaskarray(self.f_syn) | np.ma.getmaskarray(f_obs))).any()
@@ -141,7 +141,7 @@ def calc_integrated(f_obs, f_syn, f_err, integ_mask):
     f_syn = np.ma.masked_where(bad, f_syn).squeeze()
     f_err = np.ma.masked_where(bad, f_err).squeeze()
     f_res = f_obs - f_syn
-    return f_res, f_syn, f_err, f_obs
+    return f_res, f_syn, f_err
 ###############################################################################
 
 
