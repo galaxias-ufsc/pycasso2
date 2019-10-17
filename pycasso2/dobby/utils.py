@@ -101,6 +101,70 @@ def summary_elines(el):
     return elines, spec
 
 
+def new_summary_elines(el):
+    '''
+    Save emission line info to an easy-to-use array.
+    Modified version using a fixed dtype.
+    '''
+
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2
+    
+    N_models = len(el)
+
+    # Start empty arrays
+    El_l     = []
+    El_F     = []
+    El_l0    = []
+    El_v0    = []
+    El_vd    = []
+    
+    for i_model in range(N_models):
+
+        # Get one astropy model
+        model = el[i_model]
+
+        # Get all submodel info in the compound model
+        El_l.extend(  [                   submodel for submodel in model.submodel_names ] )
+        El_F.extend(  [ model[submodel].flux.value for submodel in model.submodel_names ] )
+        El_l0.extend( [ model[submodel].l0.value   for submodel in model.submodel_names ] )
+        El_v0.extend( [ model[submodel].v0.value   for submodel in model.submodel_names ] )
+        El_vd.extend( [ model[submodel].vd.value   for submodel in model.submodel_names ] )
+
+    # And now get info from extra dictionary (outside astropy model)
+    El_flag  = [el_extra[l]['flag']     for l in El_l]
+    El_EW    = [el_extra[l]['EW']       for l in El_l]
+    El_line  = [el_extra[l]['linename'] for l in El_l]
+    El_vdins = [el_extra[l]['vd_inst']  for l in El_l]
+    El_lcrms = [el_extra[l]['rms_lc']   for l in El_l]
+
+    # Save lines as integers
+    El_l = np.int_(El_l)
+    # Clean nan's and inf's
+    El_l0    = replace_nan_inf_by_minus999( np.hstack(El_l0)   )
+    El_F     = replace_nan_inf_by_minus999( np.hstack(El_F)    )
+    El_v0    = replace_nan_inf_by_minus999( np.hstack(El_v0)   )
+    El_vd    = replace_nan_inf_by_minus999( np.hstack(El_vd)   )
+    El_flag  = replace_nan_inf_by_minus999( np.hstack(El_flag) )
+    El_EW    = replace_nan_inf_by_minus999( np.hstack(El_EW)   )
+    El_vdins = replace_nan_inf_by_minus999( np.hstack(El_vdins))
+    El_lcrms = replace_nan_inf_by_minus999( np.hstack(El_lcrms))
+
+    # Save table
+    data = [El_l, El_line, El_l0, El_F, El_v0, El_vd, El_flag, El_EW, El_lcrms, El_vdins]
+    elines = Table(np.core.records.fromarrays(data, dtype=el_table_dtype))
+
+    # Convert unicode
+    elines.convert_unicode_to_bytestring()
+
+    spec = Table( { 'total_lc'      : el_extra['total_lc'].data ,
+                    'total_lc_mask' : el_extra['total_lc'].mask
+                  } )
+    
+    return elines, spec
+
+
+
 def save_summary_to_file(el, outdir, outname, saveHDF5 = False, saveTXT = False, overwrite = False):
     '''
     f_h5py must be an open h5py file.

@@ -13,11 +13,11 @@ done
 Natalia@UFSC - 20/Sep/2017
 '''
 
-from os import path, makedirs
+from os import path, makedirs, unlink
 import numpy as np
 import argparse
 from astropy import log
-from contextlib import closing
+from astropy.table import Table
 from mpi4py.futures import MPIPoolExecutor
 from itertools import islice
 from multiprocessing import cpu_count
@@ -26,8 +26,8 @@ from pycasso2 import FitsCube
 from pycasso2.segmentation import unsafe_sum_spectra
 from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
-from pycasso2.dobby.utils import plot_el
-from pycasso2.dobby.save_fits import dobby_save_fits_pixels
+from pycasso2.dobby.utils import plot_el, read_summary_from_file, new_summary_elines
+from pycasso2.dobby import flags
 
 log.setLevel('DEBUG')
 
@@ -74,52 +74,138 @@ def parse_args():
 ###############################################################################
 
 ###############################################################################
-class EmLineInput(object):
-    def __init__(self, filename, correct_good_frac=False):
+class DobbyAdapter(object):
+    def __init__(self, filename, mode='readonly', correct_good_frac=False,
+                 kin_ties=False, bal_lim=False, model='gaussian'):
         log.debug('Reading cube: %s' % filename)
-        with closing(FitsCube(filename, memmap=False)) as c:
-            self.galname = c.name
-            self.ll = c.l_obs
-            self.integ_mask = np.where(c.synthImageMask, 0, 1)[np.newaxis, ...]
-            self.v_0 = c.v_0
-            self.v_d = c.v_d
-            self.integ_v_0 = c.synthIntegKeywords['v0']
-            self.integ_v_d = c.synthIntegKeywords['vd']
+        c = FitsCube(filename, mode=mode)
+        self._c = c
+        self.correct_good_frac = correct_good_frac
+        self.kinTies = kin_ties
+        self.balLim = bal_lim
+        self.model = model
+        self.name = c.name
+        self.ll = c.l_obs
+        self.integ_mask = np.where(c.synthImageMask, 0, 1)[np.newaxis, ...]
+        self.v_0 = c.v_0
+        self.v_d = c.v_d
+        self.integ_v_0 = c.synthIntegKeywords['v0']
+        self.integ_v_d = c.synthIntegKeywords['vd']
             
-            if c.hasSegmentationMask:
-                log.debug('Cube is segmented.')
-                f_obs = c.f_obs[..., np.newaxis]
-                self.f_syn = c.f_syn[..., np.newaxis]
-                self.f_err = c.f_err[..., np.newaxis]
-                self.Ny = c.Nzone
-                self.Nx = 1
-                self.y0 = 0
-                self.x0 = 0
+        if c.hasSegmentationMask:
+            log.debug('Cube is segmented.')
+            if correct_good_frac:
+                log.debug('Will correct fractional segments.')
+            self.f_obs = c.f_obs[..., np.newaxis]
+            self.f_syn = c.f_syn[..., np.newaxis]
+            self.f_err = c.f_err[..., np.newaxis]
+            self.Ny = c.Nzone
+            self.Nx = 1
+            self.y0 = 0
+            self.x0 = 0
+        else:
+            log.debug('Cube is spatially resolved.')
+            self.f_obs = c.f_obs
+            self.f_syn = c.f_syn
+            self.f_err = c.f_err
+            self.Ny = c.Ny
+            self.Nx = c.Nx
+            self.y0 = c.y0
+            self.x0 = c.x0
+        if c.hasELines:
+            log.info('Cube already has emission line data.')
+            if mode == 'update':
+                log.warning('Deleting existing emission line data.')
+                c.deleteELinesCubes()
             else:
-                log.debug('Cube is spatially resolved.')
-                f_obs = c.f_obs
-                self.f_syn = c.f_syn
-                self.f_err = c.f_err
-                self.Ny = c.Ny
-                self.Nx = c.Nx
-                self.y0 = c.y0
-                self.x0 = c.x0
-        
-        if correct_good_frac:
-            log.debug('Correcting fractional segments.')
-            f_obs *= c.seg_good_frac
-            self.f_syn *= c.seg_good_frac
-            self.f_err *= c.seg_good_frac
-        
-        log.debug('Calculating integrated data.')
-        self.f_res_i, self.f_syn_i, self.f_err_i = calc_integrated(f_obs, self.f_syn, self.f_err, self.integ_mask)
+                self.initDobbyData()
+                
+
+    def save(self, output):
+        if output is not None:
+            log.info('Saving output to %s' % output)
+            self._c.write(output, overwrite=True)
+        else:
+            log.info('Saving cube (in place).')
+            self._c.flush()
             
-        self.f_res = (f_obs - self.f_syn)
-        assert not (np.ma.getmaskarray(self.f_res) ^ (np.ma.getmaskarray(self.f_syn) | np.ma.getmaskarray(f_obs))).any()
-    
-    
+        
+    def createDobbyExtensions(self, el_info):
+        self._c.createELinesCubes(el_info)
+        self.initDobbyData()
+
+
+    def initDobbyData(self):    
+        if self._c.hasSegmentationMask:
+            self.El_F = self._c._EL_flux[:, np.newaxis, :]
+            self.El_v0 = self._c._EL_v_0[:, np.newaxis, :]
+            self.El_vd = self._c._EL_v_d[:, np.newaxis, :]
+            self.El_flag = self._c._EL_flag[:, np.newaxis, :]
+            self.El_EW = self._c._EL_EW[:, np.newaxis, :]
+            self.El_vdins = self._c._EL_v_d_inst[:, np.newaxis, :]
+            self.El_lcrms = self._c._EL_continuum_RMS[:, np.newaxis, :]
+            self.El_lc = self._c.EL_continuum[:, np.newaxis, :]
+        else:
+            self.El_F = self._c._EL_flux
+            self.El_v0 = self._c._EL_v_0
+            self.El_vd = self._c._EL_v_d
+            self.El_flag = self._c._EL_flag
+            self.El_EW = self._c._EL_EW
+            self.El_vdins = self._c._EL_v_d_inst
+            self.El_lcrms = self._c._EL_continuum_RMS
+            self.El_lc = self._c.EL_continuum
+        
+
+    def updateELines(self, j, i, elines, spec):
+        if not self._c.hasELines:
+            log.info('Creating emission line extensions.')
+            el_info = get_EL_info(elines, self.kinTies, self.balLim, self.model)
+            self.createDobbyExtensions(el_info)
+
+        if elines is None:
+            log.debug('Spaxel [%d, %d] flagged as no_data.' % (j, i))
+            self.El_flag[:, j, i] = flags.no_data
+            return
+
+        self.El_F[:, j, i] = elines['El_F']
+        self.El_v0[:, j, i] = elines['El_v0']
+        self.El_vd[:, j, i] = elines['El_vd']
+        self.El_flag[:, j, i] = elines['El_flag']
+        self.El_EW[:, j, i] = elines['El_EW']
+        self.El_vdins[:, j, i] = elines['El_vdins']
+        self.El_lcrms[:, j, i] = elines['El_lcrms']
+        self.El_lc[:, j, i] = spec['total_lc']
+        
+        
+    def getIntegratedSpectra(self):
+        if not self.correct_good_frac:
+            f_obs = self._c.integ_f_obs
+            f_syn = self._c.integ_f_syn
+            f_err =  self._c.integ_f_err
+        else:
+            log.warning('Recalculating integrated spectra to avoid segmentation overlaps.')
+            good = ~np.ma.getmaskarray(self.f_obs)
+            f_obs, f_err, good_frac = unsafe_sum_spectra(self.integ_mask, self.f_obs.data, self.f_err.data,
+                                                         good, cov_factor_A=0.0, cov_factor_B=1.0)
+            f_syn = np.tensordot(self.f_syn, self.integ_mask, axes=[[1, 2], [1, 2]])
+            bad = (good_frac <= 0.5)
+            f_obs = np.ma.masked_where(bad, f_obs).squeeze()
+            f_syn = np.ma.masked_where(bad, f_syn).squeeze()
+            f_err = np.ma.masked_where(bad, f_err).squeeze()
+        f_res = f_obs - f_syn
+        return f_res, f_syn, f_err
+
+            
     def getArgs(self, j, i):
-        return j, i, self.f_res[:, j, i], self.f_syn[:, j, i], self.f_err[:, j, i], self.v_0[j, i], self.v_d[j, i]
+        f_obs = self.f_obs[:, j, i]
+        f_syn = self.f_syn[:, j, i]
+        f_err = self.f_err[:, j, i]
+        f_res = f_obs - f_syn
+        if self.correct_good_frac:
+            gf = self._c.seg_good_frac
+            f_syn *= gf
+            f_err *= gf
+        return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
     
     
     def __iter__(self):
@@ -131,17 +217,17 @@ class EmLineInput(object):
 
 
 ###############################################################################
-def calc_integrated(f_obs, f_syn, f_err, integ_mask):
-    # Add all spaxels (to take into account the seg_good_frac if using)
-    good = ~np.ma.getmaskarray(f_obs)
-    f_obs, f_err, good_frac = unsafe_sum_spectra(integ_mask, f_obs.data, f_err.data, good, cov_factor_A=0.0, cov_factor_B=1.0)
-    f_syn = np.tensordot(f_syn, integ_mask, axes=[[1, 2], [1, 2]])
-    bad = (good_frac <= 0.5)
-    f_obs = np.ma.masked_where(bad, f_obs).squeeze()
-    f_syn = np.ma.masked_where(bad, f_syn).squeeze()
-    f_err = np.ma.masked_where(bad, f_err).squeeze()
-    f_res = f_obs - f_syn
-    return f_res, f_syn, f_err
+def get_EL_info(elines, kinTies, balLim, model):
+    N_lines = len(elines)
+    el_info = Table({'lambda': elines['lambda'],
+                     'name': elines['line'],
+                     'l0': elines['El_l0'],
+                     'model': N_lines * [model],
+                     'kinematic_ties_on': np.array(N_lines * [kinTies], dtype='int'),
+                     'Balmer_dec_limit': np.array(N_lines * [balLim], dtype='int'),
+                     })
+    el_info.convert_unicode_to_bytestring()
+    return el_info
 ###############################################################################
 
 
@@ -167,8 +253,8 @@ def fit_spaxel_kwargs(j, i, f_res, f_syn, f_err, v_0, v_d, kwargs):
 
 ###############################################################################
 
+
 ###############################################################################
-# Fit emission lines in all pixels and save the results into one file per pixel
 def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                suffix, name_template, tmpdir,
                ll, vd_inst,
@@ -177,53 +263,114 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
         log.debug('Skipping masked spaxel [%d, %d]' % (iy, ix))
-        return
+        return iy, ix, None, None
     
-    # Output name
     name = suffix + '.' + name_template % (iy, ix)
     outfile = path.join(tmpdir, '%s.hdf5' % name)
 
-    if not (path.exists(outfile)):
+    if path.exists(outfile):
+        try:
+            elines, spec = read_summary_from_file(outfile)
+            log.debug('Read results for spaxel [%d, %d] from %s.' % (iy, ix, outfile))
+            return iy, ix, elines, spec
+        except:
+            log.debug('Corrupt result file (%s), removing and repeating the fit.')
+            unlink(outfile)
 
-        log.info('Fitting pixel [%d, %d]' % (iy, ix))
-        # Modelling the gaussian
-        el = fit_strong_lines(ll, f_res, f_syn, f_err, vd_inst = vd_inst,
-                              kinematic_ties_on = kinematic_ties_on, balmer_limit_on = balmer_limit_on, model = model,
-                              degree = degree,
-                              saveAll = True, outname = name, outdir = tmpdir, overwrite = True,
-                              vd_kms = True,
-                              stellar_v0=stellar_v0, stellar_vd=stellar_vd, legendre_stellar_mask=legendre_stellar_mask)
+    log.info('Fitting spaxel [%d, %d]' % (iy, ix))
+    el = fit_strong_lines(ll, f_res, f_syn, f_err,vd_inst =vd_inst,
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model = model,
+                          degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
+                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd,
+                          legendre_stellar_mask=legendre_stellar_mask)
+    elines, spec = new_summary_elines(el)
+    if debug:
+        fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
+        fig.savefig( path.join(tmpdir, '%s.pdf' % name))
 
-        if debug:
-            # Plot spectrum
-            fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
-            fig.savefig( path.join(tmpdir, '%s.pdf' % name) )
-    return
+    return iy, ix, elines, spec
 ###############################################################################
 
+
 ###############################################################################
-# Fit all data cube
-def fit(cubefile, suffix):
+def fit_integrated(da, suffix, tmpdir, vd_inst,
+                   kinematic_ties_on, balmer_limit_on, model,
+                   degree, debug, display_plot, legendre_stellar_mask=True):
+    name = suffix + '.' + 'integ'
+    outfile = path.join(el_dir, '%s.hdf5' % name)
 
-    log.info('Loading cube %s.' % cubefile)
-    data = EmLineInput(cubefile, correct_good_frac=args.correct_good_frac)
+    if path.exists(outfile):
+        try:
+            elines, spec = read_summary_from_file(outfile)
+            log.debug('Read results for integrated spectrum from %s.' % outfile)
+            return elines, spec
+        except:
+            log.debug('Corrupt result file (%s), removing and repeating the fit.')
+            unlink(outfile)
 
-    el_dir = path.join(args.tmpDir, data.galname)
+    f_res, f_syn, f_err = da.getIntegratedSpectra()
+
+    Nmasked = np.ma.getmaskarray(f_res).sum()
+    if (Nmasked / len(f_res)) > 0.5:
+        log.debug('Skipping integrated spectrum fit, not enough data.')
+        return None, None
+    
+    log.info('Fitting integrated spectrum.')
+    el = fit_strong_lines(da.ll, f_res, f_syn, f_err, vd_inst=vd_inst,
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
+                          degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
+                          vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=da.integ_v_d,
+                          legendre_stellar_mask=legendre_stellar_mask)
+    elines, spec = new_summary_elines(el)
+    if debug:
+        fig = plot_el(da.ll, f_res, el, ifig = 0, display_plot = display_plot)
+        fig.savefig( path.join(tmpdir, '%s.pdf' % name))
+
+    return elines, spec
+###############################################################################
+
+
+###############################################################################
+def MUSE_vd_inst(ll):
+    # FIXME: Hard-coded for now!
+    vdi_R2000 = 64.
+    vdi_R4000 = 32.
+    llim = 6000.
+    return np.where(ll <= llim, vdi_R2000, vdi_R4000)
+###############################################################################
+
+
+###############################################################################
+if __name__ == '__main__':
+    
+    args = parse_args()
+    cube_in = args.cubeIn[0]
+    
+    if args.cubeOut is None:
+        log.warning('Output not set, this will update the input file!')
+        mode = 'update'
+    else:
+        mode = 'readonly'
+    
+    # TODO: read from config
+    name_template = 'p%04i-%04i'
+    suffix = get_suffix(args.model, args.enableKinTies, args.enableBalmerLim)
+    
+    log.info('Loading cube %s.' % cube_in)
+    da = DobbyAdapter(cube_in, mode=mode, correct_good_frac=args.correct_good_frac,
+                      kin_ties=args.enableKinTies, bal_lim=args.enableBalmerLim, model=args.model)
+
+    el_dir = path.join(args.tmpDir, da.name)
     if not path.exists(el_dir):
         log.debug('Creating directory %s.' % el_dir)
         makedirs(el_dir)
 
-    # Calc vd_inst. Hard-coded for now!
-    vdi_R2000 = 64.
-    vdi_R4000 = 32.
-    llim = 6000.
-    vd_inst = np.where(data.ll <= llim, vdi_R2000, vdi_R4000)
-
+    vd_inst = MUSE_vd_inst(da.ll)
     
     kwargs = {'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : el_dir,
-              'll' : data.ll,
+              'll' : da.ll,
               'vd_inst' : vd_inst,
               'kinematic_ties_on' : args.enableKinTies,
               'balmer_limit_on' : args.enableBalmerLim,
@@ -237,73 +384,37 @@ def fit(cubefile, suffix):
     queue_length = args.queueLength
     if queue_length <= 0:
         queue_length = args.maxWorkers * 10
-        log.debug('Setting queue length to %d.' % queue_length)
+    log.info('Setting queue length to %d.' % queue_length)
     
                     
     log.debug('Starting execution pool.')
-    map_args = ((*a , kwargs) for a in data)
+    map_args = ((*a , kwargs) for a in da)
 
     with MPIPoolExecutor(args.maxWorkers) as executor:
         while True:
             chunk = list(islice(map_args, queue_length))
             if len(chunk) == 0:
-                log.debug('Exceution completed.')
+                log.info('Execution completed.')
                 break
-            log.debug('Dispatching %d runs.' % len(chunk))
-            result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
+            log.info('Dispatching %d runs.' % len(chunk))
+            fit_result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
             
-            # TODO: make fit_spaxel return the data, not save to a file.
-            # This hack is to exaust the results.
-            waiting = [_ for _ in result]
-            log.info('Completed %d runs.' % len(waiting))
+            for j, i, elines, spec in fit_result:
+                log.debug('Saving fit for spaxel [%d, %d].' % (j, i))
+                da.updateELines(j, i, elines, spec)
             
-            
-    log.info('Fitting integrated spectrum...')
-    name = suffix + '.' + 'integ'
-    outfile = path.join(el_dir, '%s.hdf5' % name)
-            
-    if not path.exists(outfile):
-
-        # Fit with dobby
-        el = fit_strong_lines(data.ll, data.f_res_i, data.f_syn_i, data.f_err_i, vd_inst=vd_inst,
-                              kinematic_ties_on=args.enableKinTies, balmer_limit_on=args.enableBalmerLim,
-                              model=args.model, degree=args.degree, saveAll=True, outname=name, outdir=el_dir,
-                              overwrite=True, vd_kms=True, stellar_v0=data.integ_v_0,
-                              stellar_vd=data.integ_v_d, legendre_stellar_mask=True)
-                               
-        if args.debug:
-            # Plot integrated spectrum
-            fig = plot_el(data.ll, data.f_res_i, el, ifig=0, display_plot=args.displayPlots)
-            fig.savefig(path.join(el_dir, '%s.pdf' % name))
-
-    return el_dir
-        
-###############################################################################
-
-###############################################################################
-# Call function to fit all data cube
-
-###############################################################################
-if __name__ == '__main__':
     
-    args = parse_args()
-    cube_in = args.cubeIn[0]
+    integ_elines, integ_spec = fit_integrated(da, suffix=suffix, tmpdir=el_dir, vd_inst=vd_inst,
+                                              kinematic_ties_on=args.enableKinTies,
+                                              balmer_limit_on=args.enableBalmerLim, model=args.model,
+                                              degree=args.degree, debug=args.debug,
+                                              display_plot=args.displayPlots, legendre_stellar_mask=True)
+    if integ_elines is not None:
+        log.info('Saving integrated spectrum fit.')
+        da._c._EL_integ[:] = elines.as_array()
+        da._c.EL_integ_continuum[:] = spec['total_lc']
     
-    if args.cubeOut is None:
-        log.warning('Output not set, this will update the input file!')
-    
-    # TODO: read from config
-    name_template = 'p%04i-%04i'
-    suffix = get_suffix(args.model, args.enableKinTies, args.enableBalmerLim)
-    
-    log.info('Beginning fit routine.')
-    el_dir = fit(cube_in, suffix)
-    
-    log.info('Reading fit results from %s' % el_dir)
-    log.debug('Reloading cube %s' % cube_in)
-    with closing(FitsCube(cube_in, mode='append')) as c:
-        dobby_save_fits_pixels(c, args.cubeOut, el_dir, name_template, suffix,
-                               kinTies=args.enableKinTies, balLim=args.enableBalmerLim, model=args.model)
-
+    da.save(args.cubeOut)
+   
 # EOF
 ###############################################################################
