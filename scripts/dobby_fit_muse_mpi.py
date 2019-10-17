@@ -112,13 +112,6 @@ class DobbyAdapter(object):
             self.Nx = c.Nx
             self.y0 = c.y0
             self.x0 = c.x0
-        if c.hasELines:
-            log.info('Cube already has emission line data.')
-            if mode == 'update':
-                log.warning('Deleting existing emission line data.')
-                c.deleteELinesCubes()
-            else:
-                self.initDobbyData()
                 
 
     def save(self, output):
@@ -131,11 +124,11 @@ class DobbyAdapter(object):
             
         
     def createDobbyExtensions(self, el_info):
-        self._c.createELinesCubes(el_info)
-        self.initDobbyData()
+        if self._c.hasELines:
+            log.warning('Deleting existing emission line data.')
+            self._c.deleteELinesCubes()
+            self._c.createELinesCubes(el_info)
 
-
-    def initDobbyData(self):    
         if self._c.hasSegmentationMask:
             self.El_F = self._c._EL_flux[:, np.newaxis, :]
             self.El_v0 = self._c._EL_v_0[:, np.newaxis, :]
@@ -367,6 +360,21 @@ if __name__ == '__main__':
 
     vd_inst = MUSE_vd_inst(da.ll)
     
+    integ_elines, integ_spec = fit_integrated(da, suffix=suffix, tmpdir=el_dir, vd_inst=vd_inst,
+                                              kinematic_ties_on=args.enableKinTies,
+                                              balmer_limit_on=args.enableBalmerLim, model=args.model,
+                                              degree=args.degree, debug=args.debug,
+                                              display_plot=args.displayPlots, legendre_stellar_mask=True)
+    if integ_elines is not None:
+        log.info('Creating emission line extensions.')
+        el_info = get_EL_info(integ_elines, args.enableKinTies, args.enableBalmerLim, args.model)
+        da.createDobbyExtensions(el_info)
+        log.info('Saving integrated spectrum fit.')
+        da._c._EL_integ[:] = integ_elines.as_array()
+        da._c.EL_integ_continuum[:] = integ_spec['total_lc']
+
+    
+    
     kwargs = {'suffix' : suffix,
               'name_template' : name_template,
               'tmpdir' : el_dir,
@@ -402,17 +410,6 @@ if __name__ == '__main__':
             for j, i, elines, spec in fit_result:
                 log.debug('Saving fit for spaxel [%d, %d].' % (j, i))
                 da.updateELines(j, i, elines, spec)
-            
-    
-    integ_elines, integ_spec = fit_integrated(da, suffix=suffix, tmpdir=el_dir, vd_inst=vd_inst,
-                                              kinematic_ties_on=args.enableKinTies,
-                                              balmer_limit_on=args.enableBalmerLim, model=args.model,
-                                              degree=args.degree, debug=args.debug,
-                                              display_plot=args.displayPlots, legendre_stellar_mask=True)
-    if integ_elines is not None:
-        log.info('Saving integrated spectrum fit.')
-        da._c._EL_integ[:] = elines.as_array()
-        da._c.EL_integ_continuum[:] = spec['total_lc']
     
     da.save(args.cubeOut)
    
