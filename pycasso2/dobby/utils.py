@@ -10,6 +10,22 @@ import h5py
 import numpy as np
 from astropy.table import Table
 
+el_table_dtype = [('lambda', 'int32'),
+                  ('line', 'S20'),
+                  ('El_l0', 'float64'),
+                  ('El_F', 'float64'),
+                  ('El_v0', 'float64'),
+                  ('El_vd', 'float64'),
+                  ('El_flag', 'int32'),
+                  ('El_EW', 'float64'),
+                  ('El_lcrms', 'float64'),
+                  ('El_vdins', 'float64'),
+                  ]
+
+el_lc_dtype = [('l_obs', 'float64'),
+               ('total_lc', 'float64'),
+               ]
+
 
 def summary_elines(el):
     '''

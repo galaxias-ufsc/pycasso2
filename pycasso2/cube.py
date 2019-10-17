@@ -10,6 +10,7 @@ from .cosmology import get_angular_distance
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .starlight.io import pop_table_dtype, spec_table_dtype
+from .dobby.utils import el_lc_dtype, el_table_dtype
 from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index
@@ -230,17 +231,65 @@ class FitsCube(object):
         for ext in self._ext_keyword_list:
             self._addExtension(ext, wcstype='image', shape=kw_shape, overwrite=True)
 
-        if self.hasSegmentationMask:
-            sum_segmask = self.segmentationMask.sum(axis=0)
-            if (sum_segmask > 1).any():
-                log.debug('Segmentation mask has overlapping regions, disabled integrated spectra.')
-                return
+        if self.isSegmentationOverlapping:
+            log.debug('Segmentation mask has overlapping regions, disabled integrated spectra.')
+            return
 
         specdata = np.zeros((self.Nwave), dtype=spec_table_dtype)
         specdata['l_obs'] = self.l_obs
         self._addTableExtension(self._ext_integ_spectra, Table(specdata), overwrite=True)
         popdata = np.zeros((pop_len), dtype=pop_table_dtype)
         self._addTableExtension(self._ext_integ_pop, Table(popdata), overwrite=True)
+
+    def createELinesCubes(self, el_info):
+        self._addTableExtension(self._ext_el_info, data=el_info, overwrite=True)
+        N_lines = len(el_info['lambda'])
+        if self.hasSegmentationMask:
+            spec_shape = (self.Nzone, self.Nwave)
+            eline_shape = (self.Nzone, N_lines)
+        else:
+            spec_shape = (self.Nwave, self.Ny, self.Nx)
+            eline_shape = (N_lines, self.Ny, self.Nx)        
+
+        self._addExtension(self._ext_el_flux, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_v_0, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_v_d, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_flag, wcstype='image', shape=eline_shape, dtype='int32', overwrite=True)
+        self._addExtension(self._ext_el_ew, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_lc_rms, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_v_d_inst, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_lc, wcstype='image', shape=spec_shape, overwrite=True)
+
+        if self.isSegmentationOverlapping:
+            log.debug('Segmentation mask has overlapping regions, disabled integrated spectra.')
+            return
+
+        specdata = np.zeros((self.Nwave), dtype=el_lc_dtype)
+        specdata['l_obs'] = self.l_obs
+        self._addTableExtension(self._ext_el_integ_lc, Table(specdata), overwrite=True)
+        el_data = np.zeros((N_lines), dtype=el_table_dtype)
+        self._addTableExtension(self._ext_el_integ, Table(el_data), overwrite=True)
+
+    def deleteELinesCubes(self):
+        self._delExtension(self._ext_el_info)
+        self._delExtension(self._ext_el_flux)
+        self._delExtension(self._ext_el_v_0)
+        self._delExtension(self._ext_el_v_d)
+        self._delExtension(self._ext_el_flag)
+        self._delExtension(self._ext_el_ew)
+        self._delExtension(self._ext_el_lc_rms)
+        self._delExtension(self._ext_el_v_d_inst)
+        self._delExtension(self._ext_el_lc)
+        self._delExtension(self._ext_el_integ_lc)
+        self._delExtension(self._ext_el_integ)
+
+    @lazyproperty
+    def isSegmentationOverlapping(self):
+        if not self.hasSegmentationMask:
+            return False
+        else:
+            sum_segmask = self.segmentationMask.sum(axis=0)
+            return (sum_segmask > 1).any()
 
     def _hasExtension(self, name):
         return name in self._HDUList
@@ -374,6 +423,10 @@ class FitsCube(object):
     @property
     def hasIntegratedData(self):
         return self._ext_integ_spectra in self._HDUList
+
+    @property
+    def hasELines(self):
+        return self._ext_el_flux in self._HDUList
 
     @lazyproperty
     def Nx(self):
