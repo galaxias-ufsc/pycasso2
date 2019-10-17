@@ -1049,9 +1049,14 @@ class FitsCube(object):
     def _EL_flag(self):
         return self._getSynthExtension(self._ext_el_flag)
 
+    @lazyproperty
+    def _EL_badfit(self):
+        return self._EL_flag > 0
+
     def _getELExtension(self, name):
         data = self._getSynthExtension(name)
-        return np.ma.masked_where(self._EL_flag > 0, data)
+        data[self._EL_badfit] = np.ma.masked
+        return data
 
     @lazyproperty
     def _EL_flux(self):
@@ -1114,8 +1119,9 @@ class FitsCube(object):
     @lazyproperty
     def _EL_integ(self):
         t = self._getTableExtensionData(self._ext_el_integ)
-        data = np.array(t)
-        return np.ma.masked_where(data['El_flag'] > 0, data)
+        data = np.ma.array(t)
+        data[data['El_flag'] > 0] = np.ma.masked
+        return data
 
     def EL_integ(self, line):
         return self._getELProperty(line, self._EL_integ)
