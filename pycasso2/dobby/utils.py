@@ -52,16 +52,15 @@ def summary_elines(el):
 
     # Save lines as integers
     El_l = np.int_(El_l)
-    
     # Clean nan's and inf's
-    El_l0    = replace_nan_inf_by_minus999( np.vstack(El_l0)   )
-    El_F     = replace_nan_inf_by_minus999( np.vstack(El_F)    )
-    El_v0    = replace_nan_inf_by_minus999( np.vstack(El_v0)   )
-    El_vd    = replace_nan_inf_by_minus999( np.vstack(El_vd)   )
-    El_flag  = replace_nan_inf_by_minus999( np.vstack(El_flag) )
-    El_EW    = replace_nan_inf_by_minus999( np.vstack(El_EW)   )
-    El_vdins = replace_nan_inf_by_minus999( np.vstack(El_vdins))
-    El_lcrms = replace_nan_inf_by_minus999( np.vstack(El_lcrms))
+    El_l0    = replace_nan_inf_by_minus999( np.hstack(El_l0)   )
+    El_F     = replace_nan_inf_by_minus999( np.hstack(El_F)    )
+    El_v0    = replace_nan_inf_by_minus999( np.hstack(El_v0)   )
+    El_vd    = replace_nan_inf_by_minus999( np.hstack(El_vd)   )
+    El_flag  = replace_nan_inf_by_minus999( np.hstack(El_flag) )
+    El_EW    = replace_nan_inf_by_minus999( np.hstack(El_EW)   )
+    El_vdins = replace_nan_inf_by_minus999( np.hstack(El_vdins))
+    El_lcrms = replace_nan_inf_by_minus999( np.hstack(El_lcrms))
 
     # Save table
     elines = Table( { "lambda"   : El_l     ,
