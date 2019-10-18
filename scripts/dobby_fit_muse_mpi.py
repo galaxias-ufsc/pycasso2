@@ -127,7 +127,7 @@ class DobbyAdapter(object):
         if self._c.hasELines:
             log.warning('Deleting existing emission line data.')
             self._c.deleteELinesCubes()
-            self._c.createELinesCubes(el_info)
+        self._c.createELinesCubes(el_info)
 
         if self._c.hasSegmentationMask:
             self.El_F = self._c._EL_flux[:, np.newaxis, :]
