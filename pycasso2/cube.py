@@ -11,6 +11,8 @@ from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .starlight.io import pop_table_dtype, spec_table_dtype
 from .dobby.utils import el_lc_dtype, el_table_dtype
+from .dobby.models.resampled_gaussian import ResampledGaussian
+from .dobby.models.gaussian import Gaussian
 from .lick import get_Lick_index
 from .geometry import radial_profile, get_ellipse_params, get_image_distance, get_half_radius
 from .resampling import find_nearest_index
@@ -1042,8 +1044,12 @@ class FitsCube(object):
         return {k: i for i, k in enumerate(self.EL_names)}
     
     @lazyproperty
-    def _EL_id_map(self):
+    def _EL_lambda_map(self):
         return {k: i for i, k in enumerate(self.EL_lambda)}
+    
+    @lazyproperty
+    def _EL_id_map(self):
+        return {**self._EL_lambda_map, **self._EL_name_map}
     
     @lazyproperty
     def _EL_flag(self):
@@ -1087,15 +1093,10 @@ class FitsCube(object):
         return self._getSynthExtension(self._ext_el_lc)
 
     def _getELProperty(self, line, prop):
-        if type(line) is str:
-            line_map = self._EL_name_map
-        elif type(line) is int:
-            line_map = self._EL_id_map
-        else:
-            raise ValueError('Line id must be integer or string')
-        if not line in line_map:
+        try:
+            i = self._EL_id_map[line]
+        except KeyError:
             raise Exception('Emission line not found: %s' % line)
-        i = line_map[line]
         return prop[i]
         
     def EL_flux(self, line):
@@ -1129,6 +1130,39 @@ class FitsCube(object):
     @lazyproperty
     def EL_integ_continuum(self):
         t = self._getTableExtensionData(self._ext_el_integ_lc)
-        return np.array(t['total_lc'])  
+        return np.array(t['total_lc'])
 
+    def EL_model(self, line, iy, ix):
+        if not self.hasELines:
+            log.warning('This cube does not have emission line measurements.')
+            return None
             
+        _, _, l0, model, _, _ = self._getELProperty(line, self.EL_info)
+        
+        if model == 'gaussian':
+            Model = Gaussian
+        elif model == 'resampled_gaussian':
+            Model = ResampledGaussian
+        
+        mod = Model(l0, self.EL_flux(line)[iy, ix],
+                    self.EL_v_0(line)[iy, ix],
+                    self.EL_v_d(line)[iy, ix],
+                    self.EL_v_d_inst(line)[iy, ix])
+        return mod
+        
+    def EL_total_flux(self, iy, ix):
+        if not self.hasELines:
+            log.warning('This cube does not have emission line measurements.')
+            return None
+
+        flux = np.zeros_like(self.l_obs)
+        for line in self.EL_lambda:
+            mod = self.EL_model(line, iy, ix)
+            l0 = mod.l0.value
+            l1 = l0 - 100.0
+            l2 = l0 + 100.0
+            m = (self.l_obs >= l1) & (self.l_obs < l2)
+            flux[m] += mod(self.l_obs[m])
+        return flux
+
+    
