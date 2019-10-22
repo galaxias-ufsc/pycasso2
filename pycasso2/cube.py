@@ -10,6 +10,7 @@ from .cosmology import get_angular_distance
 from .starlight.synthesis import get_base_grid
 from .starlight.analysis import smooth_Mini, SFR
 from .starlight.io import pop_table_dtype, spec_table_dtype
+from .starlight.plots import plot_spec
 from .dobby.utils import el_lc_dtype, el_table_dtype
 from .dobby.models.resampled_gaussian import ResampledGaussian
 from .dobby.models.gaussian import Gaussian
@@ -1165,4 +1166,13 @@ class FitsCube(object):
             flux[m] += mod(self.l_obs[m])
         return flux
 
-    
+    def plotPixel(self, iy, ix, fig=None):
+        f_obs = self.f_obs[:, iy, ix]
+        f_err = self.f_err[:, iy, ix]
+        f_flag = self.f_flag[:, iy, ix]
+        f_syn = self.f_syn[:, iy, ix]
+        f_emline = self.EL_continuum[:, iy, ix] + self.EL_total_flux(iy, ix)
+        vlines = self.EL_info['l0']
+        fig = plot_spec(self.l_obs, f_obs, f_err, f_syn, f_flag, f_emline, vlines, fig)
+        return fig
+        
