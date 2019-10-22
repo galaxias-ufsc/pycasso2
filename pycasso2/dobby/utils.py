@@ -125,11 +125,11 @@ def new_summary_elines(el):
         model = el[i_model]
 
         # Get all submodel info in the compound model
-        El_l.extend(  [                   submodel for submodel in model.submodel_names ] )
-        El_F.extend(  [ model[submodel].flux.value for submodel in model.submodel_names ] )
-        El_l0.extend( [ model[submodel].l0.value   for submodel in model.submodel_names ] )
-        El_v0.extend( [ model[submodel].v0.value   for submodel in model.submodel_names ] )
-        El_vd.extend( [ model[submodel].vd.value   for submodel in model.submodel_names ] )
+        El_l.extend(  [                   submodel       for submodel in model.submodel_names ] )
+        El_F.extend(  [ model[submodel].flux.value       for submodel in model.submodel_names ] )
+        El_l0.extend( [ model[submodel].l0.value         for submodel in model.submodel_names ] )
+        El_v0.extend( [ model[submodel].v0.value         for submodel in model.submodel_names ] )
+        El_vd.extend( [ np.abs(model[submodel].vd.value) for submodel in model.submodel_names ] )
 
     # And now get info from extra dictionary (outside astropy model)
     El_flag  = [el_extra[l]['flag']     for l in El_l]

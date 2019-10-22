@@ -223,7 +223,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     with warnings.catch_warnings():
         # Ignore model linearity warning from the fitter
         warnings.simplefilter('ignore')
-        mod_init_all = elModel(l0, flux=0.0, v0=0., vd=100., vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
+        mod_init_all = elModel(l0, flux=0.0, v0=0., vd=100., vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
         mod_fit_all, _flag = do_fit(mod_init_all, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction, ignore_warning=True)
 
     # Remove emission lines detected to calculate the continuum with Legendre polynomials
@@ -353,7 +353,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
-    mod_init_HaN2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+    mod_init_HaN2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
     mod_init_HaN2['6584'].flux.tied = lambda m: 3 * m['6548'].flux
@@ -394,7 +394,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Start model
     # Fitting Hg too because the single model has a problem,
     # and many things are based on the compounded model.
-    mod_init_HbHg = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6563'].v0, vd=mod_fit_HaN2['6563'].vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
+    mod_init_HbHg = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6563'].v0, vd=mod_fit_HaN2['6563'].vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
     
     # Ties
     if kinematic_ties_on:
@@ -432,7 +432,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
-    mod_init_O3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+    mod_init_O3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
     mod_init_O3['5007'].flux.tied = lambda m: 2.97 * m['4959'].flux
@@ -466,7 +466,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
-    mod_init_O2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+    mod_init_O2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
     if kinematic_ties_on:
@@ -498,7 +498,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
-    mod_init_S2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+    mod_init_S2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
     if kinematic_ties_on:
