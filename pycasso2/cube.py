@@ -1100,6 +1100,9 @@ class FitsCube(object):
             raise Exception('Emission line not found: %s' % line)
         return prop[i]
         
+    def EL_flag(self, line):
+        return self._getELProperty(line, self._EL_flag)
+    
     def EL_flux(self, line):
         return self._getELProperty(line, self._EL_flux)
     
@@ -1158,6 +1161,8 @@ class FitsCube(object):
 
         flux = np.zeros_like(self.l_obs)
         for line in self.EL_lambda:
+            if self.EL_flag(line)[iy, ix] > 0:
+                continue
             mod = self.EL_model(line, iy, ix)
             l0 = mod.l0.value
             l1 = l0 - 100.0
