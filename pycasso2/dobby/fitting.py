@@ -171,13 +171,13 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         else:
             raise Exception('Check vd_inst, must be a scalar, a dictionary or a dispersion spectrum: %s' % vd_inst)
 
-    def do_fit(model, ll, lc, flux, err, min_good_fraction, ignore_warning=False):
+    def do_fit(model, ll, lc, flux, err, min_good_fraction, ignore_warning=False, maxiter=500):
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
         Nl_cont = lc.count()
         N_good = good.sum()
         if Nl_cont > 0 and (N_good / Nl_cont) > min_good_fraction:
             fitter = fitting.LevMarLSQFitter()
-            fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=safe_pow(err[good], -1), maxiter=500)
+            fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=safe_pow(err[good], -1), maxiter=maxiter)
             flag = interpret_fit_result(fitter.fit_info, ignore_warning=ignore_warning)
             return fitted_model, flag
         else:
@@ -186,10 +186,10 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     
     
     def interpret_fit_result(fit_info, ignore_warning=False):
-        log.debug('nfev: %d, ierr: %d' % (fit_info['nfev'], fit_info['ierr']))
+        log.debug('nfev: %d, ierr: %d (%s)' % (fit_info['nfev'], fit_info['ierr'], fit_info['message']))
         if fit_info['ierr'] not in [1, 2, 3, 4]:
             if not ignore_warning:
-                log.warn('Bad fit, cause: %s' % fit_info['message'])
+                log.warning('Bad fit, flagging.')
             return flags.bad_fit
         else:
             return 0
@@ -242,7 +242,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
         if debug:
             import matplotlib.pyplot as plt
-            plt.figure(10)
+            plt.figure('cont')
             plt.plot(_ll, f_res, 'b')
             plt.plot(_ll[flag_lc], f_res[flag_lc], 'k')
             plt.plot(_ll, mod_fit_all(_ll), 'r')
@@ -480,7 +480,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit1')
+        plt.figure('fit4')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O2(_ll)+lc)
@@ -512,7 +512,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit1')
+        plt.figure('fit5')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_S2(_ll)+lc)
