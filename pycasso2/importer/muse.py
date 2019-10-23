@@ -51,11 +51,16 @@ def read_muse(cube, name, cfg):
     with fits.open(cube) as f:
         f_obs = f['DATA'].section[:, y_slice, x_slice].astype('float64')
         f_err = f['STAT'].section[:, y_slice, x_slice].astype('float64')
+        if 'CONTRIB' in f:
+            log.info('Loading combined MUSE cube.')
+            badpix = (f['CONTRIB'].section[:, y_slice, x_slice] == 0)
+        else:
+            log.info('Loading default MUSE cube.')
+            badpix = ~np.isfinite(f_obs)
+            badpix |= ~np.isfinite(f_err)
 
     np.sqrt(f_err, out=f_err)
 
-    badpix = ~np.isfinite(f_obs)
-    badpix |= ~np.isfinite(f_err)
     badpix |= (f_obs <= 0.0)
     badpix |= (f_err <= 0.0)
     f_obs[badpix] = 0.0
