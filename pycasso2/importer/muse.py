@@ -3,7 +3,7 @@ Created on 08/12/2015
 
 @author: andre
 '''
-from ..wcs import get_wavelength_coordinates, get_Naxis, shift_celestial_WCS
+from ..wcs import get_wavelength_coordinates, get_Naxis, write_WCS
 from ..cosmology import velocity2redshift
 from .. import flags
 from ..config import parse_slice
@@ -41,7 +41,8 @@ def read_muse(cube, name, cfg):
         log.info('Slicing cube while reading.')
         y_slice, x_slice = sl
         log.debug('Slice will be: %d:%d, %d:%d' % (y_slice.start, y_slice.stop, x_slice.start, x_slice.stop))
-        w = shift_celestial_WCS(w, dx=x_slice.start, dy=y_slice.start)
+        w = w[:, y_slice, x_slice]
+        write_WCS(header, w)
     else:
         Nx = w.pixel_shape[0]
         x_slice = slice(Nx)

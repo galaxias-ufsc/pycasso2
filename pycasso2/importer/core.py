@@ -4,7 +4,7 @@ Created on 24 de jul de 2017
 @author: andre
 '''
 
-from ..wcs import scale_celestial_WCS, shift_celestial_WCS, replace_wave_WCS, write_WCS
+from ..wcs import scale_celestial_WCS, replace_wave_WCS, write_WCS
 from ..resampling import vac2air, resample_spectra, find_nearest_index
 from ..reddening import Galactic_reddening_corr
 from ..config import parse_slice
@@ -91,7 +91,7 @@ class ObservedCube(object):
         self.f_obs = self.f_obs[:, y_slice, x_slice].copy()
         self.f_err = self.f_err[:, y_slice, x_slice].copy()
         self.f_flag = self.f_flag[:, y_slice, x_slice].copy()
-        self.wcs = shift_celestial_WCS(self.wcs, dx=x_slice.start, dy=y_slice.start)
+        self.wcs = self.wcs[:, y_slice, x_slice]
         log.debug('New shape: %s.' % str(self.f_obs.shape))
 
     def bin(self, bin_size, cov_factor_A=0, cov_factor_B=1.0, cov_matrix=False):
