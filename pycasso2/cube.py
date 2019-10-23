@@ -1176,8 +1176,12 @@ class FitsCube(object):
         f_err = self.f_err[:, iy, ix]
         f_flag = self.f_flag[:, iy, ix]
         f_syn = self.f_syn[:, iy, ix]
-        f_emline = self.EL_continuum[:, iy, ix] + self.EL_total_flux(iy, ix)
-        vlines = self.EL_info['l0']
+        if self.hasELines:
+            f_emline = self.EL_continuum[:, iy, ix] + self.EL_total_flux(iy, ix)
+            vlines = self.EL_info['l0']
+        else:
+            f_emline = None
+            vlines = None
         fig = plot_spec(self.l_obs, f_obs, f_err, f_syn, f_flag, f_emline, vlines, fig)
         return fig
         
