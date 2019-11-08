@@ -161,18 +161,14 @@ class SynthesisAdapter(object):
             bin_size = self._cfg.getint('import', 'binning', fallback=1)
             A = self._cfg.getfloat('import', 'spat_cov_a', fallback=0.0)
             B = self._cfg.getfloat('import', 'spat_cov_b', fallback=1.0)
-            f_obs, f_err, good_frac = integrate_spectra(self.f_obs, self.f_err,
-                                                    self.f_flag, self.spatialMask,
+            f_obs, f_err, good_frac = integrate_spectra(self.f_obs, self.f_err, self.spatialMask,
                                                     bin_size, A, B)
-            f_disp, _, _ = integrate_spectra(self.f_disp, self.f_err,
-                                             self.f_flag, self.spatialMask,
-                                             bin_size, 0.0, 1.0)
+            f_disp = self.f_disp[:,~self.spatialMask].mean(axis=1)
             nodata = good_frac == 0.0
-            Ng = np.sum(~self.spatialMask)
-            self._integ_f_obs = np.ma.masked_where(nodata, f_obs)
-            self._integ_f_err = np.ma.masked_where(nodata, f_err)
+            self._integ_f_obs = np.ma.masked_where(nodata, f_obs, copy=False)
+            self._integ_f_err = np.ma.masked_where(nodata, f_err, copy=False)
             self._integ_f_flag = np.where(nodata, flags.no_data, 0)
-            self._integ_f_disp = np.ma.masked_where(nodata, f_disp/Ng)
+            self._integ_f_disp = f_disp
 
 
     def _getTemplates(self, cfg):

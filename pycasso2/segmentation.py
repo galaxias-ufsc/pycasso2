@@ -4,8 +4,8 @@ Created on 23 de mar de 2017
 @author: andre
 '''
 import numpy as np
+from astropy import log
 from .geometry import get_image_distance
-from . import flags
 
 
 def clean_mask_polygons(mask, largest=True, nmin=2, masked_value=False):
@@ -43,8 +43,8 @@ def clean_mask_polygons(mask, largest=True, nmin=2, masked_value=False):
         size[i] = len(mask[islice].flatten())
     nmax = size.max() if largest else nmin
     for isize, islice in zip(size, objects):
-     if isize < nmax:
-         mask[islice] = masked_value
+        if isize < nmax:
+            mask[islice] = masked_value
     return mask
 
 
@@ -116,24 +116,15 @@ def prune_segmask(segmask, spatial_mask):
     return segmask[good_zones]
 
 
-def sum_spectra(segmask, f_obs, f_err, f_flag=None, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
+def sum_spectra(segmask, f_obs, f_err, good=None, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
     if not isinstance(f_obs, np.ma.MaskedArray):
-        if f_flag is None:
-            raise Exception('f_flag must be specified if f_obs is not a masked array.')
-        good = (f_flag & flags.no_obs) == 0
-        f_obs = np.where(good, f_obs, 0.0)
-        f_err = np.where(good, f_err, 0.0)
+        if good is None:
+            log.warning('sum_spectra: f_obs is not a masked array, and the mask "good" is not set. Likely a bug.')
+            good = np.ones_like(f_obs)
     else:
         good = ~np.ma.getmaskarray(f_obs)
-        f_obs = f_obs.filled(0.0)
-        f_err = f_err.filled(0.0)
-    return unsafe_sum_spectra(segmask, f_obs, f_err, good, cov_factor_A, cov_factor_B, cov_matrix)
-
-
-def unsafe_sum_spectra(segmask, f_obs, f_err, good, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
-    '''
-    Same as sum_spectra(), but without input sanitizing.
-    '''
+        f_obs = f_obs.data
+        f_err = f_err.data
 
     N_good = np.tensordot(good.astype('float'), segmask, axes=[[1, 2], [1, 2]])
 
@@ -208,11 +199,11 @@ def read_segmentation_map(fitsfile):
     return segmask
 
 
-def bin_spectra(f_obs, f_err, f_flag, bin_size, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
+def bin_spectra(f_obs, f_err, goodpix, bin_size, cov_factor_A=0.0, cov_factor_B=1.0, cov_matrix=None):
     Nl = f_obs.shape[0]
     spatial_shape = f_obs.shape[1:]
     segmask = mosaic_segmentation(spatial_shape, bin_size)
-    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, f_flag,
+    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, goodpix,
                                           cov_factor_A, cov_factor_B, cov_matrix)
     Ny_b = np.ceil(spatial_shape[0] / bin_size)
     Nx_b = np.ceil(spatial_shape[1] / bin_size)
@@ -227,13 +218,13 @@ def get_cov_factor(N, A, B):
     return 1.0 + A * np.log10(N)**B
 
 
-def integrate_spectra(f_obs, f_err, f_flag, mask, bin_size=1, cov_factor_A=0.0, cov_factor_B=1.0):
-    segmask = np.where(mask, 0, 1)[np.newaxis, ...]
+def integrate_spectra(f_obs, f_err, spatialmask, bin_size=1, cov_factor_A=0.0, cov_factor_B=1.0):
+    segmask = np.where(spatialmask, 0, 1)[np.newaxis, ...]
     if bin_size > 1:
         N = bin_size**2
         f_err = f_err / get_cov_factor(N, cov_factor_A, cov_factor_B)
-    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err, f_flag,
-                                          cov_factor_A, cov_factor_B)
+    f_obs, f_err, good_frac = sum_spectra(segmask, f_obs, f_err,
+                                          cov_factor_A=cov_factor_A, cov_factor_B=cov_factor_B)
     f_obs = f_obs.squeeze()
     f_err = f_err.squeeze()
     good_frac = good_frac.squeeze()

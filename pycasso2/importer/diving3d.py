@@ -56,7 +56,7 @@ def read_diving3d(cubes, name, cfg):
     gap_mask_file = gap_mask_template % ml['grating']
     gap_mask = read_wavelength_mask(gap_mask_file, l_obs, z, dest='rest')
     f_flag[gap_mask] |= flags.ccd_gap
-
+    f_obs[gap_mask] = 0.0
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = 0.0
     obs.lumDist_Mpc = np.asscalar(ml['DL_Mpc'])

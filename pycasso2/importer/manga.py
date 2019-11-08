@@ -54,6 +54,7 @@ def read_manga(cube, name, cfg):
         f_obs = f['FLUX'].data
         # FIXME: Check mask bits.
         badpix = f['MASK'].data > 0
+        f_obs[badpix] = 0.0
         goodpix = ~badpix
         f_err = np.zeros_like(f_obs)
         f_err[goodpix] = f['IVAR'].data[goodpix]**-0.5

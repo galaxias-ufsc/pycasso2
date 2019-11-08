@@ -242,11 +242,11 @@ def fit(kinematic_ties_on, balmer_limit_on, model, correct_good_frac=False):
         cov_factor_B = 1.0
         segmask = np.where(c.synthImageMask, 0, 1)[np.newaxis, ...]
         f_flag = (c.f_flag & flags.no_obs) == 0
-        f_syn, f_err, good_frac = sum_spectra(segmask, f_syn, f_err, f_flag, cov_factor_A, cov_factor_B)
-        f_obs, _, _ = sum_spectra(segmask, f_obs, c.f_err, f_flag, cov_factor_A, cov_factor_B)
-        f_obs = np.ma.masked_where((good_frac <= 0.5), f_obs).squeeze()
-        f_syn = np.ma.masked_where((good_frac <= 0.5), f_syn).squeeze()
-        f_err = np.ma.masked_where((good_frac <= 0.5), f_err).squeeze()
+        f_syn, f_err, good_frac = sum_spectra(segmask, f_syn, f_err, cov_factor_A, cov_factor_B)
+        f_obs, _, _ = sum_spectra(segmask, f_obs, c.f_err, cov_factor_A, cov_factor_B)
+        f_obs = np.ma.masked_where((good_frac <= 0.5), f_obs, copy=False).squeeze()
+        f_syn = np.ma.masked_where((good_frac <= 0.5), f_syn, copy=False).squeeze()
+        f_err = np.ma.masked_where((good_frac <= 0.5), f_err, copy=False).squeeze()
         f_res = f_obs - f_syn
         f_flag = np.where(good_frac <= 0.5, flags.no_obs, 0).squeeze()
 

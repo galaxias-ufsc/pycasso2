@@ -230,6 +230,8 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
     f_flag[:l1] |= flags.no_data
     f_flag[l2:] |= flags.no_data
     f_flag[badpix] |= flags.bad_pix
+    f_obs[badpix] = 0.0
+    f_err[badpix] = 0.0
     return f_obs, f_err, f_flag
 
 

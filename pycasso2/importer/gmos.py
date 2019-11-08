@@ -40,7 +40,10 @@ def read_gmos(cube, name, cfg):
     f_obs = fits.getdata(cube, extname='SCI') / flux_unit
     f_err = fits.getdata(cube, extname='ERR') / flux_unit
     badpix = fits.getdata(cube, extname='NCUBE') < 1
+    f_obs[badpix] = 0.0
+    f_err[badpix] = 0.0
     f_flag = np.where(badpix, flags.no_data, 0)
+    
 
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = ml['EBVGAL']

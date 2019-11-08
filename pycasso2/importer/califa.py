@@ -48,6 +48,8 @@ def read_califa(cube, name, cfg):
     f_obs = fits.getdata(cube, extname='PRIMARY')
     f_err = fits.getdata(cube, extname='ERROR')
     badpix = fits.getdata(cube, extname='BADPIX') != 0
+    f_obs[badpix] = 0.0
+    f_err[badpix] = 0.0
     f_flag = np.where(badpix, flags.no_data, 0)
 
     

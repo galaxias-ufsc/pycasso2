@@ -23,7 +23,7 @@ from itertools import islice
 from multiprocessing import cpu_count
 
 from pycasso2 import FitsCube
-from pycasso2.segmentation import unsafe_sum_spectra
+from pycasso2.segmentation import sum_spectra
 from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
 from pycasso2.dobby.utils import plot_el, read_summary_from_file, new_summary_elines
@@ -177,14 +177,13 @@ class DobbyAdapter(object):
             f_err =  self._c.integ_f_err
         else:
             log.warning('Recalculating integrated spectra to avoid segmentation overlaps.')
-            good = ~np.ma.getmaskarray(self.f_obs)
-            f_obs, f_err, good_frac = unsafe_sum_spectra(self.integ_mask, self.f_obs.data, self.f_err.data,
-                                                         good, cov_factor_A=0.0, cov_factor_B=1.0)
+            f_obs, f_err, good_frac = sum_spectra(self.integ_mask, self.f_obs, self.f_err,
+                                                  cov_factor_A=0.0, cov_factor_B=1.0)
             f_syn = np.tensordot(self.f_syn, self.integ_mask, axes=[[1, 2], [1, 2]])
             bad = (good_frac <= 0.5)
-            f_obs = np.ma.masked_where(bad, f_obs).squeeze()
-            f_syn = np.ma.masked_where(bad, f_syn).squeeze()
-            f_err = np.ma.masked_where(bad, f_err).squeeze()
+            f_obs = np.ma.masked_where(bad, f_obs, copy=False).squeeze()
+            f_syn = np.ma.masked_where(bad, f_syn, copy=False).squeeze()
+            f_err = np.ma.masked_where(bad, f_err, copy=False).squeeze()
         f_res = f_obs - f_syn
         return f_res, f_syn, f_err
 

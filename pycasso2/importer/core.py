@@ -95,18 +95,19 @@ class ObservedCube(object):
         log.debug('New shape: %s.' % str(self.f_obs.shape))
 
     def bin(self, bin_size, cov_factor_A=0, cov_factor_B=1.0, cov_matrix=False):
+        goodpix = (self.f_flag & flags.no_obs) == 0
         if not cov_matrix:
             cov_factor = get_cov_factor(bin_size**2, cov_factor_A, cov_factor_B)
             log.info('Binning cube (%d x %d), cov. factor=%.2f.' % (bin_size, bin_size, cov_factor))
-            f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
+            f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, goodpix,
                                                   bin_size, cov_factor_A, cov_factor_B)
         else:
             log.info('Binning cube (%d x %d), cov. matrices.' % (bin_size, bin_size))
-            f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, self.f_flag,
+            f_obs, f_err, good_frac = bin_spectra(self.f_obs, self.f_err, goodpix,
                                                   bin_size, cov_matrix=cov_matrix)
         if self.f_disp is not None:
             # Get mean intrumental dispersion; ignore covariance.
-            f_disp, _, _ =  bin_spectra(self.f_disp, self.f_err, self.f_flag,
+            f_disp, _, _ =  bin_spectra(self.f_disp, self.f_err, goodpix,
                                         bin_size, cov_factor_A=0., cov_factor_B=1.)
             self.f_disp = f_disp / bin_size**2
         # This needs to be assigned *after* the f_disp binning.
@@ -142,11 +143,14 @@ class ObservedCube(object):
         f_obs, f_err, f_flag = resample_spectra(self.l_obs, l_resam,
                                                 self.f_obs, self.f_err, badpix,
                                                 vectorized=vectorized)
+        # FIXME: does resampling good_frac make any sense?
         if self.good_frac is not None:
             good_frac, _, _ = resample_spectra(self.l_obs, l_resam,
                                                self.good_frac, self.f_err, badpix,
                                                vectorized=vectorized)
             self.good_frac = good_frac
+            
+        # FIXME: f_disp should be interpolated, not resampled.
         if self.f_disp is not None:
             f_disp, _, _ = resample_spectra(self.l_obs, l_resam,
                                             self.f_disp, self.f_err, badpix,

@@ -46,9 +46,11 @@ def read_weave(cube, name, cfg):
     f_obs = fits.getdata(cube, extname=hdu_names['DATA'])
     ivar  = fits.getdata(cube, extname=hdu_names['IVAR'])
     goodpix = ivar > 0.0
+    badpix = ~goodpix
+    f_obs[badpix] = 0.0
     f_err = np.zeros_like(f_obs)
     f_err[goodpix] = ivar[goodpix]**-0.5
-    f_flag = np.where(~goodpix, flags.no_data, 0)
+    f_flag = np.where(badpix, flags.no_data, 0)
 
     if 'SENSFUNC' in hdu_names and cfg.getboolean('import', 'sensfunc', fallback=True):
         sensfunc = fits.getdata(cube, extname=hdu_names['SENSFUNC'])
