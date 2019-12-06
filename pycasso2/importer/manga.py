@@ -59,7 +59,12 @@ def read_manga(cube, name, cfg):
         f_err = np.zeros_like(f_obs)
         f_err[goodpix] = f['IVAR'].data[goodpix]**-0.5
         f_flag = np.where(badpix, flags.no_data, 0)
-        f_disp = f['DISP'].data
+        if 'DISP' in f:
+            log.debug('Found instrumental dispersion data.')
+            f_disp = f['DISP'].data
+        else:
+            log.warning('Instrumental dispersion (ext. \'DISP\') not found.')
+            f_disp = None
         l_obs = f['WAVE'].data
         if cov_matrix:
             Nl, Ny, Nx = f['FLUX'].data.shape
