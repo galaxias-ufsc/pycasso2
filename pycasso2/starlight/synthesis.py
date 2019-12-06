@@ -366,11 +366,7 @@ class SynthesisAdapter(object):
                 self.fbase_norm[:] = population['popfbase_norm']
                 self.popZ_base[:] = population['popZ_base']
                 self.popage_base[:] = population['popage_base']
-                try:
-                    self.popage_base_t2[:] = population['component'].astype('float64')
-                except:
-                    log.debug('Base column "component" is not float, base is SSP.')
-                    self.popage_base_t2[:] = self.popage_base[:]
+                self.popage_base_t2[:] = population['popage_base_upp']
                 self.popaFe_base[:] = population['aFe']
                 self._base_data_saved = True
 

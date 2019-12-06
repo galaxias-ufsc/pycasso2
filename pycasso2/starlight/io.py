@@ -377,11 +377,12 @@ def read_output_tables(filename, read_chains=False):
     tables['population']['p_x']           = SSP_x
     tables['population']['popAV_tot']     = popAV_tot
 
-    #Column 10 may be the upper age bin for composite stellar populations, if so. this value is stored:
+    #Column 10 may be the upper bound of age bin for composite stellar populations, if so. this value is stored:
     try:
         tables['population']['popage_base_upp'] = [float(data[i][9]) for i in range(_n1, _n2)]
-    except Exception:
-        pass
+    except ValueError:
+    # Upper bin boundary is not present, we are using SSPs.
+        tables['population']['popage_base_upp'] = tables['population']['popage_base']
 
     if read_chains == True:
         #--------------------------------------------------------------------
