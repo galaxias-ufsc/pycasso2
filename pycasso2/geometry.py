@@ -863,8 +863,7 @@ def azimuthal_projection(prop, bin_r, bin_a, r__yx, a__yx, mask2d, mode='mean', 
     # Putting the arrays back into shape.
     shape = (len_a - 1, len_r - 1) + prop_flat.shape[0:-1] 
     prop_profile = prop_profile.reshape(shape)
-    prop_profile = np.rollaxis(prop_profile, 0, prop.ndim)
-    prop_profile = np.rollaxis(prop_profile, 0, prop.ndim).copy()
+    prop_profile = np.moveaxis(prop_profile, [0, 1], [-2, -1])
     
     if return_npts:
         npts = np.array([np.sum((r_idx == r) & (a_idx == r)) for r, a in ra_grid])
