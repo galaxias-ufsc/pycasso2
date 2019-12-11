@@ -748,3 +748,125 @@ def fill_image(image, x0, y0, pa=0.0, ba=1.0):
     return _image
 
 
+def azimuthal_projection(prop, bin_r, bin_a, r__yx, a__yx, mask2d, mode='mean', return_npts=False):
+    '''
+    Calculate the azimuthal profile of a property. The last two dimensions of
+    ``prop`` must match the shape of ``r__yx`` and ``a__yx``.
+    The angles go from ``-np.pi`` to ``+np.pi``, counterclockwise from the +x direction.
+    
+    Parameters
+    ----------
+    prop : array
+        Image of property to calculate the radial profile.
+        
+    bin_r : array
+        Semimajor axis bin boundaries in pixels.
+        
+    bin_a : array
+        Angular bin boundaries in radians.
+        
+    r__yx : array
+        Distance of each pixel to the galaxy center, in pixels.
+        Must match the last two dimensions of ``prop``.
+
+    a__yx : array
+        Angle associated with each pixel, in radians.
+        Must match the last two dimensions of ``prop``.
+
+    mode : {'mean', 'median', 'sum'}, optional
+        The operation to perform inside the bin. Default is ``'mean'``.
+            
+    return_npts : bool, optional
+        If set to ``True``, also return the number of points inside
+        each bin. Defaults to ``False``.
+        
+        
+    Returns
+    -------
+    az_prof : array
+        Array containing the radial and azimuthal profiles as the
+        last dimensions.
+        Note that ``az_prof.shape[-2] == (len(bin_a) - 1)`` and
+        ``az_prof.shape[-1] == (len(bin_r) - 1)``.
+        
+    npts : array, optional
+        The number of points inside each bin, only if ``return_npts``
+        is set to ``True``.
+        
+    Examples
+    --------
+    Load the dataset:
+    
+    >>> from pycasso2.geometry import azimuthal_profile, get_image_angle, get_image_distance
+    >>> from pycasso2 import FitsCube
+    >>> c = FitsCube('data/NGC4030.v1.CB17.fits')
+
+    Using flux in normalization window, and
+    create the distance and angle arrays.
+
+    >>> f = c.flux_norm_window
+    >>> r = get_image_distance(f.shape, c.x0, c.y0, c.pa, c.ba)
+    >>> a = get_image_angle(f.shape, c.x0, c.y0, c.pa, c.ba)
+    
+    Create the radial and azimuthal bin boudaries.
+    
+    >>> bin_r = np.linspace(0.0, 150.0, 151)
+    >>> bin_a = np.linspace(-np.pi, np.pi, 101)
+
+    Calculate the azimuthal profile.
+    
+    >>> f__ar, n = azimuthal_profile(f, bin_r, bin_a, r, a, ~c.synthImageMask, return_npts=True)
+    
+    Plot the projected image.
+
+    >>> import matplotlib.pyplot as plt
+    >>> plt.pcolormesh(bin_r, bin_a, f__ar)
+    >>> plt.colorbar()
+    >>> plt.xlabel(r'$R$ [pixels]')
+    >>> plt.ylabel(r'$\theta$ [radians]')
+    
+    See also
+    --------
+    get_image_distance, get_image_angle
+    '''
+    if mode == 'mean':
+        reduce_func = np.mean
+    elif mode == 'median':
+        reduce_func = np.median
+    elif mode == 'sum':
+        reduce_func = np.sum
+    else:
+        raise ValueError('Invalid mode: %s' % mode)
+    
+    if prop.ndim == 2:
+        prop_flat = prop[mask2d]
+
+    else:
+        prop_flat = prop[...,mask2d]
+        
+    r_flat = r__yx[mask2d]
+    r_idx = np.digitize(r_flat, bin_r)
+    
+    a_flat = a__yx[mask2d]
+    a_idx = np.digitize(a_flat, bin_a)
+    
+    # composing the angle-radius grid.
+    len_a = len(bin_a)
+    len_r = len(bin_r)
+    rr, aa = np.meshgrid(np.arange(1, len_r), np.arange(1, len_a))
+    ra_grid = np.array(list(zip(rr.ravel(), aa.ravel())))
+    if prop.ndim == 2:
+        prop_profile = np.array([reduce_func(prop_flat[(a_idx == a) & (r_idx == r)]) for r, a in ra_grid])
+    else:
+        prop_profile = np.array([reduce_func(prop_flat[..., (a_idx == a) & (r_idx == r)], axis=-1) for r, a in ra_grid])
+        
+    # Putting the arrays back into shape.
+    shape = (len_a - 1, len_r - 1) + prop_flat.shape[0:-1] 
+    prop_profile = prop_profile.reshape(shape)
+    prop_profile = np.rollaxis(prop_profile, 0, prop.ndim)
+    prop_profile = np.rollaxis(prop_profile, 0, prop.ndim).copy()
+    
+    if return_npts:
+        npts = np.array([np.sum((r_idx == r) & (a_idx == r)) for r, a in ra_grid])
+        return prop_profile, npts
+    return prop_profile
