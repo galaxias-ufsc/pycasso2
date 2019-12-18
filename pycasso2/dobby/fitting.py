@@ -581,29 +581,3 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         save_summary_to_file(el, outdir, outname, saveHDF5 = saveHDF5, saveTXT = saveTXT, **kwargs)
 
     return el
-
-if __name__ == "__main__":
-
-    tc = Table.read('STARLIGHTv04/0414.51901.393.cxt', format = 'ascii', names = ('lobs', 'fobs', 'ferr', 'flag'))
-    ts = atpy.TableSet('STARLIGHTv04/0414.51901.393.cxt.sc4.C11.im.CCM.BN', type = 'starlightv4')
-    
-    #tc = Table.read('STARLIGHTv04/0404.51812.036.7xt', format = 'ascii', names = ('lobs', 'fobs', 'ferr', 'flag'))
-    #ts = atpy.TableSet('STARLIGHTv04/0404.51812.036.sc4.NA3.gm.CCM.BS', type = 'starlightv4')
-
-    el = fit_strong_lines_starlight(tc, ts, kinematic_ties_on = False)
-    plot_el(ts, el, display_plot = True)
-    
-    
-    # Test flux
-    ll = ts.spectra.l_obs
-    f_obs = ts.spectra.f_obs
-    f_syn = ts.spectra.f_syn
-    f_res = (f_obs - f_syn)
-    
-    flag_Hb = (ll > 4850) & (ll < 4870)
-    F_int = f_res[flag_Hb].sum()
-    print(F_int / el[0]['4861'].flux.value)
-
-    flag_Ha = (ll > 6554) & (ll < 6570)
-    F_int = f_res[flag_Ha].sum()
-    print(F_int / el[0]['6563'].flux.value)
