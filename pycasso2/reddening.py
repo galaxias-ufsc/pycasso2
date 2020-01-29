@@ -202,15 +202,18 @@ def Calzetti_RedLaw(l, R_V=None):
         l = np.asarray(l, 'float64')
         
     x = 1e4 / l
-    q = np.zeros_like(l)
+    aux = np.zeros_like(l)
 
     # UV -> Optical: 1200 -> 6300 Angs
     inter = (l >= 1200.) & (l <= 6300.)
-    q[inter] = (2.659 / R_V) * (-2.156 + 1.509 * x[inter] - 0.198 * x[inter]**2 + 0.011 * x[inter]**3) + 1.
+    aux[inter] = (-2.156 + 1.509 * x[inter] - 0.198 * x[inter]**2 + 0.011 * x[inter]**3)
 
     # Red -> Infrared
     inter = (l >= 6300.) & (l <= 22000.)
-    q[inter] = (2.659 / R_V) * (-1.857 + 1.040 * x[inter]) + 1.
+    aux[inter] = (-1.857 + 1.040 * x[inter])
+
+    # Get q
+    q = 1. + aux * 2.659 / R_V
 
     # Issue a warning if lambda falls outside 1200->22000 Angs range
     if ((l < 1200.) | (l > 22000.)).any():
