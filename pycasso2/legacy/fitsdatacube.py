@@ -401,10 +401,20 @@ class fitsQ3DataCube(IQ3DataCube):
         self.flux_unit = self.keywords['FLUX_UNIT']
         self.Nl_obs = self.keywords['NL_OBS']
 
+    @property
+    def hasSegmentationMask(self):
+        key = self._h_has_segmap
+        if not key in self.header:
+            return False
+        return bool(self.header[key])
+
 
     @lazyproperty
     def Nwave(self):
-        axis = 3
+        if self.hasSegmentationMask:
+            axis = 1
+        else:
+            axis = 3
         return get_Naxis(self._hdulist[self._ext_f_obs].header, axis)
 
 
