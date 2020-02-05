@@ -70,8 +70,8 @@ class ZoneCube(object):
         self.header = hdu.header
         self.qVersion = self.header['QVERSION'].strip()
         
-        self.galaxyName = self.header['NED_NAME'].strip()
-        self.califaID = self.header['CALIFA_ID'].strip()
+        self.galaxyName = self.header.get('NED_NAME', '').strip()
+        self.califaID = self.header.get('CALIFA_ID', '').strip()
         self.N_x = self.header['naxis1']
         self.N_y = self.header['naxis2']
         self.N_zone = self.header['NZONES']
