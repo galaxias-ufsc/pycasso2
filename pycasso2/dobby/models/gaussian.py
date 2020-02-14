@@ -51,9 +51,15 @@ class Gaussian(Fittable1DModel):
 def MultiGaussian(l0, flux, v0, vd, vd_inst, name, v0_min=None, v0_max=None, vd_min=None, vd_max=None):
     # TODO: Sanity checks.
 
+    # Transform v0 and vd into array if given a single value
+    if np.isscalar(v0):
+        v0 = np.full(len(name), v0)
+    if np.isscalar(vd):
+        vd = np.full(len(name), vd)
+
     flux = [flux, ] * len(l0)
-    models = [Gaussian(l, a, v0, vd, vdi, name=n)
-              for l, a, vdi, n in zip(l0, flux, vd_inst, name)]
+    models = [Gaussian(l, f, _v0, _vd, vdi, name=n)
+              for l, f, _v0, _vd, vdi, n in zip(l0, flux, v0, vd, vd_inst, name)]
 
     model = models[0]
     for i in np.arange(1, len(models)):
