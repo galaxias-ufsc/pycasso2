@@ -32,9 +32,10 @@ def summary_elines(el):
     Save emission line info to an easy-to-use array.
     '''
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
-    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2
-    
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
+
+
     N_models = len(el)
 
     # Start empty arrays
@@ -46,7 +47,7 @@ def summary_elines(el):
     El_vd    = []
     El_vdins = []
     El_lcrms = []
-    
+
     for i_model in range(N_models):
 
         # Get one astropy model
@@ -97,7 +98,7 @@ def summary_elines(el):
     spec = Table( { 'total_lc'      : el_extra['total_lc'].data ,
                     'total_lc_mask' : el_extra['total_lc'].mask
                   } )
-    
+
     return elines, spec
 
 
@@ -107,9 +108,10 @@ def new_summary_elines(el):
     Modified version using a fixed dtype.
     '''
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
-    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2
-    
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
+
+
     N_models = len(el)
 
     # Start empty arrays
@@ -118,7 +120,7 @@ def new_summary_elines(el):
     El_l0    = []
     El_v0    = []
     El_vd    = []
-    
+
     for i_model in range(N_models):
 
         # Get one astropy model
@@ -160,7 +162,7 @@ def new_summary_elines(el):
     spec = Table( { 'total_lc'      : el_extra['total_lc'].data ,
                     'total_lc_mask' : el_extra['total_lc'].mask
                   } )
-    
+
     return elines, spec
 
 
@@ -180,11 +182,11 @@ def save_summary_to_file(el, outdir, outname, saveHDF5 = False, saveTXT = False,
                 remove(outfile)
             except OSError:
                 pass
-            
+
         with h5py.File(outfile, 'w') as f:
             ds1 = f.create_dataset('elines', data = elines, compression = 'gzip', compression_opts = 4)
             ds2 = f.create_dataset('spec', data = spec, compression = 'gzip', compression_opts = 4)
-            
+
     if saveTXT:
         outfile = path.join(outdir, '%s.txt' % outname)
 
@@ -193,7 +195,7 @@ def save_summary_to_file(el, outdir, outname, saveHDF5 = False, saveTXT = False,
                 remove(outfile)
             except OSError:
                 pass
-            
+
         elines.write(outfile, format = 'ascii.fixed_width_two_line')
 
     # TO DO!
@@ -206,18 +208,18 @@ def read_summary_from_file(filename, readHDF5 = True):
         elines = Table.read(filename, path='elines')
         spec   = Table.read(filename, path='spec')
     else:
-        elines = Table.read(filename, format = 'ascii.fixed_width_two_line')    
+        elines = Table.read(filename, format = 'ascii.fixed_width_two_line')
         spec = None
-    
+
     return elines, spec
-    
+
 def get_el_info(elines, line, info):
     '''
     Get emission line info
     '''
     f = (elines['lambda'] == line)
     return elines[info][f]
-    
+
 def fit_strong_lines_starlight(tc, ts, **kwargs):
     # Reading from fits
     ll = ts.spectra.l_obs
@@ -242,7 +244,7 @@ def fit_strong_lines_starlight(tc, ts, **kwargs):
     return fit_strong_lines(_ll, _f_res, _f_wei, **kwargs)
 
 def plot_el_starlight(ts, el, save = False, display_plot = True):
-    
+
     ll = ts.spectra.l_obs
 
     f_obs = ts.spectra.f_obs
@@ -252,106 +254,171 @@ def plot_el_starlight(ts, el, save = False, display_plot = True):
     f_res = (f_obs - f_syn)
 
     plot_el(ll, f_res, el, display_plot = display_plot)
-    
-    
+
+
 def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     import matplotlib
     if not display_plot:
         matplotlib.use('pdf')
-    
+
     import matplotlib.pyplot as plt
     from matplotlib import gridspec
-    
-    fig = plt.figure(ifig, figsize=(12,6))
-    gs = gridspec.GridSpec(2, 3)
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_HaN2, mod_fit_S2, el_extra = el
+    fig = plt.figure(ifig, figsize=(12,6))
+    gs = gridspec.GridSpec(3, 3)
+
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
 
     # Start full spectrum
     m  = np.full_like(ll, np.nan)
     l = np.full_like(ll, np.nan)
-    
+
     # Write fluxes in FHa units
     FHa =  mod_fit_HaN2['6563'].flux.value
-    
 
-    # Plot [OIII]
-    ax2 = plt.subplot(gs[1, 0])
-    #flag = (ll >= 4900) & (ll < 5100)
-    lc = el_extra[mod_fit_O3.submodel_names[0]]['local_cont']
-    good_fit = el_extra[mod_fit_O3.submodel_names[0]]['flag'] == 0
+    # Plot the full spectrum
+    ax2 = plt.subplot(gs[1, :])
+      #flag = (ll >= 4900) & (ll < 5100)
+    lc = el_extra[mod_fit_O3_weak.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O3_weak.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
-    plt.plot(ll[flag], mod_fit_O3(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag], mod_fit_O3_weak(ll[flag]) + lc[flag], 'r', label = 'Fit')
     plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
-    m[flag] = mod_fit_O3(ll[flag]) + lc[flag]
+    m[flag] = mod_fit_O3_weak(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
-    for i, name in enumerate(mod_fit_O3.submodel_names):
-        ax2.text(0.99, 0.50 + i*0.45, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
-                 % (name, mod_fit_O3[name].v0.value, mod_fit_O3[name].vd.value, mod_fit_O3[name].flux.value / FHa, good_fit),
+    for i, name in enumerate(mod_fit_O3_weak.submodel_names):
+        ax2.text( 0.20 + i*0.20,0.95, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s'
+                 % (name, mod_fit_O3_weak[name].v0.value, mod_fit_O3_weak[name].vd.value, mod_fit_O3_weak[name].flux.value / FHa, good_fit),
                  horizontalalignment='right',
                  verticalalignment='top',
                  transform=ax2.transAxes)
 
-    # Plot Hbeta
-    ax3 = plt.subplot(gs[1, 1])
-    #flag = (ll >= 4750) & (ll < 4950)
-    lc = el_extra[mod_fit_HbHg.submodel_names[0]]['local_cont']
-    good_fit = el_extra[mod_fit_HbHg.submodel_names[0]]['flag'] == 0
+
+
+    # Plot [OIII]weak
+    ax5 = plt.subplot(gs[2, 0])
+    #flag = (ll >= 4900) & (ll < 5100)
+    lc = el_extra[mod_fit_O3_weak.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O3_weak.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
-    plt.plot(ll[flag], mod_fit_HbHg(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag], mod_fit_O3_weak(ll[flag]) + lc[flag], 'r', label = 'Fit')
     plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
-    m[flag] = mod_fit_HbHg(ll[flag]) + lc[flag]
+    m[flag] = mod_fit_O3_weak(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
-    ax3.text(0.99, 0.95, '$\lambda_0 = 4861$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
-             % (mod_fit_HbHg['4861'].v0.value, mod_fit_HbHg['4861'].vd.value, mod_fit_HbHg['4861'].flux.value / FHa, good_fit),
+    ax5.text(0.99, 0.95, '$\lambda_0 = 4363$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s'
+             % (mod_fit_O3_weak['4363'].v0.value, mod_fit_O3_weak['4363'].vd.value, mod_fit_O3_weak['4363'].flux.value / FHa, good_fit),
              horizontalalignment='right',
              verticalalignment='top',
-             transform=ax3.transAxes)
+             transform=ax5.transAxes)
 
-    # Add Hgamma too
-    m[flag] = mod_fit_HbHg(ll[flag]) + lc[flag]
-    lc = el_extra[mod_fit_HbHg.submodel_names[1]]['local_cont']
-    flag = ~lc.mask
-    m[flag] = mod_fit_HbHg(ll[flag]) + lc[flag]
-    l[flag] = lc[flag]
-    
-    # Plot [NII, Halpha]
-    ax4 = plt.subplot(gs[1, 2])
-    #flag = (ll >= 6500) & (ll < 6600)
-    lc = el_extra[mod_fit_HaN2.submodel_names[0]]['local_cont']
-    good_fit = el_extra[mod_fit_HaN2.submodel_names[0]]['flag'] == 0
+
+    # Plot [NII]weak
+    ax6 = plt.subplot(gs[2, 1])
+    #flag = (ll >= 4900) & (ll < 5100)
+    lc = el_extra[mod_fit_N2He2He1.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_N2He2He1.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
-    plt.plot(ll[flag], mod_fit_HaN2(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag],mod_fit_N2He2He1(ll[flag]) + lc[flag], 'r', label = 'Fit')
     plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
-    m[flag] = mod_fit_HaN2(ll[flag]) + lc[flag]
+    plt.xlabel('[NII]5755')
+    m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
-    for i, name in enumerate(mod_fit_HaN2.submodel_names):
-        xlab, ylab = 0.99, 0.55 + (i-1)*0.40
-        if name == '6563':
-            xlab, ylab = 0.50, 0.95
-        ax4.text(xlab, ylab, '$\lambda_0 = %s$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s' 
-                 % (name, mod_fit_HaN2[name].v0.value, mod_fit_HaN2[name].vd.value, mod_fit_HaN2[name].flux.value / FHa, good_fit),
-                 horizontalalignment='right',
-                 verticalalignment='top',
-                 transform=ax4.transAxes)
+    ax6.text(0.99, 0.95, '$\lambda_0 = 5755$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s'
+             % (mod_fit_N2He2He1['5755'].v0.value, mod_fit_N2He2He1['5755'].vd.value,mod_fit_N2He2He1['5755'].flux.value / FHa, good_fit),
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=ax6.transAxes)
 
-    # Plot [OII]
+
+
+    # Plot [OII] weak
+    ax7 = plt.subplot(gs[2, 2])
+    lc = el_extra[mod_fit_O2_weak.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O2_weak.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
+    plt.plot(ll[flag], mod_fit_O2_weak(ll[flag]) + lc[flag], 'r', label = 'Fit')
+    plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
+    plt.xlabel('[OII]7320')
+    m[flag] = mod_fit_O2_weak(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+    ax7.text(0.99, 0.95, '$\lambda_0 = 7320$ \n $v_0 = %.2f$ \n $v_d = %.2f$ \n $F = %.2e$ \n good fit: %s'
+             % (mod_fit_O2_weak['7320'].v0.value, mod_fit_O2_weak['7320'].vd.value, mod_fit_O2_weak['7320'].flux.value / FHa, good_fit),
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=ax7.transAxes)
+
+
+
+
+    #Plot [OII]
     lc = el_extra[mod_fit_O2.submodel_names[0]]['local_cont']
     good_fit = el_extra[mod_fit_O2.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     m[flag] = mod_fit_O2(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
-        
+
+
     # Plot [SII]
     lc = el_extra[mod_fit_S2.submodel_names[0]]['local_cont']
     good_fit = el_extra[mod_fit_S2.submodel_names[0]]['flag'] == 0
     flag = ~lc.mask
     m[flag] = mod_fit_S2(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
-    
+
+    #Plot[OIII]4363 (weak line)
+    lc = el_extra[mod_fit_O3_weak.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O3_weak.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_O3_weak(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot[OIII]4363 (weak line)
+    lc = el_extra[mod_fit_O3_weak.submodel_names[1]]['local_cont']
+    good_fit = el_extra[mod_fit_O3_weak.submodel_names[1]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_O3_weak(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot [NII]5755 (weak line)
+    lc = el_extra[mod_fit_N2He2He1.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_N2He2He1.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot [NeIII]
+    lc = el_extra[mod_fit_Ne3.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_Ne3.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_Ne3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot [OII]weak
+    lc = el_extra[mod_fit_O2_weak.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_O2_weak.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_O2_weak(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot [HeII]
+    lc = el_extra[mod_fit_N2He2He1.submodel_names[1]]['local_cont']
+    good_fit = el_extra[mod_fit_N2He2He1.submodel_names[1]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    # [HeI]
+    m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_N2He2He1.submodel_names[2]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+
     # Plot the full spectrum
     ax1 = plt.subplot(gs[0, :])
     plt.plot(ll, f_res, 'k', label = 'Residual', drawstyle = 'steps-mid')
@@ -363,7 +430,7 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
         plt.ioff()
         plt.show()
     return fig
-    
+
 def replace_by_minus999(x, x_old, x_new = -999):
 
     y = x.copy()
@@ -380,10 +447,10 @@ def replace_by_minus999(x, x_old, x_new = -999):
     return y
 
 def replace_nan_inf_by_minus999(x):
-    
+
     y1 = replace_by_minus999(x,  'nan')
     y2 = replace_by_minus999(y1, 'inf')
-    
+
     return y2
 
 def safe_pow(a, b):
@@ -398,4 +465,3 @@ def safe_x(x):
     x = np.where(np.isfinite(x), x, -999.)
     x = np.ma.masked_where((x < -990), x)
     return x
-
