@@ -384,6 +384,21 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
+    
+    # Continuum for [OI]6300 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '6300', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['6300', '6364']
+    linename = ['[OI]6300', '[OI]6364']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
 
     # Continuum only for [SII]6716 - linear - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6716', lines_windows, degree=degree)
@@ -685,6 +700,33 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O2(_ll)+lc)
 
+    log.debug('Fitting [OI]...')
+
+    # Parameters
+    name = ['6300', '6364']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    mod_init_O1 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+
+    # Fit
+    mod_fit_O1, _flag = do_fit(mod_init_O1, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag 
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit5')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_O1(_ll)+lc)
+
     log.debug('Fitting [SII]...')
 
     # Parameters
@@ -712,7 +754,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit5')
+        plt.figure('fit6')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_S2(_ll)+lc)
@@ -746,7 +788,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit3')
+        plt.figure('fit7')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_Ne3(_ll)+lc)
@@ -787,7 +829,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit3')
+        plt.figure('fit8')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O2_weak(_ll)+lc)
@@ -795,7 +837,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 ########################################################################################################################################
 
     # Rescale by the median
-    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak]
+    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak]
     for model in el:
         for name in model.submodel_names:
             model[name].flux.value *= np.abs(med)
@@ -852,6 +894,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     linename = ['[OII]3726', '[OII]3729']
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O2[n].flux, n, lines_windows)
+
+    name     = ['6300', '6364']
+    linename = ['[OI]6300', '[OI]6364']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O1[n].flux, n, lines_windows)
 
     name     = ['6716',      '6731']
     linename = ['[SII]6716', '[SII]6731']

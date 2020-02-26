@@ -251,7 +251,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                suffix, name_template, tmpdir,
                ll, vd_inst,
                kinematic_ties_on, balmer_limit_on, model,
-               degree, debug, display_plot, legendre_stellar_mask=True):
+               degree, debug, display_plot):
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
         log.debug('Skipping masked spaxel [%d, %d]' % (iy, ix))
@@ -273,8 +273,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
     el = fit_strong_lines(ll, f_res, f_syn, f_err,vd_inst =vd_inst,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model = model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
-                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd,
-                          legendre_stellar_mask=legendre_stellar_mask)
+                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd)
     elines, spec = new_summary_elines(el)
     if debug:
         fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
@@ -287,7 +286,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
 ###############################################################################
 def fit_integrated(da, suffix, tmpdir, vd_inst,
                    kinematic_ties_on, balmer_limit_on, model,
-                   degree, debug, display_plot, legendre_stellar_mask=True):
+                   degree, debug, display_plot):
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
 
@@ -311,8 +310,7 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
     el = fit_strong_lines(da.ll, f_res, f_syn, f_err, vd_inst=vd_inst,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
-                          vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=da.integ_v_d,
-                          legendre_stellar_mask=legendre_stellar_mask)
+                          vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=da.integ_v_d)
     elines, spec = new_summary_elines(el)
     if debug:
         fig = plot_el(da.ll, f_res, el, ifig = 0, display_plot = display_plot)
@@ -363,7 +361,7 @@ if __name__ == '__main__':
                                               kinematic_ties_on=args.enableKinTies,
                                               balmer_limit_on=args.enableBalmerLim, model=args.model,
                                               degree=args.degree, debug=args.debug,
-                                              display_plot=args.displayPlots, legendre_stellar_mask=True)
+                                              display_plot=args.displayPlots)
     if integ_elines is not None:
         log.info('Creating emission line extensions.')
         el_info = get_EL_info(integ_elines, args.enableKinTies, args.enableBalmerLim, args.model)

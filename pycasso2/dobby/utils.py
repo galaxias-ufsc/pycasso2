@@ -32,8 +32,8 @@ def summary_elines(el):
     Save emission line info to an easy-to-use array.
     '''
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
-    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
 
 
     N_models = len(el)
@@ -108,8 +108,8 @@ def new_summary_elines(el):
     Modified version using a fixed dtype.
     '''
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
-    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
 
 
     N_models = len(el)
@@ -267,7 +267,7 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     fig = plt.figure(ifig, figsize=(12,6))
     gs = gridspec.GridSpec(3, 3)
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
 
     # Start full spectrum
     m  = np.full_like(ll, np.nan)
