@@ -171,7 +171,7 @@ def get_image_distance(shape, x0, y0, pa=0.0, ba=1.0):
 
 def get_angle(x, y, x0, y0, pa=0.0, ba=1.0):
     '''
-    Return an image (:class:`numpy.ndarray` of same shape as :attr`qSignal`)
+    Return an image (:class:`numpy.ndarray`)
     of the angle in radians of each pixel, relative from the axis of the
     position angle ``pa``. The projection is fixed assuming the galaxy is
     a disk, throught the ellipticity parameter ``ba``.
@@ -221,7 +221,7 @@ def get_angle(x, y, x0, y0, pa=0.0, ba=1.0):
 
 def get_image_angle(shape, x0, y0, pa=0.0, ba=1.0):
     '''
-    Return an image (:class:`numpy.ndarray` of same shape as :attr`qSignal`)
+    Return an image (:class:`numpy.ndarray`)
     of the angle in radians of each pixel, relative from the axis of the
     position angle ``pa``. The projection is fixed assuming the galaxy is
     a disk, throught the ellipticity parameter ``ba``.
@@ -259,6 +259,72 @@ def get_image_angle(shape, x0, y0, pa=0.0, ba=1.0):
     '''
     y, x = np.indices(shape)
     return get_angle(x, y, x0, y0, pa, ba)
+
+
+def get_height(x, y, x0, y0, pa=0.0):
+    '''
+    Return an image (:class:`numpy.ndarray`)
+    of the orthogonal distance to the semimajor axis in pixels.
+    This is intended to be used in edge-on disks.
+    
+    Parameters
+    ----------
+    x : array
+        X coordinates to get the pixel distances.
+
+    y : array
+        y coordinates to get the pixel distances.
+
+    x0 : float
+        X coordinate of the origin.
+
+    y0 : float
+        Y coordinate of the origin.
+
+    pa : float, optional
+        Position angle in radians, counter-clockwise relative
+        to the positive X axis.
+
+    Returns
+    -------
+    h : array
+        Height in pixel units.
+
+    '''
+    y = np.asarray(y) - y0
+    x = np.asarray(x) - x0
+    return x * np.sin(-pa) + y * np.cos(-pa)
+
+
+def get_image_height(shape, x0, y0, pa=0.0):
+    '''
+    Return an image (:class:`numpy.ndarray`)
+    of the orthogonal distance to the semimajor axis in pixels, for each pixel.
+    This is intended to be used in edge-on disks.
+
+    Parameters
+    ----------
+    shape : (float, float)
+        Shape of the image to get the angles.
+
+    x0 : float
+        X coordinate of the origin.
+
+    y0 : float
+        Y coordinate of the origin.
+
+    pa : float, optional
+        Position angle in radians, counter-clockwise relative
+        to the positive X axis. Defaults to ``0``.
+
+    Returns
+    -------
+    angle : 2-D array
+        Image containing the angles in radians.
+
+    '''
+    y, x = np.indices(shape)
+    return get_height(x, y, x0, y0, pa)
 
 
 def weighted_mean_radprof(prop, w, bin_r, x0, y0, pa=0.0, ba=1.0, rad_scale=1.0, exact=False, return_npts=False):
@@ -626,21 +692,42 @@ def convex_hull_mask(mask):
         ``True`` values.
     '''
     mask_points = np.array(np.where(mask)).T
+    mask_points = np.flip(mask_points, axis=1)
+    print(mask_points.shape)
     is_hull = convexhull(mask_points)
     if len(is_hull) == 0:
         raise Exception('No data points found.')
     hull_poly = Polygon(mask_points[is_hull], conv=False)
 
-    ny, nx = mask.shape
+    return poly_mask(hull_poly, mask.shape)
+
+
+def poly_mask(poly, shape):
+    '''
+    Compute the convex hull of a boolean image mask.
+    
+    Parameters
+    ----------
+    mask : array
+        2-D image where the ``True`` pixels mark the data.
+        
+    Returns
+    -------
+    convex_mask : array
+        2-D image of same shape and type as ``mask``,
+        where the convex hull of ``mask`` is marked as
+        ``True`` values.
+    '''
+    ny, nx = shape
     xx, yy = np.meshgrid(np.arange(nx),np.arange(ny))
     image_points = np.vstack((yy.ravel(), xx.ravel())).T
     
-    inside_hull_points = [(y,x) for y,x in image_points if hull_poly.collidepoint((y,x))]
+    inside_points = [(y,x) for y,x in image_points if poly.collidepoint((x, y))]
     
-    convex_mask = np.zeros_like(mask)
-    yy_inside, xx_inside = zip(*inside_hull_points)
-    convex_mask[yy_inside, xx_inside] = True
-    return convex_mask
+    mask = np.zeros(shape, dtype='bool')
+    yy_inside, xx_inside = zip(*inside_points)
+    mask[yy_inside, xx_inside] = True
+    return mask
 
 
 def find_image_max(image):
