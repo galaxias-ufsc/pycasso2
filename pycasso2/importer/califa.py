@@ -55,6 +55,10 @@ def read_califa(cube, name, cfg):
     
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = 0.0
+    if 'E(B-V)' in ml.colnames:
+        lkeys = [key for key in obs.header if 'GALEXT COR' in key]
+        if (len(lkeys) > 0 and obs.header[lkeys[0]] < 1) or len(lkeys) < 1:
+            obs.EBV = ml['E(B-V)']
     obs.lumDist_Mpc = ml['d_Mpc']
     return obs
 
