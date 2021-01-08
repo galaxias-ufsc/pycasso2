@@ -981,10 +981,10 @@ def read_output_tables_v4(filename, read_header=True, read_spec=True, verbose=Fa
         keywords['Mini_tot']        = np.float32(data[54][0])
         keywords['Mcor_tot']        = np.float32(data[55][0])
 
-        keywords['v_0']             = np.float32(data[57][0])
-        keywords['v_d']             = np.float32(data[58][0])
-        keywords['A_V']             = np.float32(data[59][0])
-        keywords['exA_V']           = np.float32(data[60][0])
+        keywords['v0']              = np.float32(data[57][0])
+        keywords['vd']              = np.float32(data[58][0])
+        keywords['AV']              = np.float32(data[59][0])
+        keywords['exAV']            = np.float32(data[60][0])
 
 
         # Read/define x, mu_ini, mu_cor, age_base, Z_base & YAV_flag arrays.
