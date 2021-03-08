@@ -172,6 +172,7 @@ class DobbyAdapter(object):
         
     def getIntegratedSpectra(self):
         if not self.correct_good_frac:
+            # ++++ Conferir shape f_obs com o debaixo
             f_obs = self._c.integ_f_obs
             f_syn = self._c.integ_f_syn
             f_err =  self._c.integ_f_err
@@ -181,6 +182,7 @@ class DobbyAdapter(object):
                                                   cov_factor_A=0.0, cov_factor_B=1.0)
             f_syn = np.tensordot(self.f_syn, self.integ_mask, axes=[[1, 2], [1, 2]])
             bad = (good_frac <= 0.5)
+            # ++++ ... com esse
             f_obs = np.ma.masked_where(bad, f_obs, copy=False).squeeze()
             f_syn = np.ma.masked_where(bad, f_syn, copy=False).squeeze()
             f_err = np.ma.masked_where(bad, f_err, copy=False).squeeze()
@@ -195,8 +197,8 @@ class DobbyAdapter(object):
         f_res = f_obs - f_syn
         if self.correct_good_frac:
             gf = self._c.seg_good_frac
-            f_syn *= gf
-            f_err *= gf
+            f_syn *= gf[:, 1, 1]
+            f_err *= gf[:, 1, 1]
         return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
     
     
@@ -409,6 +411,6 @@ if __name__ == '__main__':
                 da.updateELines(j, i, elines, spec)
     
     da.save(args.cubeOut)
-   
+    
 # EOF
 ###############################################################################
