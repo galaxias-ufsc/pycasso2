@@ -32,8 +32,8 @@ def summary_elines(el):
     Save emission line info to an easy-to-use array.
     '''
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
-    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3
 
 
     N_models = len(el)
@@ -108,8 +108,8 @@ def new_summary_elines(el):
     Modified version using a fixed dtype.
     '''
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
-    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3, el_extra = el
+    el = mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3
 
 
     N_models = len(el)
@@ -267,7 +267,7 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     fig = plt.figure(ifig, figsize=(12,6))
     gs = gridspec.GridSpec(3, 3)
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak, el_extra = el
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3, el_extra = el
 
     # Start full spectrum
     m  = np.full_like(ll, np.nan)
@@ -390,12 +390,6 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
 
-    #Plot [NeIII]
-    lc = el_extra[mod_fit_Ne3.submodel_names[0]]['local_cont']
-    good_fit = el_extra[mod_fit_Ne3.submodel_names[0]]['flag'] == 0
-    flag = ~lc.mask
-    m[flag] = mod_fit_Ne3(ll[flag]) + lc[flag]
-    l[flag] = lc[flag]
 
     #Plot [OII]weak
     lc = el_extra[mod_fit_O2_weak.submodel_names[0]]['local_cont']
@@ -403,6 +397,29 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     flag = ~lc.mask
     m[flag] = mod_fit_O2_weak(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
+
+    #Plot [FeIII]
+    lc = el_extra[mod_fit_Fe3.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_Fe3.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_Fe3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot [ArIII]
+    lc = el_extra[mod_fit_Ar3.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_Ar3.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_Ar3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    #Plot [SIII]
+    lc = el_extra[mod_fit_S3.submodel_names[0]]['local_cont']
+    good_fit = el_extra[mod_fit_S3.submodel_names[0]]['flag'] == 0
+    flag = ~lc.mask
+    m[flag] = mod_fit_S3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+
 
     #Plot [HeII]
     lc = el_extra[mod_fit_N2He2He1.submodel_names[1]]['local_cont']
@@ -418,6 +435,49 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False):
     m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
     l[flag] = lc[flag]
 
+    # [FeIII]
+    m[flag] = mod_fit_Fe3(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_Fe3.submodel_names[0]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_Fe3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+
+    # [SIII]
+    m[flag] = mod_fit_Ne3(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_Ne3.submodel_names[0]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_Ne3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    # [NeIII]
+    m[flag] = mod_fit_Ne3(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_Ne3.submodel_names[1]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_Ne3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+
+    # [ArIV]
+    m[flag] = mod_fit_ArIV(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_ArIV.submodel_names[0]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_ArIV(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    # [ClIII]
+    m[flag] = mod_fit_Cl3(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_Cl3.submodel_names[0]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_Cl3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
+
+    # [ClIII]
+    m[flag] = mod_fit_Cl3(ll[flag]) + lc[flag]
+    lc = el_extra[mod_fit_Cl3.submodel_names[1]]['local_cont']
+    flag = ~lc.mask
+    m[flag] = mod_fit_Cl3(ll[flag]) + lc[flag]
+    l[flag] = lc[flag]
 
     # Plot the full spectrum
     ax1 = plt.subplot(gs[0, :])

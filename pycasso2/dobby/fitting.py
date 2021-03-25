@@ -175,7 +175,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         good = ~np.ma.getmaskarray(flux) & ~np.ma.getmaskarray(lc)
         Nl_cont = lc.count()
         N_good = good.sum()
-        if Nl_cont > 0 and (N_good / Nl_cont) > min_good_fraction:
+        if Nl_cont > 1 and (N_good / Nl_cont) > min_good_fraction:
             fitter = fitting.LevMarLSQFitter()
             fitted_model = fitter(model, ll[good], (flux - lc)[good], weights=safe_pow(err[good], -1), maxiter=maxiter)
             flag = interpret_fit_result(fitter.fit_info, ignore_warning=ignore_warning)
@@ -217,7 +217,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[n] = {'linename' : ln}
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-    
+
     # Remove emission lines detected to calculate the continuum with Legendre polynomials
     lc = np.ma.masked_array(np.zeros_like(_ll))
     flag_lc = np.ones(len(_ll), 'bool')
@@ -366,6 +366,21 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
 
+    # Continuum only for [SIII]9068 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '9068', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['9068'      ]
+    linename = ['[SIII]9068' ]
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
 ##########################################################################################################################################################
 
 
@@ -384,7 +399,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
-    
+
     # Continuum for [OI]6300 - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
@@ -447,6 +462,104 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
+
+
+
+    # Continuum only for [ArIII]7135 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '7135', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '7135', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['7135'       , '7751']
+    linename = ['[ArIII]7135', '[ArIII]7751']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+
+
+    # Continuum only for [FeIII]4658 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4658', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '4658', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['4658', '4988' ]
+    linename = ['[FeIII]4658' , '[FeIII]4988']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+    # Continuum only for [SIII]6312 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '6312', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['6312']
+    linename = ['[SIII]6312']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+
+    # Continuum only for [ClIII]5518 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5517', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '5517', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['5517', '5539']
+    linename = ['[ClIII]5517', '[ClIII]5539']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+
+
+    # Continuum only for [ArIV]6435 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6434', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '6434', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['6434']
+    linename = ['[ArIV]6434']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+    # Continuum only for [ArIV]4740 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4740', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '4740', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['4740']
+    linename = ['[ArIV]4740']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
 
 
 ##########################################################################################################################################################
@@ -707,7 +820,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     l0 = get_central_wavelength(name)
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
-        el_extra[ln]['vd_inst'] = _vd_inst[il] 
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Get local continuum
     lc = el_extra[name[0]]['local_cont'] / np.abs(med)
@@ -718,7 +831,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Fit
     mod_fit_O1, _flag = do_fit(mod_init_O1, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
-        el_extra[ln]['flag'] = _flag 
+        el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
@@ -759,39 +872,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_S2(_ll)+lc)
 
-########################################################################################################################################
-    log.debug('Fitting [NeIII]...')
-
-    # Parameters
-    name = ['3869', '3968']
-    l0 = get_central_wavelength(name)
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
-    for il, ln in enumerate(name):
-        el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
-    # Start model
-    mod_init_Ne3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
-
-    # Ties
-    mod_init_Ne3['3869'].flux.tied = lambda m: 3.2 * m['3968'].flux
-    if kinematic_ties_on:
-        mod_init_Ne3['3968'].v0.tied = lambda m: m['3869'].v0.value
-        mod_init_Ne3['3968'].vd.tied = lambda m: m['3869'].vd.value
-
-    # Fit
-    mod_fit_Ne3, _flag = do_fit(mod_init_Ne3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
-    for ln in name:
-        el_extra[ln]['flag'] = _flag
-
-    if debug:
-        import matplotlib.pyplot as plt
-        plt.figure('fit7')
-        plt.clf()
-        plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_Ne3(_ll)+lc)
 
 ########################################################################################################################################
     log.debug('Fitting [OII]weak...')
@@ -813,14 +893,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc /= np.abs(med)
 
 
-    mod_init_O2_weak = elModel(l0, flux=0.0, v0=mod_fit_O2['3726'].v0.value, vd=mod_fit_O2['3726'].vd.value, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0) # tem diferença de colocar com 4959?
+    mod_init_O2_weak = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
     if kinematic_ties_on:
-        mod_init_O2_weak['7320'].v0.fixed = True
-        mod_init_O2_weak['7320'].vd.fixed = True
-        mod_init_O2_weak['7330'].v0.fixed = True
-        mod_init_O2_weak['7330'].v0.fixed = True
+        mod_init_O2_weak['7320'].v0.tied = lambda m: m['7330'].v0.value
+        mod_init_O2_weak['7320'].vd.tied = lambda m: m['7330'].vd.value
 
     # Fit
     mod_fit_O2_weak, _flag = do_fit(mod_init_O2_weak, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
@@ -834,10 +912,234 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_O2_weak(_ll)+lc)
 
+
+    log.debug('Fitting [NeIII]...')
+
+    # Parameters
+    name = ['3869', '3968']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    mod_init_Ne3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+
+    # Fit
+    mod_fit_Ne3, _flag = do_fit(mod_init_Ne3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit5')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_Ne3(_ll)+lc)
+
+
+    log.debug('Fitting [ArIII]')
+
+    # Parameters
+    name = ['7135', '7751']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
+    vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value]
+    mod_init_Ar3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+
+    # Ties
+    mod_init_Ar3['7135'].flux.tied = lambda m: np.sqrt((1.40e-3/8.30e-2)) * m['7751'].flux
+
+
+    if kinematic_ties_on:
+        mod_init_Ar3['7135'].v0.fixed = True
+        mod_init_Ar3['7135'].vd.fixed = True
+        mod_init_Ar3['7751'].v0.fixed = True
+        mod_init_Ar3['7751'].vd.fixed = True
+
+
+    # Fit
+    mod_fit_Ar3, _flag = do_fit(mod_init_Ar3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit1')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_Ar3(_ll)+lc)
+
+    log.debug('Fitting [SIII]')
+
+    # Parameters
+    name = ['6312', '9068']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
+    vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value]
+    mod_init_S3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+
+    if kinematic_ties_on:
+        mod_init_S3['6312'].v0.fixed = True
+        mod_init_S3['6312'].vd.fixed = True
+        mod_init_S3['9068'].v0.fixed = True
+        mod_init_S3['9068'].vd.fixed = True
+
+
+    # Fit
+    mod_fit_S3, _flag = do_fit(mod_init_S3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit1')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_S3(_ll)+lc)
+
+
+    log.debug('Fitting [FeIII]...')
+
+    # Parameters
+    name = ['4658', '4988']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
+    vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value]
+    mod_init_Fe3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+
+    if kinematic_ties_on:
+        mod_init_Fe3['4658'].v0.fixed = True
+        mod_init_Fe3['4658'].vd.fixed = True
+        mod_init_Fe3['4988'].v0.fixed = True
+        mod_init_Fe3['4988'].vd.fixed = True
+
+
+
+
+    # Fit
+    mod_fit_Fe3, _flag = do_fit(mod_init_Fe3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit1')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_Fe3(_ll)+lc)
+
+
+
+
+
+    log.debug('Fitting [ArIV]...')
+
+    # Parameters
+    name = ['4740', '6434']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+
+    # Get local continuum
+    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
+
+    # Start model
+    mod_init_ArIV = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+
+    # Ties
+    if kinematic_ties_on:
+        mod_init_ArIV['4740'].v0.tied = lambda m: m['6434'].v0.value
+        mod_init_ArIV['4740'].vd.tied = lambda m: m['6434'].vd.value
+
+    # Fit
+    mod_fit_ArIV, _flag = do_fit(mod_init_ArIV, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit4')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_ArIV(_ll)+lc)
+
+
+
+    log.debug('Fitting [ClIII]...')# como plotar a linha de HeI pq no caso de Hg e Hb plota e nesse não?
+
+    # Parameters
+    name = ['5517','5539']
+    l0 = get_central_wavelength(name)
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    for il, ln in enumerate(name):
+        el_extra[ln]['vd_inst'] = _vd_inst[il]
+
+    # Get local continuum
+    #lc = el_extra[name[0]]['local_cont'] / np.abs(med)# talvez eu tenha que alterar algo aqui, quem sabe só estou pegando um contínuo
+    lc = np.ma.zeros(len(_ll))
+    lc.mask = True
+    for n in name:
+        fc = ~el_extra[n]['local_cont'].mask
+        lc[fc] = el_extra[n]['local_cont'][fc]
+        lc.mask[fc] = False
+    lc /= np.abs(med)
+
+    # Start model
+    mod_init_Cl3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+
+
+    if kinematic_ties_on:
+        mod_init_Cl3['5517'].v0.tied = lambda m: m['5539'].v0.value
+        mod_init_Cl3['5517'].vd.tied = lambda m: m['5539'].vd.value
+
+
+
+    # Fit
+    mod_fit_Cl3, _flag = do_fit(mod_init_Cl3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    for ln in name:
+        el_extra[ln]['flag'] = _flag
+
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('fit3')
+        plt.clf()
+        plt.plot(_ll, f_res)
+        plt.plot(_ll, mod_fit_Cl3(_ll)+lc)
+
+
 ########################################################################################################################################
 
     # Rescale by the median
-    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_Ne3, mod_fit_O2_weak]
+    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3]
     for model in el:
         for name in model.submodel_names:
             model[name].flux.value *= np.abs(med)
@@ -905,15 +1207,42 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_S2[n].flux, n, lines_windows)
 
-    name     = ['3869',        '3968']
-    linename = ['[NeIII]3869', '[NeIII]3968']
-    for n, ln in zip(name, linename):
-        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Ne3[n].flux, n, lines_windows)
+
 
     name     = ['7320',        '7330']
     linename = ['[OII]7320', '[OII]7330']
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O2_weak[n].flux, n, lines_windows)
+
+    name     = ['7135',        '7751']
+    linename = ['[ArIII]7135', '[ArIII]7751']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Ar3[n].flux, n, lines_windows)
+
+    name     = ['4658', '4988']
+    linename = ['[FeIII]4658', '[FeIII]4988']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Fe3[n].flux, n, lines_windows)
+
+    name     = ['3869', '3968']
+    linename = ['[NeIII]3869', '[NeIII]3968']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Ne3[n].flux, n, lines_windows)
+
+    name     = ['6434', '4740']
+    linename = ['[ArIV]6434', '[ArIV]4740']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_ArIV[n].flux, n, lines_windows)
+
+    name     = ['5517', '5539']
+    linename = ['[ClIII]5517', '[ClIII]5539']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Cl3[n].flux, n, lines_windows)
+
+    name     = ['6312', '9068']
+    linename = ['[SIII]6312', '[SIII]9068']
+    for n, ln in zip(name, linename):
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_S3[n].flux, n, lines_windows)
 
     el.append(el_extra)
 
