@@ -27,7 +27,8 @@ from pycasso2.segmentation import sum_spectra
 from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
 from pycasso2.dobby.utils import plot_el, read_summary_from_file, new_summary_elines
-from pycasso2.dobby import flags
+from pycasso2.dobby import flags as dobby_flags
+from pycasso2 import flags
 
 log.setLevel('DEBUG')
 
@@ -99,6 +100,7 @@ class DobbyAdapter(object):
             self.f_obs = c.f_obs[..., np.newaxis]
             self.f_syn = c.f_syn[..., np.newaxis]
             self.f_err = c.f_err[..., np.newaxis]
+            self.f_flag = c.f_flag[..., np.newaxis]
             self.Ny = c.Nzone
             self.Nx = 1
             self.y0 = 0
@@ -108,6 +110,7 @@ class DobbyAdapter(object):
             self.f_obs = c.f_obs
             self.f_syn = c.f_syn
             self.f_err = c.f_err
+            self.f_flag = c.f_flag
             self.Ny = c.Ny
             self.Nx = c.Nx
             self.y0 = c.y0
@@ -157,7 +160,7 @@ class DobbyAdapter(object):
 
         if elines is None:
             log.debug('Spaxel [%d, %d] flagged as no_data.' % (j, i))
-            self.El_flag[:, j, i] = flags.no_data
+            self.El_flag[:, j, i] = dobby_flags.no_data
             return
 
         self.El_F[:, j, i] = elines['El_F']
@@ -168,11 +171,9 @@ class DobbyAdapter(object):
         self.El_vdins[:, j, i] = elines['El_vdins']
         self.El_lcrms[:, j, i] = elines['El_lcrms']
         self.El_lc[:, j, i] = spec['total_lc']
-        
-        
+                
     def getIntegratedSpectra(self):
         if not self.correct_good_frac:
-            # ++++ Conferir shape f_obs com o debaixo
             f_obs = self._c.integ_f_obs
             f_syn = self._c.integ_f_syn
             f_err =  self._c.integ_f_err
@@ -182,31 +183,30 @@ class DobbyAdapter(object):
                                                   cov_factor_A=0.0, cov_factor_B=1.0)
             f_syn = np.tensordot(self.f_syn, self.integ_mask, axes=[[1, 2], [1, 2]])
             bad = (good_frac <= 0.5)
-            # ++++ ... com esse
             f_obs = np.ma.masked_where(bad, f_obs, copy=False).squeeze()
             f_syn = np.ma.masked_where(bad, f_syn, copy=False).squeeze()
             f_err = np.ma.masked_where(bad, f_err, copy=False).squeeze()
         f_res = f_obs - f_syn
         return f_res, f_syn, f_err
-
-            
+           
     def getArgs(self, j, i):
         f_obs = self.f_obs[:, j, i]
         f_syn = self.f_syn[:, j, i]
         f_err = self.f_err[:, j, i]
-        f_res = f_obs - f_syn
         if self.correct_good_frac:
-            gf = self._c.seg_good_frac
-            f_syn *= gf[:, 1, 1]
-            f_err *= gf[:, 1, 1]
+            gf = self._c.seg_good_frac[:, j, i]
+            f_obs *= gf
+            f_syn *= gf
+            f_err *= gf
+        f_res = f_obs - f_syn
+        f_flagged = ((flags.no_starlight & self.f_flag[:, j, i]) > 0)
+        f_res[f_flagged] = np.ma.masked
         return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
-    
     
     def __iter__(self):
         for j in range(self.Ny):
             for i in range(self.Nx):
                 yield self.getArgs(j, i)
-    
 ###############################################################################
 
 
@@ -244,7 +244,6 @@ def get_suffix(model, kinematic_ties_on, balmer_limit_on):
 # Multiprocessing functions
 def fit_spaxel_kwargs(j, i, f_res, f_syn, f_err, v_0, v_d, kwargs):
     return fit_spaxel(j, i, f_res, f_syn, f_err, v_0, v_d, **kwargs)
-
 ###############################################################################
 
 
@@ -254,6 +253,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                ll, vd_inst,
                kinematic_ties_on, balmer_limit_on, model,
                degree, debug, display_plot):
+    
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
         log.debug('Skipping masked spaxel [%d, %d]' % (iy, ix))
@@ -271,15 +271,16 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
             log.debug('Corrupt result file (%s), removing and repeating the fit.')
             unlink(outfile)
 
+    # Using stellar v0 and vd from the integrated spectrum is usually safer
     log.info('Fitting spaxel [%d, %d]' % (iy, ix))
-    el = fit_strong_lines(ll, f_res, f_syn, f_err,vd_inst =vd_inst,
-                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model = model,
+    el = fit_strong_lines(ll, f_res, f_syn, f_err, vd_inst=vd_inst,
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
-                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd)
+                          vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=da.integ_v_d)
     elines, spec = new_summary_elines(el)
     if debug:
         fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
-        fig.savefig( path.join(tmpdir, '%s.pdf' % name))
+        fig.savefig(path.join(tmpdir, '%s.pdf' % name))
 
     return iy, ix, elines, spec
 ###############################################################################
@@ -316,7 +317,7 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
     elines, spec = new_summary_elines(el)
     if debug:
         fig = plot_el(da.ll, f_res, el, ifig = 0, display_plot = display_plot)
-        fig.savefig( path.join(tmpdir, '%s.pdf' % name))
+        fig.savefig(path.join(tmpdir, '%s.pdf' % name))
 
     return elines, spec
 ###############################################################################
@@ -371,7 +372,6 @@ if __name__ == '__main__':
         log.info('Saving integrated spectrum fit.')
         da._c._EL_integ[:] = integ_elines.as_array()
         da._c.EL_integ_continuum[:] = integ_spec['total_lc']
-
     
     
     kwargs = {'suffix' : suffix,
@@ -386,7 +386,6 @@ if __name__ == '__main__':
               'debug' : args.debug,
               'display_plot' : args.displayPlots,
              }
-
     
     queue_length = args.queueLength
     if queue_length <= 0:
