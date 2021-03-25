@@ -217,12 +217,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[n] = {'linename' : ln}
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
+    
     # Remove emission lines detected to calculate the continuum with Legendre polynomials
     lc = np.ma.masked_array(np.zeros_like(_ll))
     flag_lc = np.ones(len(_ll), 'bool')
 
-    print('Using stellar v0 = %.2f, vd = %.2f to mask out emission lines for the pseudocontinuum fit.', (stellar_v0, stellar_vd))
+    print('Using stellar v0 = %.2f, vd = %.2f to mask out emission lines for the pseudocontinuum fit.' % (stellar_v0, stellar_vd))
     l_cen = l0 * (1. + stellar_v0 / c)
     sig_l = l0 * (stellar_vd / c)
     Nsig = 4
@@ -399,7 +399,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
-
+    
     # Continuum for [OI]6300 - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
@@ -479,8 +479,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
-
-
+    
+    
 
     # Continuum only for [FeIII]4658 - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4658', lines_windows, degree=degree)
@@ -820,7 +820,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     l0 = get_central_wavelength(name)
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
-        el_extra[ln]['vd_inst'] = _vd_inst[il]
+        el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
     # Get local continuum
     lc = el_extra[name[0]]['local_cont'] / np.abs(med)
@@ -831,7 +831,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Fit
     mod_fit_O1, _flag = do_fit(mod_init_O1, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
-        el_extra[ln]['flag'] = _flag
+        el_extra[ln]['flag'] = _flag 
 
     if debug:
         import matplotlib.pyplot as plt
@@ -960,7 +960,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     # Ties
     mod_init_Ar3['7135'].flux.tied = lambda m: np.sqrt((1.40e-3/8.30e-2)) * m['7751'].flux
-
+    
 
     if kinematic_ties_on:
         mod_init_Ar3['7135'].v0.fixed = True
@@ -968,7 +968,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_Ar3['7751'].v0.fixed = True
         mod_init_Ar3['7751'].vd.fixed = True
 
-
+        
     # Fit
     mod_fit_Ar3, _flag = do_fit(mod_init_Ar3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
@@ -1120,8 +1120,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     if kinematic_ties_on:
         mod_init_Cl3['5517'].v0.tied = lambda m: m['5539'].v0.value
         mod_init_Cl3['5517'].vd.tied = lambda m: m['5539'].vd.value
-
-
+     
+  
 
     # Fit
     mod_fit_Cl3, _flag = do_fit(mod_init_Cl3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
