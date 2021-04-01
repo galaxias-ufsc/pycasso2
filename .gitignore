@@ -7,3 +7,4 @@ test
 build
 *.cfg
 *.so
+dobby_example-checkpoint.ipynb
