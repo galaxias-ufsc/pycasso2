@@ -11,8 +11,6 @@ import numpy as np
 import astropy.constants as const
 from astropy.modeling import Fittable1DModel, Parameter
 
-#from .profiles import gauss
-
 c = const.c.to('km/s').value
 
 
@@ -32,7 +30,6 @@ class Gaussian(Fittable1DModel):
 
     @staticmethod
     def evaluate(l, l0, flux, v0, vd, vd_inst):
-        #return gauss(l, l0, flux, v0, vd, vd_inst)
         v = c * (l - l0) / l0
         vd_obs2 = vd ** 2 + vd_inst ** 2
         sigma_l = np.sqrt(vd_obs2) * l0 / c
