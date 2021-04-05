@@ -26,7 +26,7 @@ from pycasso2 import FitsCube
 from pycasso2.segmentation import sum_spectra
 from pycasso2.config import default_config_path
 from pycasso2.dobby.fitting import fit_strong_lines
-from pycasso2.dobby.utils import plot_el, read_summary_from_file, new_summary_elines
+from pycasso2.dobby.utils import plot_el, read_summary_from_file, summary_elines
 from pycasso2.dobby import flags as dobby_flags
 from pycasso2 import flags
 
@@ -201,7 +201,7 @@ class DobbyAdapter(object):
         f_res = f_obs - f_syn
         f_flagged = ((flags.no_starlight & self.f_flag[:, j, i]) > 0)
         f_res[f_flagged] = np.ma.masked
-        return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
+        return j, i, f_res, f_syn, f_err, self.integ_v_0, self.integ_v_d
     
     def __iter__(self):
         for j in range(self.Ny):
@@ -242,8 +242,8 @@ def get_suffix(model, kinematic_ties_on, balmer_limit_on):
 
 ###############################################################################
 # Multiprocessing functions
-def fit_spaxel_kwargs(j, i, f_res, f_syn, f_err, v_0, v_d, kwargs):
-    return fit_spaxel(j, i, f_res, f_syn, f_err, v_0, v_d, **kwargs)
+def fit_spaxel_kwargs(j, i, f_res, f_syn, f_err, stellar_v0, stellar_vd, kwargs):
+    return fit_spaxel(j, i, f_res, f_syn, f_err, stellar_v0, stellar_vd, **kwargs)
 ###############################################################################
 
 
@@ -276,8 +276,8 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
     el = fit_strong_lines(ll, f_res, f_syn, f_err, vd_inst=vd_inst,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
-                          vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=da.integ_v_d)
-    elines, spec = new_summary_elines(el)
+                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd)
+    elines, spec = summary_elines(el)
     if debug:
         fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
         fig.savefig(path.join(tmpdir, '%s.pdf' % name))
@@ -314,7 +314,7 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=da.integ_v_d)
-    elines, spec = new_summary_elines(el)
+    elines, spec = summary_elines(el)
     if debug:
         fig = plot_el(da.ll, f_res, el, ifig = 0, display_plot = display_plot)
         fig.savefig(path.join(tmpdir, '%s.pdf' % name))
@@ -392,7 +392,7 @@ if __name__ == '__main__':
         queue_length = args.maxWorkers * 10
     log.info('Setting queue length to %d.' % queue_length)
     
-                    
+
     log.debug('Starting execution pool.')
     map_args = ((*a , kwargs) for a in da)
 
