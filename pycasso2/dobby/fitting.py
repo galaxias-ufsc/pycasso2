@@ -235,7 +235,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.figure('cont')
         plt.plot(_ll, f_res, 'b')
         plt.plot(_ll[flag_lc], f_res[flag_lc], 'k')
-        plt.plot(_ll, mod_fit_all(_ll), 'r')
+        #plt.plot(_ll, mod_fit_all(_ll), 'r')
 
 
     # Continuum only for Ha - Legendre for continuum, linear for rms (because Legendre may overfit the noise)
@@ -497,7 +497,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
 
-    # Continuum only for [SIII]6312 - Legendre for continuum, linear for rms
+    # Continuum for [SIII]6312 - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
     l, f, fw = local_continuum_linear(_ll, _f_res, '6312', lines_windows)
@@ -512,6 +512,31 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
 
+    # Continuum for [SIII]9068 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '9068', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['9068']
+    linename = ['[SIII]9068']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+    # Continuum for [SIII]6312 & [SIII]9068 combined
+    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
+    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l1, mask=~f1)
+    lc[f2] = l2[f2]
+    lc.mask[f2] = False
+    name     = ['6312', '9068']
+    linename = ['[SIII]6312', '[SIII]9068']
+    for n, ln in zip(name, linename):
+        el_extra[n]['local_cont'] = lc
 
     # Continuum only for [ClIII]5518 - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5517', lines_windows, degree=degree)
@@ -913,6 +938,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, mod_fit_O2_weak(_ll)+lc)
 
 
+ ########################################################################################################################################
     log.debug('Fitting [NeIII]...')
 
     # Parameters
@@ -940,7 +966,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_Ne3(_ll)+lc)
 
-
+########################################################################################################################################
     log.debug('Fitting [ArIII]')
 
     # Parameters
@@ -981,6 +1007,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_Ar3(_ll)+lc)
 
+########################################################################################################################################
     log.debug('Fitting [SIII]')
 
     # Parameters
@@ -1004,7 +1031,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_S3['9068'].v0.fixed = True
         mod_init_S3['9068'].vd.fixed = True
 
-
     # Fit
     mod_fit_S3, _flag = do_fit(mod_init_S3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
@@ -1012,12 +1038,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit1')
+        plt.figure('fit_s3')
         plt.clf()
         plt.plot(_ll, f_res)
         plt.plot(_ll, mod_fit_S3(_ll)+lc)
 
-
+########################################################################################################################################
     log.debug('Fitting [FeIII]...')
 
     # Parameters
