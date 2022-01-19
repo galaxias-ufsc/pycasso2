@@ -505,8 +505,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask[fc] = False
 
     # Continuum for [FeIII]4658 & [FeIII]4988 combined
-    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
-    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
+    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '4658', lines_windows, degree=degree)
+    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '4988', lines_windows, degree=degree)
     lc = np.ma.masked_array(l1, mask=~f1)
     lc[f2] = l2[f2]
     lc.mask[f2] = False
@@ -578,10 +578,10 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc.mask[fc] = False
 
     # Continuum for [OI]6300, [OI]6364, [SIII]6312 & [SIII]9068 combined
-    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
-    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
-    l3, f3, fw3 = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
-    l4, f4, fw4 = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
+    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
+    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6364', lines_windows, degree=degree)
+    l3, f3, fw3 = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
+    l4, f4, fw4 = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
     lc = np.ma.masked_array(l1, mask=~f1)
     lc[f2] = l2[f2]
     lc.mask[f2] = False
@@ -589,8 +589,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc.mask[f3] = False
     lc[f4] = l3[f4]
     lc.mask[f4] = False
-    name     = ['9068', '6312', '6300', '6300']
-    linename = ['[SIII]9068', '[SIII]6312', '[OI]6300',' [OI]6364']
+    name     = ['9068', '6312', '6364', '6300']
+    linename = ['[SIII]9068', '[SIII]6312',' [OI]6364', '[OI]6300']
     for n, ln in zip(name, linename):
         el_extra[n]['local_cont'] = lc
 ###########################################################################################################################################################
