@@ -200,10 +200,10 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
 
     fig = plt.figure(ifig, figsize=(12,6))
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, mod_fit_S3, el_extra = el
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1_S3, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, el_extra = el
 
     # Start full spectrum
-    m  = np.full_like(ll, np.nan)
+    m = np.full_like(ll, np.nan)
     l = np.full_like(ll, np.nan)
 
     # Get full spectrum
@@ -247,7 +247,7 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
                      horizontalalignment='right',
                      verticalalignment='top',
                      transform=ax2.transAxes)
-    
+
         # Plot Hbeta
         ax3 = plt.subplot(gs[1, 1])
         #flag = (ll >= 4750) & (ll < 4950)
