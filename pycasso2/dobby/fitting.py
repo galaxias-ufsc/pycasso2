@@ -31,6 +31,9 @@ def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug
     # Select a line from our red/blue continua table
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
 
+    assert (lines_windows[flag_line]['blue1'] < lines_windows[flag_line]['blue2']), f'@@> Check blue cont lambda for {linename}: {lines_windows[flag_line]["blue1"][0]} >= {lines_windows[flag_line]["blue2"][0]}'
+    assert (lines_windows[flag_line]['red1'] < lines_windows[flag_line]['red2']), f'@@> Check red cont lambda for {linename}: {lines_windows[flag_line]["red1"][0]} >= {lines_windows[flag_line]["red2"][0]}'
+ 
     # Select window for Legendre polynomial fit
     flag_lc = (~_f_res.mask) & (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
 
@@ -70,6 +73,9 @@ def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuu
     # Select a line from our red/blue continua table
     flag_line = ( np.char.mod('%d', lines_windows['namel']) == linename)
 
+    assert (lines_windows[flag_line]['blue1'] < lines_windows[flag_line]['blue2']), f'@@> Check blue cont lambda for {linename}: {lines_windows[flag_line]["blue1"][0]} >= {lines_windows[flag_line]["blue2"][0]}'
+    assert (lines_windows[flag_line]['red1'] < lines_windows[flag_line]['red2']), f'@@> Check red cont lambda for {linename}: {lines_windows[flag_line]["red1"][0]} >= {lines_windows[flag_line]["red2"][0]}'
+    
     def safe_median(x, l, l1, l2):
         mask = (l >= l1) & (l <= l2)
         if mask.any():
