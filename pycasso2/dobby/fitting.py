@@ -467,13 +467,14 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     
     
 
+###########################################################################################################################################################
     # Continuum only for [FeIII]4658 - Legendre for continuum, linear for rms
     l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4658', lines_windows, degree=degree)
     lc = np.ma.masked_array(l, mask=~f)
     l, f, fw = local_continuum_linear(_ll, _f_res, '4658', lines_windows)
     lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4658', '4988' ]
-    linename = ['[FeIII]4658' , '[FeIII]4988']
+    name     = ['4658']
+    linename = ['[FeIII]4658']
     for n, ln in zip(name, linename):
         el_extra[n] = { 'linename'   : ln ,
                         'local_cont' : lc ,
@@ -481,6 +482,32 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     fc = ~lc.mask
     total_lc[fc] = lc[fc]
     total_lc.mask[fc] = False
+
+    # Continuum only for [FeIII]4658 - Legendre for continuum, linear for rms
+    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4988', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l, mask=~f)
+    l, f, fw = local_continuum_linear(_ll, _f_res, '4988', lines_windows)
+    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+    name     = ['4988' ]
+    linename = ['[FeIII]4988']
+    for n, ln in zip(name, linename):
+        el_extra[n] = { 'linename'   : ln ,
+                        'local_cont' : lc ,
+                        'rms_lc'     : lc_rms  }
+    fc = ~lc.mask
+    total_lc[fc] = lc[fc]
+    total_lc.mask[fc] = False
+
+    # Continuum for [FeIII]4658 & [FeIII]4988 combined
+    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
+    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
+    lc = np.ma.masked_array(l1, mask=~f1)
+    lc[f2] = l2[f2]
+    lc.mask[f2] = False
+    name     = ['4658', '4988']
+    linename = ['[FeIII]4658', '[FeIII]4988']
+    for n, ln in zip(name, linename):
+        el_extra[n]['local_cont'] = lc   ###########################################################################################################################################################
 
 
 ###########################################################################################################################################################
