@@ -190,7 +190,7 @@ def plot_el_starlight(ts, el, save = False, display_plot = True):
     plot_el(ll, f_res, el, display_plot = display_plot)
 
 
-def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = False):
+def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = False, mark_lines = False):
     import matplotlib
     if not display_plot:
         matplotlib.use('pdf')
@@ -200,19 +200,18 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
 
     fig = plt.figure(ifig, figsize=(12,6))
 
-    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1_S3, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3, el_extra = el
+    mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3, el_extra = el
 
     # Start full spectrum
-    m = np.full_like(ll, np.nan)
+    m = np.zeros_like(ll) #, np.nan)
     l = np.full_like(ll, np.nan)
 
     # Get full spectrum
     for e in el[:-1]:
-        lc = el_extra[e.submodel_names[0]]['local_cont']
-        good_fit = el_extra[e.submodel_names[0]]['flag'] == 0
-        flag = ~lc.mask
-        m[flag] = e(ll[flag]) + lc[flag]
-        l[flag] = lc[flag]
+        m += e(ll)
+
+    l = el_extra['total_lc']
+    m += l
     
     # Write fluxes in FHa units
     FHa =  mod_fit_HaN2['6563'].flux.value
@@ -227,6 +226,10 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
         plt.plot(ll, m, 'r', label = 'Fit', drawstyle = 'steps-mid')
         plt.plot(ll, l, 'grey', label = 'Local continuum', drawstyle = 'steps-mid', zorder=-1, alpha=0.5)
         plt.legend(loc = 'upper right')
+        if mark_lines:
+            for e in el[:-1]:
+                for name in e.submodel_names:
+                    plt.axvline(e[name].l0.value, ls=':', color='gray')
         plt.ylabel(r'$F_\lambda$ [$10^{-17}$ $\mathrm{erg \; s}^{-1} \; \mathrm{\AA}^{-1} \; \mathrm{cm}^{-2}$]')
         plt.xlabel(r'$\lambda$ [$\mathrm{\AA}$]')
 

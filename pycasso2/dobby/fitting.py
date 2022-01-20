@@ -34,8 +34,14 @@ def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug
     assert (lines_windows[flag_line]['blue1'] < lines_windows[flag_line]['blue2']), f'@@> Check blue cont lambda for {linename}: {lines_windows[flag_line]["blue1"][0]} >= {lines_windows[flag_line]["blue2"][0]}'
     assert (lines_windows[flag_line]['red1'] < lines_windows[flag_line]['red2']), f'@@> Check red cont lambda for {linename}: {lines_windows[flag_line]["red1"][0]} >= {lines_windows[flag_line]["red2"][0]}'
  
+    # Get the blue and red continua
+    flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
+    flag_red  = (_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    flag_cont = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    flag_windows = (flag_blue) | (flag_red)
+
     # Select window for Legendre polynomial fit
-    flag_lc = (~_f_res.mask) & (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
+    flag_lc = (~_f_res.mask) & (flag_cont)
 
     # Deal with completely masked windows
     if (np.count_nonzero(flag_lc) == 0):
@@ -60,12 +66,7 @@ def local_continuum_legendre(_ll, _f_res, linename, lines_windows, degree, debug
             plt.plot(_ll[flag_lc], np.polynomial.legendre.legval(x, coeffs), '.-', label="Degree=%i"%degree)
             plt.legend()
             plt.xlim(lines_windows[flag_line]['blue1'], lines_windows[flag_line][ 'red2'])
-
-    # Get the blue and red continua
-    flag_blue = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line]['blue2'])
-    flag_red  = (_ll >= lines_windows[flag_line][ 'red1']) & (_ll <= lines_windows[flag_line][ 'red2'])
-    flag_cont = (_ll >= lines_windows[flag_line]['blue1']) & (_ll <= lines_windows[flag_line][ 'red2'])
-    flag_windows = (flag_blue) | (flag_red)
+            plt.show()
 
     return local_cont, flag_cont, flag_windows
 
@@ -124,8 +125,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False,
                      stellar_v0=0., stellar_vd=100.,
+                     use_running_mean = False, N_running_mean = 50, N_clip = 1e30,
+                     hii_ties_on = False,
                      **kwargs):
 
+    #############################################################################################################
+    # Check options and files
     if lines_windows_file is None:
         lines_windows = Table.read(path.join(path.dirname(__file__), 'lines.dat'), format = 'ascii.commented_header')
     else:
@@ -139,8 +144,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         elModel = MultiGaussian
     else:
         raise Exception('@@> No model found. Giving up.')
+    #############################################################################################################
 
-
+    #############################################################################################################
+    # Useful functions
+    
     # Get central wavelength for each line
     def get_central_wavelength(name):
         l0 = np.zeros(len(name))
@@ -199,7 +207,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             return flags.bad_fit
         else:
             return 0
+    #############################################################################################################
 
+    #############################################################################################################
+    # Pseudo-continuum tricks
+    
     # Normalize spectrum by the median, to avoid problems in the fit
     med = np.median(np.ma.array(_f_syn).compressed())
     if not np.isfinite(med):
@@ -231,437 +243,101 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     print('Using stellar v0 = %.2f, vd = %.2f to mask out emission lines for the pseudocontinuum fit.' % (stellar_v0, stellar_vd))
     l_cen = l0 * (1. + stellar_v0 / c)
     sig_l = l0 * (stellar_vd / c)
-    Nsig = 4
+    Nsig = 5
     for _l_cen, _sig_l in zip(l_cen, sig_l):
         flag_line = (_ll >= (_l_cen - Nsig * _sig_l)) & (_ll <= (_l_cen + Nsig * _sig_l))
         flag_lc[flag_line] = False
-    _f_res_lc = np.ma.masked_array(_f_res, mask=~flag_lc)
+    _f_res_lc = np.ma.masked_array(_f_res.copy(), mask=~flag_lc)
+
+    # Interpolate _f_res_lc where it is masked out
+    nans, x = _f_res_lc.mask, lambda z: z.nonzero()[0]
+    _f_res_lc[nans]= np.interp(x(nans), x(~nans), _f_res_lc[~nans])
+
+    debug = False
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('cont')
+        plt.figure('cont1')
         plt.plot(_ll, f_res, 'b')
         plt.plot(_ll[flag_lc], f_res[flag_lc], 'k')
-        #plt.plot(_ll, mod_fit_all(_ll), 'r')
 
 
-    # Continuum only for Ha - Legendre for continuum, linear for rms (because Legendre may overfit the noise)
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6563', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '6563', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['6563',   '6548',      '6584']
-    linename = ['Halpha', '[NII]6548', '[NII]6584' ]
+    
+    # Calc a running mean for clipping
+    # https://stackoverflow.com/questions/6518811/interpolate-nan-values-in-a-numpy-array
+    from scipy.ndimage.filters import uniform_filter1d
+    _aux = uniform_filter1d(_f_res_lc, size=N_running_mean)
+    running_mean = np.ma.masked_array(_aux, _f_res_lc.mask)
+    running_mean.mask[_ll > 9200] = True
+    
+    # Get continuum for each emission lines:
+    # Legendre for continuum, linear for rms (because Legendre may overfit the noise)
     for n, ln in zip(name, linename):
+        l, f, fw = local_continuum_linear(_ll, _f_res, n, lines_windows)
+        lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
+
+        # Clipping where the continuum - running mean is greater than N_clip * rms
+        flag_clip = (f) & (np.abs(f_res - running_mean) > (N_clip * lc_rms))
+        _f_res_lc.mask[flag_clip] = True
+        running_mean.mask[flag_clip] = True
+
+        if use_running_mean:
+            l, f, fw = local_continuum_legendre(_ll, running_mean, n, lines_windows, degree=degree)
+        else:
+            l, f, fw = local_continuum_legendre(_ll, _f_res_lc, n, lines_windows, degree=degree)
+
+        # Save local continuum for each line
+        lc = np.ma.masked_array(l, mask=~f)
         el_extra[n] = { 'linename'   : ln ,
                         'local_cont' : lc ,
                         'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-########################################################################################################################################################
-    # Continuum only for [NII]weak - Legendre for continuum, linear for rms (because Legendre may overfit the noise)
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5755', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '5755', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['5755'     ]
-    linename = ['[NII]5755']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-####################################################################################################################################################
-
-
-    # Continuum for Hb - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4861', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4861', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4861'  ]
-    linename = ['Hbeta' ]
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum for Hg - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4340', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4340', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4340'   ]
-    linename = ['Hgamma' ]
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum only for [OIII]5007 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5007', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '5007', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4959',       '5007']
-    linename = ['[OIII]4959', '[OIII]5007']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-
-#########################################################################################################################################################
-
-    # Continuum only for [OIII]weak - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4363', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4363', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4363', '4288', '4360', '4356']
-    linename = ['[OIII]4363', '[FeII]4288', '[FeII]4360', '[FeII]4356']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-
-    # Continuum only for [HeII]4686 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4686', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4686', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4686'      ]
-    linename = ['[HeII]4686']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum only for [HeI]5876 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5876', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '5876', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['5876'      ]
-    linename = ['[HeI]5876' ]
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum only for [SIII]9068 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '9068', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['9068'      ]
-    linename = ['[SIII]9068' ]
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-##########################################################################################################################################################
-
-
-
-    # Continuum only for [OII]3726 - linear - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '3726', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '3726', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['3726'     , '3729'      ]
-    linename = ['[OII]3726', '[OII]3729' ]
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
         
-    # Continuum only for [SII]6716 - linear - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6716', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '6716', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['6716'     , '6731'      ]
-    linename = ['[SII]6716', '[SII]6731' ]
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
+        # Add this local continuum to total pseudocontinuum
+        fc = ~lc.mask
+        total_lc[fc] = lc[fc]
+        total_lc.mask[fc] = False
 
-
-###########################################################################################################################################################
-    # Continuum only for [NeIII]3869 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '3869', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '3869', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['3869'       , '3968']
-    linename = ['[NeIII]3869', '[NeIII]3968']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-
-    # Continuum only for [OII]7330 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '7330', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '7330', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['7320'       , '7330']
-    linename = ['[OII]7320', '[OII]7330']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-
-
-    # Continuum only for [ArIII]7135 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '7135', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '7135', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['7135'       , '7751']
-    linename = ['[ArIII]7135', '[ArIII]7751']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-    
-    
-
-###########################################################################################################################################################
-    # Continuum only for [FeIII]4658 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4658', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4658', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4658']
-    linename = ['[FeIII]4658']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum only for [FeIII]4658 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4988', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4988', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4988' ]
-    linename = ['[FeIII]4988']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum for [FeIII]4658 & [FeIII]4988 combined
-    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '4658', lines_windows, degree=degree)
-    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '4988', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l1, mask=~f1)
-    lc[f2] = l2[f2]
-    lc.mask[f2] = False
-    name     = ['4658', '4988']
-    linename = ['[FeIII]4658', '[FeIII]4988']
-    for n, ln in zip(name, linename):
-        el_extra[n]['local_cont'] = lc   ###########################################################################################################################################################
-
-
-###########################################################################################################################################################
-    # Continuum for [OI]6300 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '6300', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['6300']
-    linename = ['[OI]6300']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum for [OI]6364 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6364', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '6364', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['6364']
-    linename = ['[OI]6364']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
- 
-    # Continuum for [SIII]6312 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '6312', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['6312']
-    linename = ['[SIII]6312']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum for [SIII]9068 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '9068', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['9068']
-    linename = ['[SIII]9068']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum for [OI]6300, [OI]6364, [SIII]6312 & [SIII]9068 combined
-    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6300', lines_windows, degree=degree)
-    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6364', lines_windows, degree=degree)
-    l3, f3, fw3 = local_continuum_legendre(_ll, _f_res_lc, '6312', lines_windows, degree=degree)
-    l4, f4, fw4 = local_continuum_legendre(_ll, _f_res_lc, '9068', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l1, mask=~f1)
-    lc[f2] = l2[f2]
-    lc.mask[f2] = False
-    lc[f3] = l3[f3]
-    lc.mask[f3] = False
-    lc[f4] = l3[f4]
-    lc.mask[f4] = False
-    name     = ['9068', '6312', '6364', '6300']
-    linename = ['[SIII]9068', '[SIII]6312',' [OI]6364', '[OI]6300']
-    for n, ln in zip(name, linename):
-        el_extra[n]['local_cont'] = lc
-###########################################################################################################################################################
-
-    # Continuum only for [ClIII]5518 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '5517', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '5517', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['5517', '5539']
-    linename = ['[ClIII]5517', '[ClIII]5539']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-
-
-###########################################################################################################################################################
-    # Continuum only for [ArIV]6434 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '6434', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '6434', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['6434']
-    linename = ['[ArIV]6434']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum only for [ArIV]4740 - Legendre for continuum, linear for rms
-    l, f, fw = local_continuum_legendre(_ll, _f_res_lc, '4740', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l, mask=~f)
-    l, f, fw = local_continuum_linear(_ll, _f_res, '4740', lines_windows)
-    lc_rms = np.ma.std((_f_res - l)[(f)&(fw)])
-    name     = ['4740']
-    linename = ['[ArIV]4740']
-    for n, ln in zip(name, linename):
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
-    fc = ~lc.mask
-    total_lc[fc] = lc[fc]
-    total_lc.mask[fc] = False
-
-    # Continuum for [ArIV]6434 & [ArIV]4740 combined
-    l1, f1, fw2 = local_continuum_legendre(_ll, _f_res_lc, '4740', lines_windows, degree=degree)
-    l2, f2, fw2 = local_continuum_legendre(_ll, _f_res_lc, '6434', lines_windows, degree=degree)
-    lc = np.ma.masked_array(l1, mask=~f1)
-    lc[f2] = l2[f2]
-    lc.mask[f2] = False
-    name     = ['4740', '6434']
-    linename = ['[ArIV]4740', '[ArIV]6434']
-    for n, ln in zip(name, linename):
-        el_extra[n]['local_cont'] = lc     
-###########################################################################################################################################################
-
-
-
-##########################################################################################################################################################
-
-
+    # Save the total pseudocontinuum
     el_extra['total_lc'] = total_lc
 
+    if debug:
+        import matplotlib.pyplot as plt
+        plt.figure('cont', figsize=(15,10))
+        plt.clf()
+
+        plt.suptitle(f'use_running_mean = {use_running_mean}, N_running_mean = {N_running_mean}, N_clip = {N_clip}')
+
+        plt.subplot(221)
+        plt.plot(_ll, f_res, 'tab:blue')
+        plt.plot(_ll, total_lc, 'tab:orange')
+        plt.ylim(-0.1, 0.4)
+        plt.xlim(4500, 5200)
+
+        plt.subplot(222)
+        plt.plot(_ll, f_res, 'tab:blue')
+        plt.plot(_ll, total_lc, 'tab:orange')
+        plt.ylim(-0.1, 0.4)
+        plt.xlim(5500, 6500)
+        
+        plt.subplot(223)
+        plt.plot(_ll, f_res, 'tab:blue')
+        plt.plot(_ll, total_lc, 'tab:orange')
+        plt.ylim(-0.1, 0.4)
+        plt.xlim(8800, 9300)
+
+        plt.subplot(224)
+        plt.plot(_ll, f_res, 'tab:blue')
+        plt.plot(_ll, _f_res_lc, 'tab:red')
+        #plt.plot(_ll, running_mean)
+        plt.plot(_ll, total_lc, 'tab:orange')
+        #plt.plot(_ll[flag_line], _f_res_lc.data[flag_line], 'r')
+        
+        plt.show()
+    #############################################################################################################
+
+
+    #############################################################################################################
+    # Start line fitting
+    
     log.debug('Fitting Ha and [NII]...')
 
     # Parameters
@@ -671,33 +347,33 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
     mod_init_HaN2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
-    mod_init_HaN2['6584'].flux.tied = lambda m: 3 * m['6548'].flux
+    # From pyneb: [N II] F6584/F6548 =  2.9421684623736306 n_ii_atom_FFT04.dat
+    mod_init_HaN2['6584'].flux.tied = lambda m: 2.94 * m['6548'].flux
     if kinematic_ties_on:
         mod_init_HaN2['6548'].v0.tied = lambda m: m['6584'].v0.value
         mod_init_HaN2['6548'].vd.tied = lambda m: m['6584'].vd.value
 
     # Fit
-    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, total_lc, f_res, f_err * 6563**5/_ll**5, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = np.int(_flag)
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit1')
+        plt.figure('fit_HaN2')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_HaN2(_ll)+lc)
+        plt.plot(_ll, mod_fit_HaN2(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
 
-#################################################################################################################################################
-
-    log.debug('Fitting [NII]weak [HeII] and [HeI]...')# como plotar a linha de HeI pq no caso de Hg e Hb plota e nesse não?
+    #############################################################################################################
+    log.debug('Fitting [NII]weak [HeII] and [HeI]...')
 
     # Parameters
     name = ['5755','4686', '5876']
@@ -706,10 +382,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    #lc = el_extra[name[0]]['local_cont'] / np.abs(med)# talvez eu tenha que alterar algo aqui, quem sabe só estou pegando um contínuo
-    lc = np.ma.zeros(len(_ll))
-    lc.mask = True
     for n in name:
         fc = ~el_extra[n]['local_cont'].mask
         lc[fc] = el_extra[n]['local_cont'][fc]
@@ -719,7 +391,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Start model
     mod_init_N2He2He1 = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6584'].v0.value, vd=mod_fit_HaN2['6584'].vd.value, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
 
-
     if kinematic_ties_on:
         mod_init_N2He2He1['5755'].v0.fixed = True
         mod_init_N2He2He1['5755'].vd.fixed = True
@@ -727,21 +398,21 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_N2He2He1['4686'].vd.tied = lambda m: m['5876'].vd.value
 
     # Fit
-    mod_fit_N2He2He1, _flag = do_fit(mod_init_N2He2He1, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_N2He2He1, _flag = do_fit(mod_init_N2He2He1, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit3')
+        plt.figure('fit_N2He2He1')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_N2He2He1(_ll)+lc)
+        plt.plot(_ll, mod_fit_N2He2He1(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
 
-###########################################################################################################################################
-
-
-
+    #############################################################################################################
     log.debug('Fitting Hb and Hg...')
 
     # Parameters
@@ -750,15 +421,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    # Get local continuum for Hb ang Hg
-    lc = np.ma.zeros(len(_ll))
-    lc.mask = True
-    for n in name:
-        fc = ~el_extra[n]['local_cont'].mask
-        lc[fc] = el_extra[n]['local_cont'][fc]
-        lc.mask[fc] = False
-    lc /= np.abs(med)
 
     # Start model
     # Fitting Hg too because the single model has a problem,
@@ -777,17 +439,21 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_HbHg['4340'].flux.max = mod_fit_HaN2['6563'].flux / 5.5
 
     # Fit
-    mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit2')
+        plt.figure('fit_HbHg')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_HbHg(_ll)+lc)
-
+        plt.plot(_ll, mod_fit_HbHg(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
+        
+    #############################################################################################################
     log.debug('Fitting [OIII]...')
 
     # Parameters
@@ -797,50 +463,42 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
     mod_init_O3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
-    mod_init_O3['5007'].flux.tied = lambda m: 2.97 * m['4959'].flux
+    # From pyneb: [O III] F5007/F4959 =  2.983969006971861 o_iii_atom_FFT04-SZ00.dat
+    mod_init_O3['5007'].flux.tied = lambda m: 2.98 * m['4959'].flux
     if kinematic_ties_on:
         mod_init_O3['4959'].v0.tied = lambda m: m['5007'].v0.value
         mod_init_O3['4959'].vd.tied = lambda m: m['5007'].vd.value
 
     # Fit
-    mod_fit_O3, _flag = do_fit(mod_init_O3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_O3, _flag = do_fit(mod_init_O3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit3')
+        plt.figure('fit_O3')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_O3(_ll)+lc)
-
-###########################################################################################################################################
-
-
+        plt.plot(_ll, mod_fit_O3(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+        plt.xlim(4500, 5500)
+        plt.ylim(-0.1, 1)
+    #############################################################################################################
+    
+    #############################################################################################################
     log.debug('Fitting [OIII]weak...')
 
-    #parameters
-    name = ['4363', '4288', '4360', '4356'] # tentar com um modelo simples gaussiano?
+    # Parameters
+    name = ['4363', '4288', '4360', '4356']
     l0 = get_central_wavelength(name)
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    # Get local continuum for OIIIweak
-    lc = np.ma.zeros(len(_ll))
-    lc.mask = True
-    for n in name:
-        fc = ~el_extra[n]['local_cont'].mask
-        lc[fc] = el_extra[n]['local_cont'][fc]
-        lc.mask[fc] = False
-    lc /= np.abs(med)
 
     v0 = [mod_fit_O3['5007'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value]
     vd = [mod_fit_O3['5007'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value]
@@ -857,25 +515,22 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_O3_weak['4356'].v0.fixed = True
         mod_init_O3_weak['4356'].vd.fixed = True
 
-
-
     # Fit
-    mod_fit_O3_weak, _flag = do_fit(mod_init_O3_weak, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_O3_weak, _flag = do_fit(mod_init_O3_weak, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit3')
+        plt.figure('fit_O3weak')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_O3_weak(_ll)+lc)
-
-
-
-################################################################################################################################################
-
-
+        plt.plot(_ll, mod_fit_O3_weak(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
+    
+    #############################################################################################################
     log.debug('Fitting [OII]...')
 
     # Parameters
@@ -884,9 +539,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
     mod_init_O2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
@@ -897,19 +549,21 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_O2['3726'].vd.tied = lambda m: m['3729'].vd.value
 
     # Fit
-    mod_fit_O2, _flag = do_fit(mod_init_O2, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_O2, _flag = do_fit(mod_init_O2, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit4')
+        plt.figure('fit_O2')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_O2(_ll)+lc)
+        plt.plot(_ll, mod_fit_O2(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')    
+    #############################################################################################################
 
-
-################################################################################################################################################
+    #############################################################################################################
     log.debug('Fitting [SII]...')
 
     # Parameters
@@ -931,37 +585,29 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_S2['6716'].vd.tied = lambda m: m['6731'].vd.value
 
     # Fit
-    mod_fit_S2, _flag = do_fit(mod_init_S2, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_S2, _flag = do_fit(mod_init_S2, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit6')
+        plt.figure('fit_S2')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_S2(_ll)+lc)
-
-
-########################################################################################################################################
+        plt.plot(_ll, mod_fit_S2(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')  
+    #############################################################################################################
+    
+    #############################################################################################################
     log.debug('Fitting [OII]weak...')
 
-    #parameters
-    name = ['7320', '7330'] # tentar com um modelo simples gaussiano?
+    # Parameters
+    name = ['7320', '7330']
     l0 = get_central_wavelength(name)
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    # Get local continuum for OIIIweak
-    lc = np.ma.zeros(len(_ll))
-    lc.mask = True
-    for n in name:
-        fc = ~el_extra[n]['local_cont'].mask
-        lc[fc] = el_extra[n]['local_cont'][fc]
-        lc.mask[fc] = False
-    lc /= np.abs(med)
-
 
     mod_init_O2_weak = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
@@ -970,20 +616,34 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_O2_weak['7320'].v0.tied = lambda m: m['7330'].v0.value
         mod_init_O2_weak['7320'].vd.tied = lambda m: m['7330'].vd.value
 
+    # From pyneb:
+    # [O II] F7330/F7320 den=1e0 =  0.8860478527312622 o_ii_atom_FFT04.dat
+    # [O II] F7330/F7320 den=1e2 =  0.859372406330488 o_ii_atom_FFT04.dat
+    # [O II] F7330/F7320 den=1e4 =  0.6736464205478534 o_ii_atom_FFT04.dat
+    # [O II] F7330/F7320 den=1e6 =  0.639507406844097 o_ii_atom_FFT04.dat
+    # 0.86 is a good guess for H II regions / SF galaxies
+    hii_ties_on = True
+    if hii_ties_on:
+        mod_init_O2_weak['7330'].flux.tied = lambda m: 0.86 * m['7320'].flux
+
     # Fit
-    mod_fit_O2_weak, _flag = do_fit(mod_init_O2_weak, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_O2_weak, _flag = do_fit(mod_init_O2_weak, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit8')
+        plt.figure('fit_O2weak')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_O2_weak(_ll)+lc)
+        plt.plot(_ll, mod_fit_O2_weak(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+        plt.xlim(7300, 7400)
+        plt.ylim(-0.1, 0.4)
+    #############################################################################################################
 
-
- ########################################################################################################################################
+    #############################################################################################################
     log.debug('Fitting [NeIII]...')
 
     # Parameters
@@ -993,25 +653,25 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
     mod_init_Ne3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Fit
-    mod_fit_Ne3, _flag = do_fit(mod_init_Ne3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_Ne3, _flag = do_fit(mod_init_Ne3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit5')
+        plt.figure('fit_Ne3')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_Ne3(_ll)+lc)
+        plt.plot(_ll, mod_fit_Ne3(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
 
-########################################################################################################################################
+    #############################################################################################################
     log.debug('Fitting [ArIII]')
 
     # Parameters
@@ -1021,17 +681,14 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
     v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
     vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value]
     mod_init_Ar3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
-    mod_init_Ar3['7135'].flux.tied = lambda m: np.sqrt((1.40e-3/8.30e-2)) * m['7751'].flux
-    
+    # From pyneb: [Ar III] F7135/F7751 = 4.1443010868494 ar_iii_atom_MB09.dat
+    mod_init_Ar3['7135'].flux.tied = lambda m: 4.14 * m['7751'].flux
 
     if kinematic_ties_on:
         mod_init_Ar3['7135'].v0.fixed = True
@@ -1039,21 +696,26 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_Ar3['7751'].v0.fixed = True
         mod_init_Ar3['7751'].vd.fixed = True
 
-        
     # Fit
-    mod_fit_Ar3, _flag = do_fit(mod_init_Ar3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_Ar3, _flag = do_fit(mod_init_Ar3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit1')
+        plt.figure('fit_Ar3')
         plt.clf()
-        plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_Ar3(_ll)+lc)
-
-################################################################################################################################################
-    log.debug('Fitting [OI] & [SIII]...')
+        plt.plot(_ll, f_res, drawstyle = 'steps-mid')
+        plt.plot(_ll, mod_fit_Ar3(_ll)+total_lc, drawstyle = 'steps-mid')
+        #plt.plot(_ll, total_lc.mask, 'r')
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+        plt.xlim(7000, 8000)
+        plt.ylim(-0.1, 0.4)
+    #############################################################################################################
+    
+    #############################################################################################################
+        log.debug('Fitting [OI] & [SIII]...')
 
     # Parameters
     name = ['6312', '9068', '6300', '6364']
@@ -1062,35 +724,35 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
     v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value, 0., 0.]
     vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value, 50., 50.]
-    mod_init_O1_S3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    mod_init_O1S3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     if kinematic_ties_on:
-        mod_init_O1_S3['6312'].v0.fixed = True
-        mod_init_O1_S3['6312'].vd.fixed = True
-        mod_init_O1_S3['9068'].v0.fixed = True
-        mod_init_O1_S3['9068'].vd.fixed = True
-        mod_init_O1_S3['6364'].v0.tied = lambda m: m['6300'].v0.value
-        mod_init_O1_S3['6364'].vd.tied = lambda m: m['6300'].vd.value
+        mod_init_O1S3['6312'].v0.fixed = True
+        mod_init_O1S3['6312'].vd.fixed = True
+        mod_init_O1S3['9068'].v0.fixed = True
+        mod_init_O1S3['9068'].vd.fixed = True
+        mod_init_O1S3['6364'].v0.tied = lambda m: m['6300'].v0.value
+        mod_init_O1S3['6364'].vd.tied = lambda m: m['6300'].vd.value
 
     # Fit
-    mod_fit_O1_S3, _flag = do_fit(mod_init_O1_S3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_O1S3, _flag = do_fit(mod_init_O1S3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit_o1_s3')
+        plt.figure('fit_O1S3')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_O1_S3(_ll)+lc)
-
-########################################################################################################################################
+        plt.plot(_ll, mod_fit_O1S3(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
+    
+    #############################################################################################################
     log.debug('Fitting [FeIII]...')
 
     # Parameters
@@ -1099,9 +761,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
 
     # Start model
     v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
@@ -1114,25 +773,22 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_Fe3['4988'].v0.fixed = True
         mod_init_Fe3['4988'].vd.fixed = True
 
-
-
-
     # Fit
-    mod_fit_Fe3, _flag = do_fit(mod_init_Fe3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_Fe3, _flag = do_fit(mod_init_Fe3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit1')
+        plt.figure('fit_Fe3')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_Fe3(_ll)+lc)
-
-
-
-
-
+        plt.plot(_ll, mod_fit_Fe3(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
+    
+    #############################################################################################################
     log.debug('Fitting [ArIV]...')
 
     # Parameters
@@ -1142,32 +798,31 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
-    mod_init_ArIV = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    mod_init_Ar4 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
     # Ties
     if kinematic_ties_on:
-        mod_init_ArIV['4740'].v0.tied = lambda m: m['6434'].v0.value
-        mod_init_ArIV['4740'].vd.tied = lambda m: m['6434'].vd.value
+        mod_init_Ar4['4740'].v0.tied = lambda m: m['6434'].v0.value
+        mod_init_Ar4['4740'].vd.tied = lambda m: m['6434'].vd.value
 
     # Fit
-    mod_fit_ArIV, _flag = do_fit(mod_init_ArIV, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_Ar4, _flag = do_fit(mod_init_Ar4, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit4')
+        plt.figure('fit_Ar4')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_ArIV(_ll)+lc)
+        plt.plot(_ll, mod_fit_Ar4(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
 
-
-
-    log.debug('Fitting [ClIII]...')# como plotar a linha de HeI pq no caso de Hg e Hb plota e nesse não?
+    #############################################################################################################
+    log.debug('Fitting [ClIII]...')
 
     # Parameters
     name = ['5517','5539']
@@ -1176,43 +831,31 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    #lc = el_extra[name[0]]['local_cont'] / np.abs(med)# talvez eu tenha que alterar algo aqui, quem sabe só estou pegando um contínuo
-    lc = np.ma.zeros(len(_ll))
-    lc.mask = True
-    for n in name:
-        fc = ~el_extra[n]['local_cont'].mask
-        lc[fc] = el_extra[n]['local_cont'][fc]
-        lc.mask[fc] = False
-    lc /= np.abs(med)
-
     # Start model
     mod_init_Cl3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
-
 
     if kinematic_ties_on:
         mod_init_Cl3['5517'].v0.tied = lambda m: m['5539'].v0.value
         mod_init_Cl3['5517'].vd.tied = lambda m: m['5539'].vd.value
-     
   
-
     # Fit
-    mod_fit_Cl3, _flag = do_fit(mod_init_Cl3, _ll, lc, f_res, f_err, min_good_fraction=min_good_fraction)
+    mod_fit_Cl3, _flag = do_fit(mod_init_Cl3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = _flag
 
     if debug:
         import matplotlib.pyplot as plt
-        plt.figure('fit3')
+        plt.figure('fit_Cl3')
         plt.clf()
         plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_Cl3(_ll)+lc)
+        plt.plot(_ll, mod_fit_Cl3(_ll)+total_lc)
+        for ll in l0:
+            plt.axvline(ll, ls=':')
+    #############################################################################################################
 
-
-########################################################################################################################################
-
+    #############################################################################################################
     # Rescale by the median
-    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1_S3, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_ArIV, mod_fit_Cl3]
+    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3]
     for model in el:
         for name in model.submodel_names:
             model[name].flux.value *= np.abs(med)
@@ -1228,22 +871,23 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             N_good = good.sum()
             if Nl_cont == 0 or (N_good / Nl_cont) <= min_good_fraction:
                 el_extra[l]['flag'] = flags.no_data
+    #############################################################################################################
 
 
-    # TO DO
-    # Integrate fluxes (be careful not to use the one normalized)
+    #############################################################################################################
+    # TO DO: Integrate fluxes (be careful not to use the one normalized)
     flag = (_ll > 6554) & (_ll < 6573)
     flux_Ha_int =  _f_res[flag].sum()
     #print('Fluxes: ', flux_Ha_int, mod_fit_HbHaN2['6563'].flux)
+    #############################################################################################################
 
 
+    #############################################################################################################
     # Get EWs
     name     = ['6563',   '6548',      '6584']
     linename = ['Halpha', '[NII]6548', '[NII]6584' ]
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_HaN2[n].flux, n, lines_windows)
-
-
 
     name     = ['4861'  , '4340'  ]
     linename = ['Hbeta' , 'Hgamma']
@@ -1273,14 +917,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     name     = ['6300', '6364', '6312', '9068']
     linename = ['[OI]6300', '[OI]6364', '[SIII]6312', '[SIII]9068']
     for n, ln in zip(name, linename):
-        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O1_S3[n].flux, n, lines_windows)
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_O1S3[n].flux, n, lines_windows)
 
     name     = ['6716',      '6731']
     linename = ['[SII]6716', '[SII]6731']
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_S2[n].flux, n, lines_windows)
-
-
 
     name     = ['7320',        '7330']
     linename = ['[OII]7320', '[OII]7330']
@@ -1305,14 +947,16 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     name     = ['6434', '4740']
     linename = ['[ArIV]6434', '[ArIV]4740']
     for n, ln in zip(name, linename):
-        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_ArIV[n].flux, n, lines_windows)
+        el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Ar4[n].flux, n, lines_windows)
 
     name     = ['5517', '5539']
     linename = ['[ClIII]5517', '[ClIII]5539']
     for n, ln in zip(name, linename):
         el_extra[n]['EW'] = calc_cont_EW(_ll, _f_syn, mod_fit_Cl3[n].flux, n, lines_windows)
+    #############################################################################################################
 
-
+    #############################################################################################################
+    # Save
     el.append(el_extra)
 
     if saveAll:
@@ -1322,6 +966,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     if saveHDF5 or saveTXT:
         from .utils import save_summary_to_file
         save_summary_to_file(el, outdir, outname, saveHDF5 = saveHDF5, saveTXT = saveTXT, **kwargs)
+    #############################################################################################################
 
     return el
 
