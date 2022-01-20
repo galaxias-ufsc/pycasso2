@@ -8,3 +8,4 @@ build
 *.cfg
 *.so
 dobby_example-checkpoint.ipynb
+/pycasso2.egg-info/
