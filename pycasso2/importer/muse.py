@@ -68,9 +68,10 @@ def read_muse(cube, name, cfg):
 
     # Get data from master list
     masterlist = cfg.get('tables', 'master_table')
+    table_format = cfg.get('tables', 'master_table_format')
     galaxy_id = name
     log.debug('Loading masterlist for %s: %s.' % (galaxy_id, masterlist))
-    ml = muse_read_masterlist(masterlist, galaxy_id)
+    ml = muse_read_masterlist(masterlist, galaxy_id, table_format)
     z = velocity2redshift(ml['V_r [km/s]'])
     muse_save_masterlist(header, ml)
     f_flag = np.where(badpix, flags.no_data, 0)
@@ -90,7 +91,7 @@ def muse_save_masterlist(header, ml):
         hkey = 'HIERARCH MASTERLIST %s' % key.upper()
         header[hkey] = ml[key]
 
-def muse_read_masterlist(filename, galaxy_id=None):
+def muse_read_masterlist(filename, galaxy_id=None, table_format='csv'):
     '''
     Read the whole masterlist, or a single entry.
 
@@ -110,7 +111,7 @@ def muse_read_masterlist(filename, galaxy_id=None):
         A numpy record array containing either the whole masterlist
         or the entry pointed by ``galaxy_id``.
     '''
-    ml = Table.read(filename, format='csv')
+    ml = Table.read(filename, format=table_format)
     if galaxy_id is not None:
         index = np.where(ml['Name'] == galaxy_id)[0]
         if len(index) == 0:
