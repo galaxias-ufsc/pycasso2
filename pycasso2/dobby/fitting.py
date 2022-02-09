@@ -217,7 +217,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     if not np.isfinite(med):
         raise Exception('Problems with synthetic spectra, median is non-finite.')
 
-    f_res = _f_res / np.abs(med)
+    f_res = _f_res.filled(0) / np.abs(med)
     f_err = _f_err / np.abs(med)
 
     # Get local pseudocontinuum
@@ -253,7 +253,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     nans, x = _f_res_lc.mask, lambda z: z.nonzero()[0]
     _f_res_lc[nans]= np.interp(x(nans), x(~nans), _f_res_lc[~nans])
 
-    debug = False
     if debug:
         import matplotlib.pyplot as plt
         plt.figure('cont1')
@@ -297,7 +296,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         total_lc.mask[fc] = False
 
     # Save the total pseudocontinuum
-    el_extra['total_lc'] = total_lc
+    total_lc = total_lc / np.abs(med)
+    el_extra['total_lc'] = total_lc * np.abs(med)
 
     if debug:
         import matplotlib.pyplot as plt
@@ -381,12 +381,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
-
-    for n in name:
-        fc = ~el_extra[n]['local_cont'].mask
-        lc[fc] = el_extra[n]['local_cont'][fc]
-        lc.mask[fc] = False
-    lc /= np.abs(med)
 
     # Start model
     mod_init_N2He2He1 = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6584'].v0.value, vd=mod_fit_HaN2['6584'].vd.value, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
@@ -573,9 +567,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    # Get local continuum
-    lc = el_extra[name[0]]['local_cont'] / np.abs(med)
-
     # Start model
     mod_init_S2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
 
@@ -640,7 +631,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         for ll in l0:
             plt.axvline(ll, ls=':')
         plt.xlim(7300, 7400)
-        plt.ylim(-0.1, 0.4)
+        #plt.ylim(-0.1, 0.4)
     #############################################################################################################
 
     #############################################################################################################
