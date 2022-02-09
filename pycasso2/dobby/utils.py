@@ -230,7 +230,7 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
             for e in el[:-1]:
                 for name in e.submodel_names:
                     plt.axvline(e[name].l0.value, ls=':', color='gray')
-        plt.ylabel(r'$F_\lambda$ [$10^{-17}$ $\mathrm{erg \; s}^{-1} \; \mathrm{\AA}^{-1} \; \mathrm{cm}^{-2}$]')
+        plt.ylabel(r'$F_\lambda/F_\mathrm{norm}$')
         plt.xlabel(r'$\lambda$ [$\mathrm{\AA}$]')
 
         # Plot [OIII]
