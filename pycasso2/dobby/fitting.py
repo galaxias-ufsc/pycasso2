@@ -358,7 +358,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_HaN2['6548'].vd.tied = lambda m: m['6584'].vd.value
 
     # Fit
-    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, total_lc, f_res, f_err * 6563**5/_ll**5, min_good_fraction=min_good_fraction)
+    mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
         el_extra[ln]['flag'] = np.int(_flag)
 
