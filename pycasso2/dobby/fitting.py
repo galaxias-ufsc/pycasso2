@@ -217,7 +217,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     if not np.isfinite(med):
         raise Exception('Problems with synthetic spectra, median is non-finite.')
 
-    f_res = _f_res.filled(0) / np.abs(med)
+    f_res = np.ma.array(_f_res).filled(0) / np.abs(med)
     f_err = _f_err / np.abs(med)
 
     # Get local pseudocontinuum
@@ -225,14 +225,15 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     total_lc = np.ma.zeros(len(_ll))
     total_lc.mask = True
 
-
     # Starting dictionaries to save results
     name = np.char.mod('%d', lines_windows['namel'])
     linename = lines_windows['name']
     l0 = get_central_wavelength(name)
     _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
     for n, ln in zip(name, linename):
-        el_extra[n] = {'linename' : ln}
+        el_extra[n] = {'linename' : ln,
+                       'f_integ' : -999.,
+                       'f_imed' : -999.,}
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
     
@@ -286,9 +287,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
         # Save local continuum for each line
         lc = np.ma.masked_array(l, mask=~f)
-        el_extra[n] = { 'linename'   : ln ,
-                        'local_cont' : lc ,
-                        'rms_lc'     : lc_rms  }
+        el_extra[n]['local_cont'] = lc
+        el_extra[n]['rms_lc'] = lc_rms
         
         # Add this local continuum to total pseudocontinuum
         fc = ~lc.mask
@@ -400,10 +400,14 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         import matplotlib.pyplot as plt
         plt.figure('fit_N2He2He1')
         plt.clf()
-        plt.plot(_ll, f_res)
-        plt.plot(_ll, mod_fit_N2He2He1(_ll)+total_lc)
+        plt.plot(_ll, f_res, 'k')
+        plt.plot(_ll, mod_fit_N2He2He1(_ll)+total_lc, 'r')
+        plt.plot(_ll, total_lc, 'grey')
+        plt.ylim(-0.05, 0.05)
+        plt.xlim(5555, 5955)
         for ll in l0:
             plt.axvline(ll, ls=':')
+        plt.show()
     #############################################################################################################
 
     #############################################################################################################
@@ -844,13 +848,70 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             plt.axvline(ll, ls=':')
     #############################################################################################################
 
+
+
+    #############################################################################################################
+    # Integrate fluxes (be careful not to use the one normalized)
+
+    # [N II]5755
+    name = '5755'
+    l0 = get_central_wavelength([name])[0]
+
+    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    
+    vd_6584 = mod_fit_HaN2['6584'].vd.value
+    if (vd_6584 < 0): vd_6584 = 0.
+
+    v0 = mod_fit_HaN2['6584'].v0.value
+    vd = np.sqrt(vd_6584**2 + _vd_inst**2)
+
+    lo = l0 * v0 / c
+    ld = l0 * vd / c
+    lc = l0 + lo
+
+    Ns = 4
+    flag_centre = (_ll >= (lc - Ns*ld)) & (_ll <= (lc + Ns*ld))
+
+    Nm1 =  5
+    Nm2 = 50
+    flag_blue = (_ll <= (lc - Nm1*ld)) & (_ll >= (lc - Nm2*ld))
+    flag_red  = (_ll >= (lc + Nm1*ld)) & (_ll <= (lc + Nm2*ld))
+
+    flag_cont = (flag_blue) | (flag_red)
+    f_med = np.ma.median(f_res[flag_cont])
+    f_new = f_res[flag_centre] - f_med
+    f_integ = np.trapz(f_new, x=_ll[flag_centre])
+
+    # Rescale by the median and save
+    el_extra[name]['f_integ'] = f_integ * np.abs(med)
+    el_extra[name]['f_imed' ] = f_med   * np.abs(med)
+    el_extra[f'f_integ_{name}'] = flag_centre * 1 + flag_blue * 2 + flag_red * 3
+    
+    if debug:
+        print(f_integ * np.abs(med), mod_fit_N2He2He1['5755'].flux.value * np.abs(med) )
+        import matplotlib.pyplot as plt
+        plt.figure('fit_N25775_integ')
+        plt.clf()
+        plt.plot(_ll, f_res, 'k', zorder=-10)
+        plt.plot(_ll[flag_centre], f_res[flag_centre], 'g', label='centre')
+        plt.plot(_ll[flag_blue]  , f_res[flag_blue]  , 'b', label='blue')
+        plt.plot(_ll[flag_red]   , f_res[flag_red]   , 'r', label='red')
+        plt.axhline(f_med, c='grey', ls=':', label='continuum')
+        plt.plot(_ll, mod_fit_N2He2He1(_ll)+total_lc, 'gray', label='Gaussian fit')
+        #plt.legend()
+        plt.ylim(-0.05, 0.05)
+        plt.xlim(5555, 5955)
+        plt.show()
+
+    # TO DO: Integrate for other emission lines
+    #############################################################################################################
+
     #############################################################################################################
     # Rescale by the median
-    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, mod_fit_HaN2,mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3]
+    el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3]
     for model in el:
         for name in model.submodel_names:
             model[name].flux.value *= np.abs(med)
-
 
     # Recheck flags.no_data, because all models fit more than one emission line
     min_good_fraction = 0.3
@@ -863,15 +924,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             if Nl_cont == 0 or (N_good / Nl_cont) <= min_good_fraction:
                 el_extra[l]['flag'] = flags.no_data
     #############################################################################################################
-
-
-    #############################################################################################################
-    # TO DO: Integrate fluxes (be careful not to use the one normalized)
-    flag = (_ll > 6554) & (_ll < 6573)
-    flux_Ha_int =  _f_res[flag].sum()
-    #print('Fluxes: ', flux_Ha_int, mod_fit_HbHaN2['6563'].flux)
-    #############################################################################################################
-
 
     #############################################################################################################
     # Get EWs

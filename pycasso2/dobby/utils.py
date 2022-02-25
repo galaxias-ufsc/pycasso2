@@ -60,43 +60,57 @@ def summary_elines(el):
         El_vd.extend( [ model[submodel].vd.value   for submodel in model.submodel_names ] )
 
     # And now get info from extra dictionary (outside astropy model)
-    El_flag  = [el_extra[l]['flag']     for l in El_l]
-    El_EW    = [el_extra[l]['EW']       for l in El_l]
-    El_line  = [el_extra[l]['linename'] for l in El_l]
-    El_vdins = [el_extra[l]['vd_inst']  for l in El_l]
-    El_lcrms = [el_extra[l]['rms_lc']   for l in El_l]
+    El_flag    = [el_extra[l]['flag']     for l in El_l]
+    El_EW      = [el_extra[l]['EW']       for l in El_l]
+    El_line    = [el_extra[l]['linename'] for l in El_l]
+    El_vdins   = [el_extra[l]['vd_inst']  for l in El_l]
+    El_lcrms   = [el_extra[l]['rms_lc']   for l in El_l]
+    El_F_integ = [el_extra[l]['f_integ']  for l in El_l]
+    El_F_imed  = [el_extra[l]['f_imed']   for l in El_l]
 
     # Save lines as integers
     El_l = np.int_(El_l)
     # Clean nan's and inf's
-    El_l0    = replace_nan_inf_by_minus999( np.hstack(El_l0)   )
-    El_F     = replace_nan_inf_by_minus999( np.hstack(El_F)    )
-    El_v0    = replace_nan_inf_by_minus999( np.hstack(El_v0)   )
-    El_vd    = replace_nan_inf_by_minus999( np.hstack(El_vd)   )
-    El_flag  = replace_nan_inf_by_minus999( np.hstack(El_flag) )
-    El_EW    = replace_nan_inf_by_minus999( np.hstack(El_EW)   )
-    El_vdins = replace_nan_inf_by_minus999( np.hstack(El_vdins))
-    El_lcrms = replace_nan_inf_by_minus999( np.hstack(El_lcrms))
+    El_l0      = replace_nan_inf_by_minus999( np.hstack(El_l0)     )
+    El_F       = replace_nan_inf_by_minus999( np.hstack(El_F)      )
+    El_v0      = replace_nan_inf_by_minus999( np.hstack(El_v0)     )
+    El_vd      = replace_nan_inf_by_minus999( np.hstack(El_vd)     )
+    El_flag    = replace_nan_inf_by_minus999( np.hstack(El_flag)   )
+    El_EW      = replace_nan_inf_by_minus999( np.hstack(El_EW)     )
+    El_vdins   = replace_nan_inf_by_minus999( np.hstack(El_vdins  ))
+    El_lcrms   = replace_nan_inf_by_minus999( np.hstack(El_lcrms  ))
+    El_F_integ = replace_nan_inf_by_minus999( np.hstack(El_F_integ))
+    El_F_imed  = replace_nan_inf_by_minus999( np.hstack(El_F_imed ))
 
     # Save table
-    elines = Table( { "lambda"   : El_l     ,
-                      "line"     : El_line  ,
-                      "El_l0"    : El_l0    ,
-                      "El_F"     : El_F     ,
-                      "El_v0"    : El_v0    ,
-                      "El_vd"    : El_vd    ,
-                      "El_flag"  : El_flag  ,
-                      "El_EW"    : El_EW    ,
-                      "El_lcrms" : El_lcrms ,
-                      "El_vdins" : El_vdins ,
+    elines = Table( { "lambda"     : El_l       ,
+                      "line"       : El_line    ,
+                      "El_l0"      : El_l0      ,
+                      "El_F"       : El_F       ,
+                      "El_v0"      : El_v0      ,
+                      "El_vd"      : El_vd      ,
+                      "El_flag"    : El_flag    ,
+                      "El_EW"      : El_EW      ,
+                      "El_lcrms"   : El_lcrms   ,
+                      "El_vdins"   : El_vdins   ,
+                      "El_F_integ" : El_F_integ ,
+                      "El_F_imed " : El_F_imed  ,
                     } )
 
     # Convert unicode
     elines.convert_unicode_to_bytestring()
 
+    # Save specs
     spec = Table( { 'total_lc'      : el_extra['total_lc'].data ,
                     'total_lc_mask' : el_extra['total_lc'].mask
                   } )
+    # Save specs for flux integration
+    for l in El_l:
+        try:
+            spec[f'f_integ_{l}'] = el_extra[f'f_integ_{l}']
+        except:
+            pass
+        
 
     return elines, spec
  
@@ -351,8 +365,8 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
         lc = el_extra[mod_fit_N2He2He1.submodel_names[0]]['local_cont']
         good_fit = el_extra[mod_fit_N2He2He1.submodel_names[0]]['flag'] == 0
         flag = ~lc.mask
-        plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual')
-        plt.plot(ll[flag],mod_fit_N2He2He1(ll[flag]) + lc[flag], 'r', label = 'Fit')
+        plt.plot(ll[flag], f_res[flag], 'k', label = 'Residual', zorder = 1)
+        plt.plot(ll[flag],mod_fit_N2He2He1(ll[flag]) + lc[flag], 'r', label = 'Fit', zorder = 10)
         plt.plot(ll[flag], lc[flag], color='grey', label = 'Local continuum', zorder=-1, alpha=0.5)
         plt.xlabel('[NII]5755')
         m[flag] = mod_fit_N2He2He1(ll[flag]) + lc[flag]
@@ -362,7 +376,14 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
                  horizontalalignment='right',
                  verticalalignment='top',
                  transform=ax6.transAxes)
-    
+        # Integrated
+        ff1 = (el_extra[f'f_integ_5755'] == 1)
+        plt.plot(ll[ff1], f_res[ff1], 'g', label='centre', zorder = 3)
+        ff2 = (el_extra[f'f_integ_5755'] == 2)
+        plt.plot(ll[ff2], f_res[ff2], 'b', label='blue', zorder = 2)
+        ff3 = (el_extra[f'f_integ_5755'] == 3)
+        plt.plot(ll[ff3], f_res[ff3], 'b', label='blue', zorder = 2)
+        plt.axhline(el_extra['5755']['f_imed'], c='grey', ls=':')
     
     
         # Plot [OII] weak
