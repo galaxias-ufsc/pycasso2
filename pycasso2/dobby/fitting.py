@@ -124,7 +124,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      lines_windows_file = None, degree=16, min_good_fraction=.2,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False,
-                     stellar_v0=0., stellar_vd=100.,
+                     stellar_v0=0., stellar_vd_stronglines=100., stellar_vd_weaklines=100.,
                      use_running_mean = False, N_running_mean = 50, N_clip = 1e30,
                      hii_ties_on = False,
                      **kwargs):
@@ -241,11 +241,13 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     lc = np.ma.masked_array(np.zeros_like(_ll))
     flag_lc = np.ones(len(_ll), 'bool')
 
-    print('Using stellar v0 = %.2f, vd = %.2f to mask out emission lines for the pseudocontinuum fit.' % (stellar_v0, stellar_vd))
+    log.info(f'Using stellar v0 = {stellar_v0:.2f}, vd = {stellar_vd_stronglines:.2f} (strong lines), vd = {stellar_vd_weaklines:.2f} (weak lines)')
+    log.info(f'to mask out emission lines for the pseudocontinuum fit.')
     l_cen = l0 * (1. + stellar_v0 / c)
-    sig_l = l0 * (stellar_vd / c)
+    sig_l = np.where((lines_windows['strong?'] == 1), l0 * (stellar_vd_stronglines / c), l0 * (stellar_vd_weaklines / c))
     Nsig = 5
     for _l_cen, _sig_l in zip(l_cen, sig_l):
+        print(_l_cen, _sig_l)
         flag_line = (_ll >= (_l_cen - Nsig * _sig_l)) & (_ll <= (_l_cen + Nsig * _sig_l))
         flag_lc[flag_line] = False
     _f_res_lc = np.ma.masked_array(_f_res.copy(), mask=~flag_lc)
@@ -857,7 +859,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     name = '5755'
     l0 = get_central_wavelength([name])[0]
 
-    _vd_inst = get_vd_inst(vd_inst, name, l0, vd_kms, _ll)
+    _vd_inst = get_vd_inst(vd_inst, [name], l0, vd_kms, _ll)[0]
     
     vd_6584 = mod_fit_HaN2['6584'].vd.value
     if (vd_6584 < 0): vd_6584 = 0.
