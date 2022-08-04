@@ -38,8 +38,8 @@ def proj_plane_pixel_area(w):
     return a
 
 
-def get_wavelength_coordinates(w, Nwave):
-    w = w.sub([3])
+def get_wavelength_coordinates(w, Nwave, iwave=3):
+    w = w.sub([iwave])
     pix_coords = np.arange(Nwave)
     wave_coords = w.wcs_pix2world(pix_coords[:, np.newaxis], 0)
     if w.wcs.cunit[0] == 'm':
