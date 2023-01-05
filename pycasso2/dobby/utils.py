@@ -20,6 +20,8 @@ el_table_dtype = [('lambda', 'int32'),
                   ('El_EW', 'float64'),
                   ('El_lcrms', 'float64'),
                   ('El_vdins', 'float64'),
+                  ('El_F_integ', 'float64'),
+                  ('El_F_imed', 'float64'),
                   ]
 
 el_lc_dtype = [('l_obs', 'float64'),
@@ -115,7 +117,7 @@ def summary_elines(el):
     return elines, spec
  
 
-def save_summary_to_file(el, outdir, outname, saveHDF5 = False, saveTXT = False, overwrite = False):
+def save_summary_to_file(el, outdir, outname, saveHDF5 = False, saveTXT = False, overwrite = False, **kwargs):
     '''
     f_h5py must be an open h5py file.
     '''

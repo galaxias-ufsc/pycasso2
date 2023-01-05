@@ -68,6 +68,8 @@ class FitsCube(object):
     _ext_el_lc_rms = 'EL_LCRMS'   
     _ext_el_integ = 'EL_INTEG'   
     _ext_el_integ_lc = 'EL_INTEG_LC'   
+    _ext_el_flux_integ = 'EL_F_INTEG'
+    _ext_el_flux_imed = 'EL_F_IMED'
     
     _h_lum_dist_Mpc = 'PYCASSO LUM_DIST_MPC'
     _h_redshift = 'PYCASSO REDSHIFT'
@@ -262,6 +264,8 @@ class FitsCube(object):
         self._addExtension(self._ext_el_lc_rms, wcstype='image', shape=eline_shape, overwrite=True)
         self._addExtension(self._ext_el_v_d_inst, wcstype='image', shape=eline_shape, overwrite=True)
         self._addExtension(self._ext_el_lc, wcstype='image', shape=spec_shape, overwrite=True)
+        self._addExtension(self._ext_el_flux_integ, wcstype='image', shape=eline_shape, overwrite=True)
+        self._addExtension(self._ext_el_flux_imed, wcstype='image', shape=eline_shape, overwrite=True)
 
         if self.isSegmentationOverlapping:
             log.debug('Segmentation mask has overlapping regions, disabled integrated spectra.')
@@ -285,6 +289,8 @@ class FitsCube(object):
         self._delExtension(self._ext_el_lc)
         self._delExtension(self._ext_el_integ_lc)
         self._delExtension(self._ext_el_integ)
+        self._delExtension(self._ext_el_flux_integ)
+        self._delExtension(self._ext_el_flux_imed)
 
     @lazyproperty
     def isSegmentationOverlapping(self):
@@ -1097,6 +1103,14 @@ class FitsCube(object):
     def EL_continuum(self):
         return self._getSynthExtension(self._ext_el_lc)
 
+    @lazyproperty
+    def _El_F_integ(self):
+        return self._getELExtension(self._ext_el_flux_integ)
+
+    @lazyproperty
+    def _El_F_imed(self):
+        return self._getELExtension(self._ext_el_flux_imed)
+    
     def _getELProperty(self, line, prop):
         try:
             i = self._EL_id_map[line]
@@ -1129,7 +1143,7 @@ class FitsCube(object):
     def _EL_integ(self):
         t = self._getTableExtensionData(self._ext_el_integ)
         data = np.ma.array(t)
-        data[data['El_flag'] > 0] = np.ma.masked
+#        data[data['El_flag'] > 0] = np.ma.masked
         return data
 
     def EL_integ(self, line):

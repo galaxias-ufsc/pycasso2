@@ -144,6 +144,8 @@ class DobbyAdapter(object):
             self.El_vdins = self._c._EL_v_d_inst[:, np.newaxis, :]
             self.El_lcrms = self._c._EL_continuum_RMS[:, np.newaxis, :]
             self.El_lc = self._c.EL_continuum[:, np.newaxis, :]
+            self.El_F_integ = self._c._El_F_integ[:, np.newaxis, :]
+            self.El_F_imed = self._c._El_F_imed[:, np.newaxis, :]   
         else:
             self.El_F = self._c._EL_flux
             self.El_v0 = self._c._EL_v_0
@@ -153,6 +155,8 @@ class DobbyAdapter(object):
             self.El_vdins = self._c._EL_v_d_inst
             self.El_lcrms = self._c._EL_continuum_RMS
             self.El_lc = self._c.EL_continuum
+            self.El_F_integ = self._c._El_F_integ
+            self.El_F_imed = self._c._El_F_imed
         
 
     def updateELines(self, j, i, elines, spec):

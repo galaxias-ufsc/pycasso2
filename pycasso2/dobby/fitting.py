@@ -247,7 +247,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     sig_l = np.where((lines_windows['strong?'] == 1), l0 * (stellar_vd_stronglines / c), l0 * (stellar_vd_weaklines / c))
     Nsig = 5
     for _l_cen, _sig_l in zip(l_cen, sig_l):
-        print(_l_cen, _sig_l)
         flag_line = (_ll >= (_l_cen - Nsig * _sig_l)) & (_ll <= (_l_cen + Nsig * _sig_l))
         flag_lc[flag_line] = False
     _f_res_lc = np.ma.masked_array(_f_res.copy(), mask=~flag_lc)
@@ -859,8 +858,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     name = '5755'
     l0 = get_central_wavelength([name])[0]
 
-    _vd_inst = get_vd_inst(vd_inst, [name], l0, vd_kms, _ll)[0]
-    
+    try:
+        _vd_inst = get_vd_inst(vd_inst, [name], l0, vd_kms, _ll)[0]
+    except:
+        _vd_inst = get_vd_inst(vd_inst, [name], l0, vd_kms, _ll)
+        
     vd_6584 = mod_fit_HaN2['6584'].vd.value
     if (vd_6584 < 0): vd_6584 = 0.
 
