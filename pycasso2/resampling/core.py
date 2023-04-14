@@ -7,6 +7,7 @@ Created on 22/06/2015
 from .. import flags
 import numpy as np
 from astropy import log
+from numba import jit
 
 __all__ = ['ReSamplingMatrixNonUniform', 'resample_spectra', 'resample_cube', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
@@ -418,6 +419,7 @@ def bin_edges(bin_center):
     return bin_edges
 
 
+@jit(nopython=True)
 def hist_resample(bins_o, bins_r, v, v_r=None, density=False):
     '''
     Resample an histogram into another set of bins.
@@ -610,7 +612,7 @@ def find_nearest_index(array, value):
         value = np.array(value)
     idx = (np.abs(array - value[:, np.newaxis])).argmin(axis=1)
     if len(idx) == 1:
-        idx = np.asscalar(idx)
+        idx = np.ndarray.item(idx)
     return idx
 
 

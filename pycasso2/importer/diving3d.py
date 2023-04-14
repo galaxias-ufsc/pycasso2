@@ -59,7 +59,7 @@ def read_diving3d(cubes, name, cfg):
     f_obs[gap_mask] = 0.0
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = 0.0
-    obs.lumDist_Mpc = np.asscalar(ml['DL_Mpc'])
+    obs.lumDist_Mpc = np.ndarray.item(ml['DL_Mpc'])
     obs.inRestFrame = True
     return obs
 
@@ -136,7 +136,7 @@ def d3d_save_masterlist(header, ml):
         if key in header_ignored:
             continue
         hkey = 'HIERARCH MASTERLIST %s' % key.upper()
-        header[hkey] = np.asscalar(ml[key])
+        header[hkey] = np.ndarray.item(ml[key])
 
 
 def d3d_get_galaxy_id(cube):

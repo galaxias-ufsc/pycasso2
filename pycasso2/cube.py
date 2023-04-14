@@ -89,7 +89,7 @@ class FitsCube(object):
         if cubefile is None:
             # FIXME: needed by segmentation code, which should moved here.
             return
-        if cube_type is 'pycasso':
+        if cube_type == 'pycasso':
             self._load(cubefile, memmap, mode)
             if name is not None:
                 self.name = name
