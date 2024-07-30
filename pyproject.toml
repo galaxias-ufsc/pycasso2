@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycasso2"
+authors = [
+    {name = "André Luiz de Amorim", email = "a.amorim@ufsc.br"},
+]
+description = "Stellar population and emission line analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["astrophysics"]
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "astropy",
+    "h5py",
+    "numba",
+]
+dynamic = ["version"]
+

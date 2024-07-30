@@ -19,7 +19,7 @@ import argparse
 from astropy import log
 from astropy.table import Table
 from mpi4py.futures import MPIPoolExecutor
-from itertools import islice
+from itertools import islice, starmap
 from multiprocessing import cpu_count
 
 from pycasso2 import FitsCube
@@ -415,7 +415,11 @@ if __name__ == '__main__':
                 log.info('Execution completed.')
                 break
             log.info('Dispatching %d runs.' % len(chunk))
-            fit_result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
+            if args.maxWorkers == 1:
+                log.warning('Running on a single thread.')
+                fit_result = starmap(fit_spaxel_kwargs, chunk)
+            else:
+                fit_result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
             
             for j, i, elines, spec in fit_result:
                 log.debug('Saving fit for spaxel [%d, %d].' % (j, i))

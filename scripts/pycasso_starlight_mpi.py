@@ -13,7 +13,7 @@ import argparse
 from mpi4py.futures import MPIPoolExecutor
 from multiprocessing import cpu_count
 from astropy import log
-from itertools import islice
+from itertools import islice, starmap
 log.setLevel('DEBUG')
 
 
@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument('--config', dest='configFile', default=default_config_path,
                         help='Config file. Default: %s' % default_config_path)
     parser.add_argument('--max-workers', dest='maxWorkers', type=int, default=cpu_count() - 1,
-                        help='Maximum number of worker processes. Defaults to the number of system processors - 1.')
+                        help='Maximum number of worker processes. Defaults to the number of system processors - 1. Set to 1 to run on a single thread.')
     parser.add_argument('--queue-length', dest='queueLength', type=int, default=-1,
                         help='Worker queue length. Default: 10 * max workers.')
     parser.add_argument('--chunk-size', dest='chunkSize', type=int, default=2,
@@ -92,7 +92,11 @@ if __name__ == '__main__':
                 log.debug('Exceution completed.')
                 break
             log.debug('Dispatching %d runs.' % len(chunk))
-            output_grids = executor.starmap(run_starlight, chunk, unordered=True)
+            if args.maxWorkers == 1:
+                log.warning('Running on a single thread.')
+                output_grids = starmap(run_starlight, chunk)
+            else:
+                output_grids = executor.starmap(run_starlight, chunk, unordered=True)
 
             log.debug('Collecting runs.')
             for grid in output_grids:
