@@ -200,7 +200,7 @@ class DobbyAdapter(object):
         f_obs = self.f_obs[:, j, i]
         f_syn = self.f_syn[:, j, i]
         f_err = self.f_err[:, j, i]
-        if self.correct_good_frac:
+        if self.correct_good_frac and self._c.seg_good_frac is not None:
             gf = self._c.seg_good_frac[:, j, i]
             f_obs *= gf
             f_syn *= gf

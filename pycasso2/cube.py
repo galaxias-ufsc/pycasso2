@@ -469,6 +469,8 @@ class FitsCube(object):
 
     @lazyproperty
     def seg_good_frac(self):
+        if self._ext_seg_good_frac not in self._HDUList:
+            return None
         return self._getExtensionData(self._ext_seg_good_frac)
     
     @lazyproperty

@@ -117,6 +117,7 @@ def write_input(l_obs, f_obs, f_err, f_flag, filename):
     else:
         cols = [l_obs, f_obs]
     formats = {'col0': lambda x: '%.1f' % round(x, 1)}
+    # FIXME: trocar Writer= para format= 
     ascii.write(cols, filename, Writer=ascii.NoHeader, formats=formats, overwrite=True)
 
 
