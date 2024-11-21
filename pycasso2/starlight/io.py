@@ -927,16 +927,16 @@ def read_output_tables_v4(filename, read_header=True, read_spec=True, verbose=Fa
     
         ## Some input info
 
-        keywords['arq_spec']    = np.str(data[5][0])
-        keywords['arq_base']    = np.str(data[6][0])
-        keywords['arq_masks']    = np.str(data[7][0])
-        keywords['arq_config']  = np.str(data[8][0])
-        keywords['N_base']        =    np.int(data[9][0])
-        keywords['N_YAV_components']  =    np.int(data[10][0])
-        keywords['iFitPowerLaw']      =    np.int(data[11][0])
-        keywords['alpha_PowerLaw']    =  np.float32(data[12][0])
-        keywords['red_law_option']    = np.str(data[13][0])
-        keywords['q_norm']            =  np.float32(data[14][0])
+        keywords['arq_spec']          = data[5][0]
+        keywords['arq_base']          = data[6][0]
+        keywords['arq_masks']         = data[7][0]
+        keywords['arq_config']        = data[8][0]
+        keywords['N_base']            = int(data[9][0])
+        keywords['N_YAV_components']  = int(data[10][0])
+        keywords['iFitPowerLaw']      = int(data[11][0])
+        keywords['alpha_PowerLaw']    = np.float32(data[12][0])
+        keywords['red_law_option']    = data[13][0]
+        keywords['q_norm']            = np.float32(data[14][0])
 
         ## (Re)Sampling Parameters
 
@@ -963,13 +963,13 @@ def read_output_tables_v4(filename, read_header=True, read_spec=True, verbose=Fa
 
         ## etc...
 
-        keywords['idum_orig']       = np.int(data[37][0])
-        keywords['NOl_eff']         = np.int(data[38][0])
-        keywords['Nl_eff']          = np.int(data[39][0])
-        keywords['Ntot_clipped']    = np.int(data[40][0])
-        keywords['Nglobal_steps']   = np.int(data[41][0])
-        keywords['N_chains']        = np.int(data[42][0])
-        keywords['NEX0s_base']      = np.int(data[43][0])
+        keywords['idum_orig']       = int(data[37][0])
+        keywords['NOl_eff']         = int(data[38][0])
+        keywords['Nl_eff']          = int(data[39][0])
+        keywords['Ntot_clipped']    = int(data[40][0])
+        keywords['Nglobal_steps']   = int(data[41][0])
+        keywords['N_chains']        = int(data[42][0])
+        keywords['NEX0s_base']      = int(data[43][0])
 
         ## Synthesis Results - Best model ##
 
@@ -1044,13 +1044,13 @@ def read_output_tables_v4(filename, read_header=True, read_spec=True, verbose=Fa
     if(read_spec == True):
         if(verbose): print('read_spec set to TRUE! Reading the spectra...')
         if(read_header == False):
-                keywords['N_base']      =    np.int(data[9][0])
+                keywords['N_base']      =    int(data[9][0])
                 keywords['fobs_norm']   = np.float32(data[25][0])
 
         # Read spectra (l_obs, f_obs, f_syn & f_wei)
         #l_obs 1 f_obs 2 f_syn 3 f_wei 4 Best_f_SSP 5
         iaux1 = 62 + keywords['N_base'] + 5 + keywords['N_base'] + 2 + keywords['N_base'] + 11
-        keywords['Nl_obs'] = np.int(data[iaux1][0])
+        keywords['Nl_obs'] = int(data[iaux1][0])
         iaux2 = iaux1 + 1
         #iaux3 = iaux1 + StarlightOut['Nl_obs']
     
