@@ -4,7 +4,7 @@ Created on 08/12/2015
 @author: andre
 '''
 from ..wcs import get_wavelength_coordinates, get_Naxis, write_WCS
-from ..cosmology import velocity2redshift
+from ..cosmology import redshift2lum_distance, velocity2redshift
 from .. import flags
 from ..config import parse_slice
 from .core import safe_getheader,  ObservedCube
@@ -79,6 +79,10 @@ def read_muse(cube, name, cfg):
     obs = ObservedCube(name, l_obs, f_obs, f_err, f_flag, flux_unit, z, header)
     obs.EBV = float(ml['E(B-V)'])
     obs.lumDist_Mpc = ml['D [Mpc]']
+    if obs.lumDist_Mpc < 0.0 or obs.lumDist_Mpc is np.ma.masked:
+        log.warning(f'Invalid luminosity distance: {ml["D [Mpc]"]}. Calculating from radial velocity.')
+        obs.lumDist_Mpc = redshift2lum_distance(z)
+    log.info(f'Luminosity distance: {obs.lumDist_Mpc}')
     if sl is not None:
         obs.addKeyword('SLICE', sl_string)
     return obs
@@ -89,7 +93,11 @@ def muse_save_masterlist(header, ml):
         if key in header_ignored:
             continue
         hkey = 'HIERARCH MASTERLIST %s' % key.upper()
-        header[hkey] = ml[key]
+        if ml[key] is np.ma.masked:
+            val = 'None'
+        else:
+            val = ml[key]
+        header[hkey] = val
 
 def muse_read_masterlist(filename, galaxy_id=None, table_format='csv'):
     '''

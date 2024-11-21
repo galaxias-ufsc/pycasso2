@@ -19,7 +19,7 @@ import argparse
 from astropy import log
 from astropy.table import Table
 from mpi4py.futures import MPIPoolExecutor
-from itertools import islice
+from itertools import islice, starmap
 from multiprocessing import cpu_count
 
 from pycasso2 import FitsCube
@@ -200,7 +200,7 @@ class DobbyAdapter(object):
         f_obs = self.f_obs[:, j, i]
         f_syn = self.f_syn[:, j, i]
         f_err = self.f_err[:, j, i]
-        if self.correct_good_frac:
+        if self.correct_good_frac and self._c.seg_good_frac is not None:
             gf = self._c.seg_good_frac[:, j, i]
             f_obs *= gf
             f_syn *= gf
@@ -415,7 +415,11 @@ if __name__ == '__main__':
                 log.info('Execution completed.')
                 break
             log.info('Dispatching %d runs.' % len(chunk))
-            fit_result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
+            if args.maxWorkers == 1:
+                log.warning('Running on a single thread.')
+                fit_result = starmap(fit_spaxel_kwargs, chunk)
+            else:
+                fit_result = executor.starmap(fit_spaxel_kwargs, chunk, unordered=True)
             
             for j, i, elines, spec in fit_result:
                 log.debug('Saving fit for spaxel [%d, %d].' % (j, i))

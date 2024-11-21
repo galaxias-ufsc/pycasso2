@@ -127,16 +127,16 @@ def Charlot_RedLaw(l, mu=0.3):
     Parameters
     ----------
     l : 1-D sequence of floats
-        The \lambda wavelength array (in Angstroms). 
+        The lambda wavelength array (in Angstroms). 
     
     mu : float
          Fraction of extinction contributed by the ambient ISM
             
     Returns
     -------
-    t_lambda_Y : \tau_lambda for t <= 10^7 yr.
+    t_lambda_Y : tau_lambda for t <= 10^7 yr.
     
-    t_lambda_O : \tau_lambda for t > 10^7 yr. 
+    t_lambda_O : tau_lambda for t > 10^7 yr. 
     
     '''
     
@@ -153,7 +153,7 @@ def CharlotFall_RedLaw(l, mu=0.3):
     Parameters
     ----------
     l : 1-D sequence of floats
-        The \lambda wavelength array (in Angstroms). 
+        The lambda wavelength array (in Angstroms). 
     
     mu : float
          Fraction of extinction contributed by the ambient ISM

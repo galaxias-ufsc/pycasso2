@@ -108,7 +108,7 @@ def get_wavelength_sampling(w):
     s = wcs.utils.proj_plane_pixel_scales(w)
     if w.wcs.cunit[0] == 'm':
         s /= one_angstrom
-    return np.asscalar(s)
+    return np.ndarray.item(s)
 
 
 def get_pixel_area(w):

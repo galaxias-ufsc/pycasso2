@@ -7,6 +7,7 @@ Created on 22/06/2015
 from .. import flags
 import numpy as np
 from astropy import log
+from numba import jit
 
 __all__ = ['ReSamplingMatrixNonUniform', 'resample_spectra', 'resample_cube', 'find_nearest_index',
            'interp1d_spectra', 'gaussian1d_spectra', 'gen_rebin', 'bin_edges', 'hist_resample',
@@ -236,12 +237,6 @@ def resample_spectra(l_orig, l_resam, f_obs, f_err, badpix, vectorized=False):
 
 
 def resample_cube(l_orig, l_resam, f, interpolate=False):
-    try:
-        from .hist_resample_opt import hist_resample as hist_resample_opt
-        resample = hist_resample_opt
-    except:
-        log.warn('Could not load optimized hist_resample, falling back to python code.')
-        resample = hist_resample
     Nlo = len(l_orig)
     Nlr = len(l_resam)
     spatial_shape = f.shape[1:]
@@ -260,7 +255,7 @@ def resample_cube(l_orig, l_resam, f, interpolate=False):
             buf_in[:] = interp1d_spectra(l_orig, f[:, i])
         else:
             buf_in[:] = f[:, i]
-        resample(bins_orig, bins_resam, buf_in, buf_out, density=True)
+        hist_resample(bins_orig, bins_resam, buf_in, buf_out, density=True)
         fr[:, i] = buf_out[:]
     log.debug('    Resampled %d spectra.' % Nspec)
     new_shape = (Nlr,) + spatial_shape
@@ -418,6 +413,7 @@ def bin_edges(bin_center):
     return bin_edges
 
 
+@jit(nopython=True)
 def hist_resample(bins_o, bins_r, v, v_r=None, density=False):
     '''
     Resample an histogram into another set of bins.
@@ -610,7 +606,7 @@ def find_nearest_index(array, value):
         value = np.array(value)
     idx = (np.abs(array - value[:, np.newaxis])).argmin(axis=1)
     if len(idx) == 1:
-        idx = np.asscalar(idx)
+        idx = np.ndarray.item(idx)
     return idx
 
 
