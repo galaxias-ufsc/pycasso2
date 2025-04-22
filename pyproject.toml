@@ -11,14 +11,20 @@ description = "Stellar population and emission line analysis"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["astrophysics"]
-license = {text = "BSD-3-Clause"}
+license = "BSD-3-Clause"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
     "astropy",
     "h5py",
     "numba",
 ]
 dynamic = ["version"]
 
+
+[tool.setuptools.packages.find]
+where = ["pycasso2"]
