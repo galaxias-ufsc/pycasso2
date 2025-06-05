@@ -119,7 +119,7 @@ def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuu
 
 
 def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
-                     kinematic_ties_on = True, balmer_limit_on = True,
+                     kinematic_ties_on = True, balmer_limit_on = True, noHa = False,
                      model = 'resampled_gaussian', vd_inst = None, vd_kms = True,
                      lines_windows_file = None, degree=16, min_good_fraction=.2,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
@@ -361,7 +361,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Fit
     mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
-        el_extra[ln]['flag'] = int(_flag)
+        el_extra[ln]['flag'] = np.int(_flag)
 
     if debug:
         import matplotlib.pyplot as plt
@@ -391,6 +391,10 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         mod_init_N2He2He1['5755'].vd.fixed = True
         mod_init_N2He2He1['4686'].v0.tied = lambda m: m['5876'].v0.value
         mod_init_N2He2He1['4686'].vd.tied = lambda m: m['5876'].vd.value
+
+    if noHa:
+        mod_init_N2He2He1['5755'].v0.fixed = False
+        mod_init_N2He2He1['5755'].vd.fixed = False
 
     # Fit
     mod_fit_N2He2He1, _flag = do_fit(mod_init_N2He2He1, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
@@ -436,6 +440,14 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     if balmer_limit_on:
         mod_init_HbHg['4861'].flux.max = mod_fit_HaN2['6563'].flux / 2.6
         mod_init_HbHg['4340'].flux.max = mod_fit_HaN2['6563'].flux / 5.5
+
+    if noHa:
+        mod_init_HbHg['4861'].v0.fixed = False
+        mod_init_HbHg['4861'].vd.fixed = False
+        mod_init_HbHg['4340'].v0.fixed = False
+        mod_init_HbHg['4340'].vd.fixed = False
+        mod_init_HbHg['4861'].flux.max = None
+        mod_init_HbHg['4340'].flux.max = None
 
     # Fit
     mod_fit_HbHg, _flag = do_fit(mod_init_HbHg, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
@@ -1016,3 +1028,29 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     #############################################################################################################
 
     return el
+
+if __name__ == "__main__":
+
+    tc = Table.read('STARLIGHTv04/0414.51901.393.cxt', format = 'ascii', names = ('lobs', 'fobs', 'ferr', 'flag'))
+    ts = atpy.TableSet('STARLIGHTv04/0414.51901.393.cxt.sc4.C11.im.CCM.BN', type = 'starlightv4')
+
+    #tc = Table.read('STARLIGHTv04/0404.51812.036.7xt', format = 'ascii', names = ('lobs', 'fobs', 'ferr', 'flag'))
+    #ts = atpy.TableSet('STARLIGHTv04/0404.51812.036.sc4.NA3.gm.CCM.BS', type = 'starlightv4')
+
+    el = fit_strong_lines_starlight(tc, ts, kinematic_ties_on = False)
+    plot_el(ts, el, display_plot = True)
+
+
+    # Test flux
+    ll = ts.spectra.l_obs
+    f_obs = ts.spectra.f_obs
+    f_syn = ts.spectra.f_syn
+    f_res = (f_obs - f_syn)
+
+    flag_Hb = (ll > 4850) & (ll < 4870)
+    F_int = f_res[flag_Hb].sum()
+    print(F_int / el[0]['4861'].flux.value)
+
+    flag_Ha = (ll > 6554) & (ll < 6570)
+    F_int = f_res[flag_Ha].sum()
+    print(F_int / el[0]['6563'].flux.value)

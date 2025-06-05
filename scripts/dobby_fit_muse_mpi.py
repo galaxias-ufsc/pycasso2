@@ -66,6 +66,8 @@ def parse_args():
                         help='Enable kinematic ties.')
     parser.add_argument('--enable-balmer-lim', dest='enableBalmerLim', action='store_true',
                         help='Do not allow Ha/Hb < 2.0.')
+    parser.add_argument('--turnoff-Ha', dest='noHa', action='store_true',
+                        help='Warn dobby not to use Ha.')
     parser.add_argument('--correct-good-frac', dest='correct_good_frac', action='store_true',
                         help='Correct spectra for the segmentation good frac spec prior to fitting.')
     parser.add_argument('--degree', dest='degree', type=int, default=16,
@@ -79,13 +81,14 @@ def parse_args():
 ###############################################################################
 class DobbyAdapter(object):
     def __init__(self, filename, mode='readonly', correct_good_frac=False,
-                 kin_ties=False, bal_lim=False, model='gaussian'):
+                 kin_ties=False, bal_lim=False, noHa=False, model='gaussian'):
         log.debug('Reading cube: %s' % filename)
         c = FitsCube(filename, mode=mode)
         self._c = c
         self.correct_good_frac = correct_good_frac
         self.kinTies = kin_ties
         self.balLim = bal_lim
+        self.noHa = noHa
         self.model = model
         self.name = c.name
         self.ll = c.l_obs
@@ -258,7 +261,7 @@ def fit_spaxel_kwargs(j, i, f_res, f_syn, f_err, stellar_v0, stellar_vd, kwargs)
 def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                suffix, name_template, tmpdir,
                ll, vd_inst, vd_max,
-               kinematic_ties_on, balmer_limit_on, model,
+               kinematic_ties_on, balmer_limit_on, noHa, model,
                degree, debug, display_plot):
     
     Nmasked = np.ma.getmaskarray(f_res).sum()
@@ -281,7 +284,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
     # Using stellar v0 and vd from the integrated spectrum is usually safer
     log.info(f'Fitting spaxel [{iy}, {ix}] with stellar_vd = {stellar_vd}')
     el = fit_strong_lines(ll, f_res, f_syn, f_err, vd_inst=vd_inst,
-                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, noHa=noHa, model=model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd)
     elines, spec = summary_elines(el)
@@ -295,7 +298,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
 
 ###############################################################################
 def fit_integrated(da, suffix, tmpdir, vd_inst,
-                   kinematic_ties_on, balmer_limit_on, model,
+                   kinematic_ties_on, balmer_limit_on, noHa, model,
                    degree, debug, vd_max, display_plot):
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
@@ -322,7 +325,7 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
     
     log.info('Fitting integrated spectrum.')
     el = fit_strong_lines(da.ll, f_res, f_syn, f_err, vd_inst=vd_inst,
-                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, model=model,
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, noHa=noHa, model=model,
                           degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=min(da.integ_v_d, vd_max))
     elines, spec = summary_elines(el)
@@ -362,7 +365,7 @@ if __name__ == '__main__':
     
     log.info('Loading cube %s.' % cube_in)
     da = DobbyAdapter(cube_in, mode=mode, correct_good_frac=args.correct_good_frac,
-                      kin_ties=args.enableKinTies, bal_lim=args.enableBalmerLim, model=args.model)
+                      kin_ties=args.enableKinTies, bal_lim=args.enableBalmerLim, noHa=args.noHa, model=args.model)
 
     el_dir = path.join(args.tmpDir, da.name)
     if not path.exists(el_dir):
@@ -373,7 +376,9 @@ if __name__ == '__main__':
 
     integ_elines, integ_spec = fit_integrated(da, suffix=suffix, tmpdir=el_dir, vd_inst=vd_inst,
                                               kinematic_ties_on=args.enableKinTies,
-                                              balmer_limit_on=args.enableBalmerLim, model=args.model,
+                                              balmer_limit_on=args.enableBalmerLim, 
+                                              noHa=args.noHa,
+                                              model=args.model,
                                               degree=args.degree, debug=args.debug, vd_max=args.vd_max,
                                               display_plot=args.displayPlots)
     if integ_elines is not None:
@@ -392,6 +397,7 @@ if __name__ == '__main__':
               'vd_inst' : vd_inst,
               'kinematic_ties_on' : args.enableKinTies,
               'balmer_limit_on' : args.enableBalmerLim,
+              'noHa' : args.noHa,
               'model' : args.model,
               'degree' : args.degree,
               'debug' : args.debug,
