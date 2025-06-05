@@ -19,8 +19,9 @@ starlight_no_data = 0x0400
 starlight_clipped = 0x0800
 
 d3d_screw = 0x1000
+stars = 0x2000
 
 # Compound flags
-no_obs = no_data | bad_pix | ccd_gap | d3d_screw | overlapping_spaxel
+no_obs = no_data | bad_pix | ccd_gap | d3d_screw | overlapping_spaxel | stars
 before_starlight = no_obs | telluric | low_sn
 no_starlight = starlight_no_data | starlight_failed_run

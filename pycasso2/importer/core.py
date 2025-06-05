@@ -201,6 +201,7 @@ def preprocess_obs(obs, cfg, mask_file=None):
         _hdu = fits.open(mask_file)
         m = _hdu['mask'].data
         obs.f_flag[:, (m == 1)] |= flags.overlapping_spaxel
+        obs.f_flag[:, (m == 2)] |= flags.stars
         # Fix wcs
         obs._wcs.wcs.crval[:2] = wcs.WCS(_hdu[0].header).wcs.crval
         
