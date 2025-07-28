@@ -125,6 +125,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False,
                      stellar_v0=0., stellar_vd_stronglines=100., stellar_vd_weaklines=100.,
+                     dv0 = 500., vd_max = 500.,
                      use_running_mean = False, N_running_mean = 50, N_clip = 1e30,
                      hii_ties_on = False,
                      **kwargs):
@@ -349,7 +350,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_HaN2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_HaN2 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     # From pyneb: [N II] F6584/F6548 =  2.9421684623736306 n_ii_atom_FFT04.dat
@@ -384,7 +389,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_N2He2He1 = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6584'].v0.value, vd=mod_fit_HaN2['6584'].vd.value, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+    v0_ini = mod_fit_HaN2['6584'].v0.value
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = mod_fit_HaN2['6584'].vd.value
+    mod_init_N2He2He1 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     if kinematic_ties_on:
         mod_init_N2He2He1['5755'].v0.fixed = True
@@ -428,7 +437,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Start model
     # Fitting Hg too because the single model has a problem,
     # and many things are based on the compounded model.
-    mod_init_HbHg = elModel(l0, flux=0.0, v0=mod_fit_HaN2['6563'].v0.value, vd=mod_fit_HaN2['6563'].vd.value, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = mod_fit_HaN2['6563'].v0.value
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = mod_fit_HaN2['6563'].vd.value
+    mod_init_HbHg = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
@@ -475,7 +488,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_O3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_O3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     # From pyneb: [O III] F5007/F4959 =  2.983969006971861 o_iii_atom_FFT04-SZ00.dat
@@ -511,9 +528,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value]
-    vd = [mod_fit_O3['5007'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value]
-    mod_init_O3_weak = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=0.0, vd_max=500.0)
+    v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value])
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value])
+    mod_init_O3_weak = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
@@ -552,7 +571,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_O2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_O2 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
@@ -585,7 +608,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_S2 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_S2 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
@@ -617,7 +644,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    mod_init_O2_weak = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_O2_weak = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
@@ -662,7 +693,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_Ne3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_Ne3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Fit
     mod_fit_Ne3, _flag = do_fit(mod_init_Ne3, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
@@ -690,9 +725,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
-    vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value]
-    mod_init_Ar3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value])
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value])
+    mod_init_Ar3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     # From pyneb: [Ar III] F7135/F7751 = 4.1443010868494 ar_iii_atom_MB09.dat
@@ -733,10 +770,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il] 
 
     # Start model
-    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value, 0., 0.]
-    vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value, 50., 50.]
-    mod_init_O1S3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
-
+    v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value, 0., 0.])
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value, 50., 50.])
+    mod_init_O1S3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
+    
     if kinematic_ties_on:
         mod_init_O1S3['6312'].v0.fixed = True
         mod_init_O1S3['6312'].vd.fixed = True
@@ -771,9 +810,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0 = [mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value]
-    vd = [mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value]
-    mod_init_Fe3 = elModel(l0, flux=0.0, v0=v0, vd=vd, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value])
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value])
+    mod_init_Fe3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     if kinematic_ties_on:
         mod_init_Fe3['4658'].v0.fixed = True
@@ -807,7 +848,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_Ar4 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min=-500.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_Ar4 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
@@ -840,7 +885,11 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    mod_init_Cl3 = elModel(l0, flux=0.0, v0=0.0, vd=50.0, vd_inst=_vd_inst, name=name, v0_min=-500.0, v0_max=500.0, vd_min= 0.0, vd_max=500.0)
+    v0_ini = stellar_v0
+    v0_min = v0_ini - dv0
+    v0_max = v0_ini + dv0
+    vd_ini = 50.
+    mod_init_Cl3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     if kinematic_ties_on:
         mod_init_Cl3['5517'].v0.tied = lambda m: m['5539'].v0.value
