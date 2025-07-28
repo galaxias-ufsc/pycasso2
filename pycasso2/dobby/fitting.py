@@ -354,7 +354,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
-    mod_init_HaN2 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
+    mod_init_HaN2 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=-vd_max, vd_max=vd_max)
 
     # Ties
     # From pyneb: [N II] F6584/F6548 =  2.9421684623736306 n_ii_atom_FFT04.dat
@@ -529,8 +529,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value, mod_fit_HaN2['6563'].v0.value])
-    v0_min = v0_ini - dv0
-    v0_max = v0_ini + dv0
+    v0_min = min(v0_ini - dv0)
+    v0_max = max(v0_ini + dv0)
     vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value, mod_fit_HaN2['6563'].vd.value])
     mod_init_O3_weak = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
@@ -726,8 +726,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     # Start model
     v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value])
-    v0_min = v0_ini - dv0
-    v0_max = v0_ini + dv0
+    v0_min = min(v0_ini - dv0)
+    v0_max = max(v0_ini + dv0)
     vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value])
     mod_init_Ar3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
@@ -771,8 +771,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     # Start model
     v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value, 0., 0.])
-    v0_min = v0_ini - dv0
-    v0_max = v0_ini + dv0
+    v0_min = min(v0_ini - dv0)
+    v0_max = max(v0_ini + dv0)
     vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value, 50., 50.])
     mod_init_O1S3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
     
@@ -811,8 +811,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
     # Start model
     v0_ini = np.array([mod_fit_O3['5007'].v0.value, mod_fit_O3['5007'].v0.value])
-    v0_min = v0_ini - dv0
-    v0_max = v0_ini + dv0
+    v0_min = min(v0_ini - dv0)
+    v0_max = max(v0_ini + dv0)
     vd_ini = np.array([mod_fit_O3['5007'].vd.value, mod_fit_O3['5007'].vd.value])
     mod_init_Fe3 = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
