@@ -332,6 +332,16 @@ class PycassoExplorer:
         ax.plot(c.l_obs, fp, 'grey', label='pseudocontinuum', drawstyle = 'steps-mid')
         ax.legend(frameon=False)
 
+        masked_pix = (fl & flags.no_starlight > 0).all()
+
+        self.fig.text(.6, .92, r'$(y, x) = (%d, %d)$' % (y, x), size=textsize)
+        self.fig.text(.6, .88, r'$\mathrm{S/N (norm. window)} = %.1f$' % SN, size=textsize)
+
+        if not c.hasSynthesis or masked_pix:
+            self.fig.text(.6, .84, r'No synthesis', size=textsize)
+            ax.legend(frameon=False)
+            return
+        
         self.fig.text(.6, .84, r'$\chi^2 = %3.2f$' % chi2, size=textsize)
         self.fig.text(.6, .80, r'$\mathrm{adev} = %3.2f$' % adev, size=textsize)
         self.fig.text(.6, .76, r'$N_\mathrm{clip} = %d$' % Nclip, size=textsize)
