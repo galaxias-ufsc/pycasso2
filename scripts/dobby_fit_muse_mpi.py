@@ -211,7 +211,7 @@ class DobbyAdapter(object):
         f_res = f_obs - f_syn
         f_flagged = ((flags.no_starlight & self.f_flag[:, j, i]) > 0)
         f_res[f_flagged] = np.ma.masked
-        return j, i, f_res, f_syn, f_err, self.integ_v_0, min(self.integ_v_d, self.vd_max)
+        return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
     
     def __iter__(self):
         for j in range(self.Ny):
@@ -281,7 +281,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
             log.debug('Corrupt result file (%s), removing and repeating the fit.')
             unlink(outfile)
 
-    # Using stellar v0 and vd from the integrated spectrum is usually safer
+    # Using stellar v0 and vd from the spaxel spectrum (even though from the integrated is usually safer)
     log.info(f'Fitting spaxel [{iy}, {ix}] with stellar_vd = {stellar_vd}')
     el = fit_strong_lines(ll, f_res, f_syn, f_err, vd_inst=vd_inst,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, noHa=noHa, model=model,
