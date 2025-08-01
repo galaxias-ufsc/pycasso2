@@ -34,7 +34,6 @@ class PycassoExplorer:
                     'font.size': 11,
                     'axes.titlesize': 12,
                     'lines.linewidth': 0.5,
-                    'font.family': 'Times New Roman',
                     'image.cmap': 'GnBu',
                     }
         plt.rcParams.update(plotpars)
@@ -63,6 +62,8 @@ class PycassoExplorer:
                       'met': self.c.alogZ_mass,
                       'v_0': self.c.v_0,
                       'v_d': self.c.v_d,
+                      'Ha':  np.zeros_like(c.flux_norm_window),
+                      'Hb':  np.zeros_like(c.flux_norm_window),
                       }
         else:
             c.l_norm = 5635.0
@@ -77,9 +78,26 @@ class PycassoExplorer:
                       'v_0':  np.zeros_like(c.flux_norm_window),
                       'v_d':  np.zeros_like(c.flux_norm_window),
                       'Ha':  np.zeros_like(c.flux_norm_window),
+                      'Hb':  np.zeros_like(c.flux_norm_window),
                       }
         if c.hasELines:
-            images.update({'Ha': c.EL_flux(6563),
+            Ha = c.EL_flux(6563)
+            Hb = c.EL_flux(4861)
+            O3 = c.EL_flux(5007)
+            N2 = c.EL_flux(6584)
+            N2Ha = N2 / Ha
+            O3Hb = O3 / Hb
+            HaHb = Ha / Hb
+            norm_flux = lambda F:F/np.nanmax(F)
+            HbO3Ha = np.array([norm_flux(Hb), norm_flux(O3), norm_flux(Ha)]).transpose(1, 2, 0)
+            images.update({'Ha': Ha,
+                           'Hb': Hb,
+                           'O3': O3,
+                           'N2': N2,
+                           'N2Ha': N2Ha,
+                           'O3Hb': O3Hb,
+                           'HaHb': HaHb,
+                           'HbO3Ha': HbO3Ha,
                       })
 
         label = {'light': r'Image @ $5635 \AA$',
@@ -92,6 +110,13 @@ class PycassoExplorer:
                  'v_0': r'$v_\star\ [km\,s_{-1}]$',
                  'v_d': r'$\sigma_\star\ [km\,s_{-1}]$',
                  'Ha': r'$\log F(\mathrm{H\alpha})$',
+                 'Hb': r'$\log F(\mathrm{H\beta})$',
+                 'O3': r'$\log F(\mathrm{[OIII]})$',
+                 'N2': r'$\log F(\mathrm{[NII]})$',
+                 'N2Ha': r'$\log F(\mathrm{[NII]/H\alpha})$',
+                 'O3Hb': r'$\log F(\mathrm{[OIII]/H\beta})$',
+                 'HaHb': r'$\log F(\mathrm{H\alpha/H\beta})$',
+                 'HbO3Ha': r'$\log F(\mathrm{H\beta}) + F(\mathrm{[OIII]}) + F(\mathrm{H\alpha})$',
                  }
 
         is_ext = {'light': True,
@@ -104,6 +129,13 @@ class PycassoExplorer:
                   'v_0': False,
                   'v_d': False,
                   'Ha': False,
+                  'Hb': False,
+                  'O3': False,
+                  'N2': False,
+                  'N2Ha': False,
+                  'O3Hb': False,
+                  'HaHb': False,
+                  'HbO3Ha': False,
                   }
 
         op = {'light': np.log10,
@@ -116,6 +148,13 @@ class PycassoExplorer:
               'v_0': lambda x: x,
               'v_d': lambda x: x,
               'Ha': np.log10,
+              'Hb': np.log10,
+              'O3': np.log10,
+              'N2': np.log10,
+              'N2Ha': np.log10,
+              'O3Hb': np.log10,
+              'HaHb': np.log10,
+              'HbO3Ha': lambda x: x,
               }
         
         vmin = {'light': None,
@@ -127,7 +166,14 @@ class PycassoExplorer:
                 'd4000': 0.9,
                 'v_0': -300.0,
                 'v_d': 0.0,
-                'Ha': 2.0,
+                'Ha': None,
+                'Hb': None,
+                'O3': None,
+                'N2': None,
+                'N2Ha': -1.4,
+                'O3Hb': -1.0,
+                'HaHb': np.log10(3),
+                'HbO3Ha': None,
                 }
         
         vmax = {'light': None,
@@ -139,7 +185,14 @@ class PycassoExplorer:
                 'd4000': 2.5,
                 'v_0': 300.0,
                 'v_d': 500.0,
-                'Ha': 5.0,
+                'Ha': None,
+                'Hb': None,
+                'O3': None,
+                'N2': None,
+                'N2Ha': 0.4,
+                'O3Hb': 0.8,
+                'HaHb': 0.8,
+                'HbO3Ha': None,
                 }
         
         cmap = {'light': 'viridis_r',
@@ -151,18 +204,25 @@ class PycassoExplorer:
                 'd4000': 'viridis_r',
                 'v_0': 'RdBu',
                 'v_d': 'viridis_r',
-                'Ha': 'viridis',
+                'Ha': 'inferno',
+                'Hb': 'inferno',
+                'O3': 'inferno',
+                'N2': 'inferno',
+                'N2Ha': 'inferno',
+                'O3Hb': 'inferno',
+                'HaHb': 'inferno',
+                'HbO3Ha': None,
                 }
         
         image_order = ['light',
-                       'mass',
-                       'sfr',
-                       'age',
-                       'met',
-                       'tau_V',
-                       'v_0',
-                       'v_d',
-                       'Ha'
+                       'Ha',
+                       'Hb',
+                       'O3',
+                       'N2',
+                       'N2Ha',
+                       'O3Hb',
+                       'HaHb',
+                       'HbO3Ha',
                        ]
         
         for k in image_order:
@@ -194,7 +254,7 @@ class PycassoExplorer:
             self.redraw()
 
     def onKeyPress(self, ev):
-        if ev.key in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
+        if ev.key in ['1', '2', '3', '4', '5', '6', '7', '8', '9', ]:
             self.raiseImage(ev.key)
         elif ev.key in ['up', 'down', 'left', 'right']:
             self.displaceCursor(ev.key)
@@ -388,7 +448,7 @@ The keys z, x decrease or increase the vmin of the current image.
 The keys c, v decrease or increase the vmax of the current image.
  
 Press <space> to print vmin & vmax of the current image.
-
+q
 
 
 ''')
