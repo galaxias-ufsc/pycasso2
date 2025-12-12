@@ -11,8 +11,8 @@ import numpy as np
 import astropy.constants as const
 from astropy.modeling import Fittable1DModel, Parameter
 
-
 c = const.c.to('km/s').value
+
 
 
 class ResampledGaussian(Fittable1DModel):
@@ -23,9 +23,6 @@ class ResampledGaussian(Fittable1DModel):
     vd = Parameter()
     vd_inst = Parameter(fixed=True)
 
-    def __getitem__(self, i):
-        return self
-    
     def bounding_box(self, factor=5.5):
         l0 = self.l0.value * (self.v0 / c)
         dl = factor * self.l0.value * self.vd / c
@@ -34,7 +31,6 @@ class ResampledGaussian(Fittable1DModel):
     @staticmethod
     def evaluate(l, l0, flux, v0, vd, vd_inst):
 
-            
         def gaussian_int(l):
             from scipy.special import erf
             v = c * (l - l0) / l0
@@ -55,7 +51,7 @@ class ResampledGaussian(Fittable1DModel):
     
     @staticmethod
     def fit_deriv(l, l0, flux, v0, vd, vd_inst):
-        #v = c * (l - l0) / l0
+        # v = c * (l - l0) / l0
         vd_obs2 = vd ** 2 + vd_inst ** 2
         d_flux = np.exp( -0.5 * (v - v0) ** 2 / vd_obs2 ) / np.sqrt(2. * np.pi * vd_obs2)
         d_v0   = flux * d_flux * (v - v0) / vd_obs2
@@ -66,9 +62,16 @@ class ResampledGaussian(Fittable1DModel):
 def MultiResampledGaussian(l0, flux, v0, vd, vd_inst, name, v0_min=None, v0_max=None, vd_min=None, vd_max=None):
     # TODO: Sanity checks.
 
+    print('test')
+    # Transform v0 and vd into array if given a single value
+    if np.isscalar(v0):
+        v0 = np.full(len(name), v0)
+    if np.isscalar(vd):
+        vd = np.full(len(name), vd)
+
     flux = [flux, ] * len(l0)
-    models = [ResampledGaussian(l, a, v0, vd, vdi, name=n)
-              for l, a, vdi, n in zip(l0, flux, vd_inst, name)]
+    models = [ResampledGaussian(l, f, _v0, _vd, vdi, name=n)
+              for l, f, _v0, _vd, vdi, n in zip(l0, flux, v0, vd, vd_inst, name)]
 
     model = models[0]
     for i in np.arange(1, len(models)):

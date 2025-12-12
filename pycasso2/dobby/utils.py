@@ -206,7 +206,7 @@ def plot_el_starlight(ts, el, save = False, display_plot = True):
     plot_el(ll, f_res, el, display_plot = display_plot)
 
 
-def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = False, mark_lines = False):
+def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = False, mark_lines = False, figsize=None):
     import matplotlib
     if not display_plot:
         matplotlib.use('pdf')
@@ -214,7 +214,9 @@ def plot_el(ll, f_res, el, ifig = 1, display_plot = False, plot_weak_lines = Fal
     import matplotlib.pyplot as plt
     from matplotlib import gridspec
 
-    fig = plt.figure(ifig, figsize=(12,6))
+    if figsize is None: 
+        figsize=(12,6)
+    fig = plt.figure(ifig, figsize=figsize)
 
     mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3,mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3, el_extra = el
 

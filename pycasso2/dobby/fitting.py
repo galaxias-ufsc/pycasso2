@@ -120,7 +120,7 @@ def local_continuum_linear(_ll, _f_res, linename, lines_windows, return_continuu
 
 def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      kinematic_ties_on = True, balmer_limit_on = True, noHa = False,
-                     model = 'resampled_gaussian', vd_inst = None, vd_kms = True,
+                     model = 'gaussian', vd_inst = None, vd_kms = True,
                      lines_windows_file = None, degree=16, min_good_fraction=.2,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False,
@@ -366,7 +366,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     # Fit
     mod_fit_HaN2, _flag = do_fit(mod_init_HaN2, _ll, total_lc, f_res, f_err, min_good_fraction=min_good_fraction)
     for ln in name:
-        el_extra[ln]['flag'] = np.int(_flag)
+        el_extra[ln]['flag'] = np.int32(_flag)
 
     if debug:
         import matplotlib.pyplot as plt
@@ -441,7 +441,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = mod_fit_HaN2['6563'].vd.value
-    mod_init_HbHg = elModel(l0, flux=0., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
+    mod_init_HbHg = elModel(l0, flux=mod_fit_HaN2['6563'].flux/3., v0=v0_ini, vd=vd_ini, vd_inst=_vd_inst, name=name, v0_min=v0_min, v0_max=v0_max, vd_min=0., vd_max=vd_max)
 
     # Ties
     if kinematic_ties_on:
