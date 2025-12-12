@@ -88,6 +88,7 @@ class PycassoExplorer:
             N2Ha = N2 / Ha
             O3Hb = O3 / Hb
             HaHb = Ha / Hb
+            WHa = c.EL_EW(6563)
             norm_flux = lambda F:F/np.nanmax(F)
             HbO3Ha = np.array([norm_flux(Hb), norm_flux(O3), norm_flux(Ha)]).transpose(1, 2, 0)
             images.update({'Ha': Ha,
@@ -98,6 +99,7 @@ class PycassoExplorer:
                            'O3Hb': O3Hb,
                            'HaHb': HaHb,
                            'HbO3Ha': HbO3Ha,
+                           'WHa': WHa,
                       })
 
         label = {'light': r'Image @ $5635 \AA$',
@@ -117,6 +119,7 @@ class PycassoExplorer:
                  'O3Hb': r'$\log F(\mathrm{[OIII]/H\beta})$',
                  'HaHb': r'$\log F(\mathrm{H\alpha/H\beta})$',
                  'HbO3Ha': r'$\log F(\mathrm{H\beta}) + F(\mathrm{[OIII]}) + F(\mathrm{H\alpha})$',
+                 'WHa': r'$\log W(\mathrm{H\alpha}) [\AA]$',
                  }
 
         is_ext = {'light': True,
@@ -136,6 +139,7 @@ class PycassoExplorer:
                   'O3Hb': False,
                   'HaHb': False,
                   'HbO3Ha': False,
+                  'WHa': False,
                   }
 
         op = {'light': np.log10,
@@ -155,6 +159,7 @@ class PycassoExplorer:
               'O3Hb': np.log10,
               'HaHb': np.log10,
               'HbO3Ha': lambda x: x,
+              'WHa': np.log10,
               }
         
         vmin = {'light': None,
@@ -174,6 +179,7 @@ class PycassoExplorer:
                 'O3Hb': -1.0,
                 'HaHb': np.log10(3),
                 'HbO3Ha': None,
+                'WHa': np.log10(3),
                 }
         
         vmax = {'light': None,
@@ -193,6 +199,7 @@ class PycassoExplorer:
                 'O3Hb': 0.8,
                 'HaHb': 0.8,
                 'HbO3Ha': None,
+                'WHa': np.log10(50),
                 }
         
         cmap = {'light': 'viridis_r',
@@ -212,6 +219,7 @@ class PycassoExplorer:
                 'O3Hb': 'inferno',
                 'HaHb': 'inferno',
                 'HbO3Ha': None,
+                'WHa': 'inferno',
                 }
         
         image_order = ['light',
@@ -223,10 +231,10 @@ class PycassoExplorer:
                        'O3Hb',
                        'HaHb',
                        'HbO3Ha',
+                       'WHa',
                        ]
         
         for k in image_order:
-            print(k)
             im = images[k]
             if self.c.hasSegmentationMask:
                 im = spatialize(im, self.c.segmentationMask, is_ext[k])
@@ -254,7 +262,7 @@ class PycassoExplorer:
             self.redraw()
 
     def onKeyPress(self, ev):
-        if ev.key in ['1', '2', '3', '4', '5', '6', '7', '8', '9', ]:
+        if ev.key in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']:
             self.raiseImage(ev.key)
         elif ev.key in ['up', 'down', 'left', 'right']:
             self.displaceCursor(ev.key)
@@ -288,7 +296,7 @@ class PycassoExplorer:
 
     def raiseImage(self, key):
         try:
-            ev_id = int(key) - 1
+            ev_id = int(key)
         except:
             pass
         for i in range(len(self.ax_im.images)):
