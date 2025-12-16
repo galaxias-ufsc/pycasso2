@@ -125,7 +125,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False,
                      stellar_v0=0., stellar_vd_stronglines=100., stellar_vd_weaklines=100.,
-                     dv0 = 500., vd_max = 500.,
+                     dv0 = 500., vd_max = 500., Nsig = 5,
                      use_running_mean = False, N_running_mean = 50, N_clip = 1e30,
                      hii_ties_on = False,
                      **kwargs):
@@ -246,7 +246,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     log.info(f'to mask out emission lines for the pseudocontinuum fit.')
     l_cen = l0 * (1. + stellar_v0 / c)
     sig_l = np.where((lines_windows['strong?'] == 1), l0 * (stellar_vd_stronglines / c), l0 * (stellar_vd_weaklines / c))
-    Nsig = 5
     for _l_cen, _sig_l in zip(l_cen, sig_l):
         flag_line = (_ll >= (_l_cen - Nsig * _sig_l)) & (_ll <= (_l_cen + Nsig * _sig_l))
         flag_lc[flag_line] = False
