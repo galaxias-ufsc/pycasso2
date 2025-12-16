@@ -9,6 +9,10 @@ from pycasso2.segmentation import spatialize
 
 ##########################################################################
 
+def patch_asscalar(a):
+    return a.item()
+
+setattr(np, "asscalar", patch_asscalar)
 
 class PycassoExplorer:
 
@@ -207,11 +211,11 @@ class PycassoExplorer:
 
     def updateColorbar(self, im):
         self.cb.mappable = im
-        cid = im.callbacksSM.connect('changed', self.cb.on_mappable_changed)
+        cid = im.callbacks.connect('changed', self.cb.update_normal)
         im.colorbar = self.cb
         im.colorbar_cid = cid
-        self.cb.set_norm(im.norm)
-        self.cb.on_mappable_changed(im)
+        self.cb.mappable.set_norm(im.norm)
+        self.cb.update_normal(im)
 
     def raiseImage(self, key):
         try:
@@ -248,8 +252,8 @@ class PycassoExplorer:
         x = int(x)
         y = int(y)
         c = self.c
-        self.ax_sp.lines = []
-        self.ax_res.lines = []
+        self.ax_sp.clear()
+        self.ax_res.clear()
         self.fig.texts = []
         textsize = 'medium'
        
