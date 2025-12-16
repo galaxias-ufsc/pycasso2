@@ -43,7 +43,7 @@ def read_manga(cube, name, cfg):
     header = safe_getheader(cube, ext='FLUX')
 
     drp = read_drpall(cfg.get('tables', 'master_table'), header['PLATEIFU'])
-    z = np.asscalar(drp['nsa_z'])
+    z = np.ndarray.item(drp['nsa_z'])
 
     if header['DRP3QUAL'] & CRITICAL_BIT:
         log.warn('Critical bit set. There are problems with this cube.')

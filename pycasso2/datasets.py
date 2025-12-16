@@ -18,8 +18,9 @@ def download_manga_cube(plate, plateifu, data_dir, wait=True, wait_time=120, ove
 
     else:
 
-        url = 'https://data.sdss.org/sas/dr14/manga/spectro/redux/v2_1_2/' + \
-            plate
+        #url = 'https://data.sdss.org/sas/dr14/manga/spectro/redux/v2_1_2/' + plate
+        #url = 'https://data.sdss.org/sas/dr15/manga/spectro/redux/v2_4_3/' + plate
+        url = 'https://data.sdss.org/sas/dr17/manga/spectro/redux/v3_1_1/' + plate
         url += '/stack/manga-' + plateifu + '-LINCUBE.fits.gz'
 
         u = urllib.request.urlopen(url)
@@ -59,12 +60,14 @@ def download_manga_image(plate, ifudsgn, objid, imdir, thumb=False):
 
     else:
 
-        url = 'http://data.sdss.org/sas/dr15/manga/spectro/redux/v2_4_3/'
+        #url = 'https://data.sdss.org/sas/dr14/manga/spectro/redux/v2_1_2/'
+        url = 'https://data.sdss.org/sas/dr14/manga/spectro/redux/v2_4_3/'
+        #url = 'http://data.sdss.org/sas/dr17/manga/spectro/redux/v3_1_1/'
         if thumb:
             image_name = str(ifudsgn).strip() + '_thumb.png'
         else:
             image_name = str(ifudsgn).strip() + '.png'
-        url += str(plate).strip() + '/stack/images/' + image_name
+        url += str(plate).strip() + '/images/' + image_name
 
         print(url)
         file_name = imdir + str(objid) + '.png'
