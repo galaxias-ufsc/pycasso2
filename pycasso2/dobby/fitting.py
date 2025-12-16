@@ -314,10 +314,10 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         plt.xlim(4500, 5200)
 
         plt.subplot(222)
-        plt.plot(_ll, f_res, 'tab:blue')
+        plt.plot(_ll, _f_res_lc / np.abs(med), 'tab:blue')
         plt.plot(_ll, total_lc, 'tab:orange')
-        plt.ylim(-0.1, 0.4)
-        plt.xlim(5500, 6500)
+        plt.ylim(-1, 2)
+        plt.xlim(6000, 7000)
         
         plt.subplot(223)
         plt.plot(_ll, f_res, 'tab:blue')
@@ -327,10 +327,12 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
         plt.subplot(224)
         plt.plot(_ll, f_res, 'tab:blue')
-        plt.plot(_ll, _f_res_lc, 'tab:red')
-        #plt.plot(_ll, running_mean)
+        #plt.plot(_ll, _f_res_lc, 'tab:red')
+        plt.plot(_ll, running_mean / np.abs(med), 'tab:red')
         plt.plot(_ll, total_lc, 'tab:orange')
         #plt.plot(_ll[flag_line], _f_res_lc.data[flag_line], 'r')
+        plt.ylim(-1, 2)
+        plt.xlim(6000, 7000)
         
         plt.show()
     #############################################################################################################
