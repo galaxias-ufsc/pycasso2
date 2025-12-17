@@ -74,6 +74,14 @@ def parse_args():
                         help='Degree for Legendre polynomial fits in the local continuum. Default: 16')
     parser.add_argument('--vd_max', dest='vd_max', type=np.float64, default=1000.,
                         help='Maximum vd to remove the pseudocontinuum (decrease to 100 to remove broad lines). Default: 1000 km/s')
+    parser.add_argument('--use-running-mean', dest='use_running_mean', action='store_true',
+                        help='Use running mean for pseudocontinuum.')
+    parser.add_argument('--N-running-mean', dest='N_running_mean', type=int, default=10,
+                        help='Number of pixels to use for the running mean. Default: 10')
+    parser.add_argument('--N-clip', dest='N_clip', type=int, default=10,
+                        help='Clip pseudocontinuum above N_clip * rms. Default: 10')
+    parser.add_argument('--Nsig', dest='Nsig', type=int, default=2,
+                        help='Clip emission lines for pseudocontinuum until Nsig * vd. Default: 2')
 
     return parser.parse_args()
 ###############################################################################
@@ -81,7 +89,8 @@ def parse_args():
 ###############################################################################
 class DobbyAdapter(object):
     def __init__(self, filename, mode='readonly', correct_good_frac=False,
-                 kin_ties=False, bal_lim=False, noHa=False, model='gaussian'):
+                 kin_ties=False, bal_lim=False, noHa=False, model='gaussian',
+                 use_running_mean=False, N_running_mean=10, N_clip=10, Nsig=2):
         log.debug('Reading cube: %s' % filename)
         c = FitsCube(filename, mode=mode)
         self._c = c
@@ -98,6 +107,10 @@ class DobbyAdapter(object):
         self.integ_v_0 = c.synthIntegKeywords['v0']
         self.integ_v_d = c.synthIntegKeywords['vd']
         self.vd_max = args.vd_max
+        self.use_running_mean = use_running_mean
+        self.N_running_mean = N_running_mean
+        self.N_clip = N_clip
+        self.Nsig = Nsig
             
         if c.hasSegmentationMask:
             log.debug('Cube is segmented.')
@@ -262,7 +275,8 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                suffix, name_template, tmpdir,
                ll, vd_inst, vd_max,
                kinematic_ties_on, balmer_limit_on, noHa, model,
-               degree, debug, display_plot):
+               degree, debug, display_plot,
+               use_running_mean, N_running_mean, N_clip, Nsig):
     
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
@@ -284,9 +298,13 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
     # Using stellar v0 and vd from the spaxel spectrum (even though from the integrated is usually safer)
     log.info(f'Fitting spaxel [{iy}, {ix}] with stellar_vd = {stellar_vd}')
     el = fit_strong_lines(ll, f_res, f_syn, f_err, vd_inst=vd_inst,
-                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, noHa=noHa, model=model,
-                          degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
-                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=stellar_vd)
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on,
+                          noHa=noHa, model=model,
+                          degree=degree, Nsig=Nsig,
+                          use_running_mean=use_running_mean, N_running_mean=N_running_mean, N_clip=N_clip,
+                          saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
+                          vd_kms=True, stellar_v0=stellar_v0, stellar_vd=min(stellar_vd, vd_max))
+    
     elines, spec = summary_elines(el)
     if debug:
         fig = plot_el(ll, f_res, el, ifig = 0, display_plot = display_plot)
@@ -299,7 +317,8 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
 ###############################################################################
 def fit_integrated(da, suffix, tmpdir, vd_inst,
                    kinematic_ties_on, balmer_limit_on, noHa, model,
-                   degree, debug, vd_max, display_plot):
+                   degree, debug, vd_max, display_plot,
+                   use_running_mean, N_running_mean, N_clip, Nsig):
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
 
@@ -325,8 +344,11 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
     
     log.info('Fitting integrated spectrum.')
     el = fit_strong_lines(da.ll, f_res, f_syn, f_err, vd_inst=vd_inst,
-                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on, noHa=noHa, model=model,
-                          degree=degree, saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
+                          kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on,
+                          noHa=noHa, model=model,
+                          degree=degree, Nsig=Nsig,
+                          use_running_mean=use_running_mean, N_running_mean=N_running_mean, N_clip=N_clip,
+                          saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=min(da.integ_v_d, vd_max))
     elines, spec = summary_elines(el)
     if debug:
@@ -365,7 +387,10 @@ if __name__ == '__main__':
     
     log.info('Loading cube %s.' % cube_in)
     da = DobbyAdapter(cube_in, mode=mode, correct_good_frac=args.correct_good_frac,
-                      kin_ties=args.enableKinTies, bal_lim=args.enableBalmerLim, noHa=args.noHa, model=args.model)
+                      kin_ties=args.enableKinTies, bal_lim=args.enableBalmerLim, noHa=args.noHa,
+                      model=args.model,
+                      use_running_mean=args.use_running_mean,
+                      N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig)
 
     el_dir = path.join(args.tmpDir, da.name)
     if not path.exists(el_dir):
@@ -379,6 +404,8 @@ if __name__ == '__main__':
                                               balmer_limit_on=args.enableBalmerLim, 
                                               noHa=args.noHa,
                                               model=args.model,
+                                              use_running_mean=args.use_running_mean,
+                                              N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig,
                                               degree=args.degree, debug=args.debug, vd_max=args.vd_max,
                                               display_plot=args.displayPlots)
     if integ_elines is not None:
@@ -403,6 +430,10 @@ if __name__ == '__main__':
               'debug' : args.debug,
               'vd_max': args.vd_max,
               'display_plot' : args.displayPlots,
+              'use_running_mean' : args.use_running_mean,
+              'N_running_mean' : args.N_running_mean,
+              'N_clip' : args.N_clip,
+              'Nsig' : args.Nsig,
              }
     
     queue_length = args.queueLength
