@@ -489,7 +489,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
@@ -572,7 +572,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
@@ -609,7 +609,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
@@ -645,7 +645,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
     for il, ln in enumerate(name):
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
@@ -694,7 +694,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
@@ -849,7 +849,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
@@ -886,7 +886,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra[ln]['vd_inst'] = _vd_inst[il]
 
     # Start model
-    v0_ini = stellar_v0
+    v0_ini = mod_fit_HaN2['6584'].v0.value
     v0_min = v0_ini - dv0
     v0_max = v0_ini + dv0
     vd_ini = 50.
