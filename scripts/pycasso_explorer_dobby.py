@@ -5,6 +5,8 @@ from matplotlib.patches import Circle
 import numpy as np
 import argparse
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+from astropy.table import Table
+from astropy.coordinates import SkyCoord
 from pycasso2.segmentation import spatialize
 
 ##########################################################################
@@ -12,21 +14,41 @@ from pycasso2.segmentation import spatialize
 
 class PycassoExplorer:
 
-    def __init__(self, cube, figsize=(8, 8)):
+    def __init__(self, cube, figsize=(8, 8), Re_file=None):
         self.c = FitsCube(cube)
+
+        self.Re = None
+        if Re_file is not None:
+            self.read_Re(Re_file)
+
+        if self.c.x0 >= self.c.Nx or self.c.x0 < 0:
+            self.x0 = int(self.c.Nx / 2)
+        else:
+            self.x0 = self.c.x0
+        if self.c.y0 >= self.c.Ny or self.c.y0 < 0:
+            self.y0 = int(self.c.Ny / 2)
+        else:
+            self.y0 = self.c.y0
+
+        try:
+            coords_world = SkyCoord.from_name(self.c.name)
+            coords_pix = self.c._wcs.dropaxis(-1).wcs_world2pix(coords_world.ra.degree, coords_world.dec.degree, 1)
+            self.y0, self.x0 = coords_pix
+        except:
+            pass
+
+        self.x0, self.y0 = 37, 33
+        
         self.createUI(figsize)
         self.raiseImage('1')
-        if self.c.x0 >= self.c.Nx or self.c.x0 < 0:
-            x0 = int(self.c.Nx / 2)
-        else:
-            x0 = self.c.x0
-        if self.c.y0 >= self.c.Ny or self.c.y0 < 0:
-            y0 = int(self.c.Ny / 2)
-        else:
-            y0 = self.c.y0
-        self.selectPixel(x0, y0)
+        self.selectPixel(self.x0, self.y0)
         self.redraw()
-
+            
+    def read_Re(self, Re_file):
+        t = Table.read(Re_file, format="ascii.fixed_width_two_line")
+        igal = np.where(t['Name'] == self.c.name)[0]
+        self.Re = float(t['eR'][igal]) / self.c.pixelScale_arcsec
+            
     def createUI(self, figsize):
         plotpars = {'legend.fontsize': 8,
                     'xtick.labelsize': 11,
@@ -247,6 +269,12 @@ class PycassoExplorer:
             (0, 0), radius=1.5, lw=1.0, facecolor='none', edgecolor='r', figure=self.fig)
         self.ax_im.add_patch(self.cursor)
 
+        if self.Re is not None:
+            self.Re
+            for fRe in [0.7, 2.0]:
+                circle = plt.Circle((self.x0, self.y0), fRe * self.Re, color='grey', fill=False)
+                self.ax_im.add_patch(circle)
+                        
     def redraw(self):
         self.fig.canvas.draw()
 
@@ -444,11 +472,13 @@ class PycassoExplorer:
 parser = argparse.ArgumentParser(description='pycasso cube explorer.')
 parser.add_argument('cube', type=str, nargs=1,
                     help='pycasso cube.')
+parser.add_argument('--Re-file', dest='Re_file', default=None,
+                    help='Effective radius table file (to plot 0.7 and 2.0 Re). Default: %s' % None)
 
 args = parser.parse_args()
 
 print('Opening file %s' % args.cube[0])
-pe = PycassoExplorer(args.cube[0])
+pe = PycassoExplorer(args.cube[0], Re_file=args.Re_file)
 print('''Use the keys 1-9 to cycle between the images.
 Left click plots starlight results for the selected pixel.
 
