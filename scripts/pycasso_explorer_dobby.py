@@ -36,8 +36,6 @@ class PycassoExplorer:
             self.y0, self.x0 = coords_pix
         except:
             pass
-
-        self.x0, self.y0 = 37, 33
         
         self.createUI(figsize)
         self.raiseImage('1')
