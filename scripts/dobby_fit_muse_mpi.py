@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 from astropy import log
 from astropy.table import Table
+from scipy.spatial import KDTree
 from mpi4py.futures import MPIPoolExecutor
 from itertools import islice, starmap
 from multiprocessing import cpu_count
@@ -78,10 +79,12 @@ def parse_args():
                         help='Use running mean for pseudocontinuum.')
     parser.add_argument('--N-running-mean', dest='N_running_mean', type=int, default=10,
                         help='Number of pixels to use for the running mean. Default: 10')
-    parser.add_argument('--N-clip', dest='N_clip', type=int, default=10,
-                        help='Clip pseudocontinuum above N_clip * rms. Default: 10')
-    parser.add_argument('--Nsig', dest='Nsig', type=int, default=2,
-                        help='Clip emission lines for pseudocontinuum until Nsig * vd. Default: 2')
+    parser.add_argument('--N-clip', dest='N_clip', type=int, default=2,
+                        help='Clip pseudocontinuum above N_clip * rms. Default: 2')
+    parser.add_argument('--Nsig', dest='Nsig', type=int, default=4,
+                        help='Clip emission lines for pseudocontinuum until Nsig * vd. Default: 4')
+    parser.add_argument('--v0-SN', dest='v0_SN', type=int, default=0,
+                        help='S/N limit to replace v0 with neighbouring values. Default: 0 (no replacement)')
 
     return parser.parse_args()
 ###############################################################################
@@ -90,7 +93,8 @@ def parse_args():
 class DobbyAdapter(object):
     def __init__(self, filename, mode='readonly', correct_good_frac=False,
                  kin_ties=False, bal_lim=False, noHa=False, model='gaussian',
-                 use_running_mean=False, N_running_mean=10, N_clip=10, Nsig=2):
+                 use_running_mean=False, N_running_mean=10, N_clip=10, Nsig=2,
+                 v0_SN=0):
         log.debug('Reading cube: %s' % filename)
         c = FitsCube(filename, mode=mode)
         self._c = c
@@ -111,6 +115,7 @@ class DobbyAdapter(object):
         self.N_running_mean = N_running_mean
         self.N_clip = N_clip
         self.Nsig = Nsig
+        self.v0_SN = v0_SN
             
         if c.hasSegmentationMask:
             log.debug('Cube is segmented.')
@@ -134,7 +139,24 @@ class DobbyAdapter(object):
             self.Nx = c.Nx
             self.y0 = c.y0
             self.x0 = c.x0
-                
+
+        if (self.v0_SN > 0):
+            log.debug(f'Using neighbouring values of v_0 when S/N < {self.v0_SN}.')
+            v0 = self.v_0
+            mask = (c.SN_normwin <= self.v0_SN)
+            v0.mask[mask] = True
+            y, x = np.mgrid[0:c.Ny, 0:c.Nx]
+
+            # (x, y) list of good and bad points
+            yx_good = np.vstack([x[~v0.mask], y[~v0.mask]]).T
+            yx_bad  = np.vstack([x[v0.mask],  y[v0.mask]]).T
+
+            # KDTree for the nearest neighbors
+            tree = KDTree(yx_good)
+            dist, idx = tree.query(yx_bad)
+
+            # Fill low S/N pixels with v_0 from good adjacent pixels
+            v0[v0.mask] = v0[~v0.mask][idx]
 
     def save(self, output):
         if output is not None:
@@ -276,7 +298,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                ll, vd_inst, vd_max,
                kinematic_ties_on, balmer_limit_on, noHa, model,
                degree, debug, display_plot,
-               use_running_mean, N_running_mean, N_clip, Nsig):
+               use_running_mean, N_running_mean, N_clip, Nsig, v0_SN):
     
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
@@ -301,7 +323,8 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on,
                           noHa=noHa, model=model,
                           degree=degree, Nsig=Nsig,
-                          use_running_mean=use_running_mean, N_running_mean=N_running_mean, N_clip=N_clip,
+                          use_running_mean=use_running_mean, N_running_mean=N_running_mean,
+                          N_clip=N_clip, v0_SN=v0_SN,
                           saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=stellar_v0, stellar_vd=min(stellar_vd, vd_max))
     
@@ -318,7 +341,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
 def fit_integrated(da, suffix, tmpdir, vd_inst,
                    kinematic_ties_on, balmer_limit_on, noHa, model,
                    degree, debug, vd_max, display_plot,
-                   use_running_mean, N_running_mean, N_clip, Nsig):
+                   use_running_mean, N_running_mean, N_clip, Nsig, v0_SN):
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
 
@@ -347,7 +370,8 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
                           kinematic_ties_on=kinematic_ties_on, balmer_limit_on=balmer_limit_on,
                           noHa=noHa, model=model,
                           degree=degree, Nsig=Nsig,
-                          use_running_mean=use_running_mean, N_running_mean=N_running_mean, N_clip=N_clip,
+                          use_running_mean=use_running_mean, N_running_mean=N_running_mean,
+                          N_clip=N_clip, v0_SN=v0_SN,
                           saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=min(da.integ_v_d, vd_max))
     elines, spec = summary_elines(el)
@@ -390,7 +414,8 @@ if __name__ == '__main__':
                       kin_ties=args.enableKinTies, bal_lim=args.enableBalmerLim, noHa=args.noHa,
                       model=args.model,
                       use_running_mean=args.use_running_mean,
-                      N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig)
+                      N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig,
+                      v0_SN=args.v0_SN,)
 
     el_dir = path.join(args.tmpDir, da.name)
     if not path.exists(el_dir):
@@ -405,7 +430,8 @@ if __name__ == '__main__':
                                               noHa=args.noHa,
                                               model=args.model,
                                               use_running_mean=args.use_running_mean,
-                                              N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig,
+                                              N_running_mean=args.N_running_mean, N_clip=args.N_clip,
+                                              Nsig=args.Nsig, v0_SN=args.v0_SN,
                                               degree=args.degree, debug=args.debug, vd_max=args.vd_max,
                                               display_plot=args.displayPlots)
     if integ_elines is not None:
@@ -434,6 +460,7 @@ if __name__ == '__main__':
               'N_running_mean' : args.N_running_mean,
               'N_clip' : args.N_clip,
               'Nsig' : args.Nsig,
+              'v0_SN' : args.v0_SN,
              }
     
     queue_length = args.queueLength
