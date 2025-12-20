@@ -85,6 +85,8 @@ def parse_args():
                         help='Clip emission lines for pseudocontinuum until Nsig * vd. Default: 4')
     parser.add_argument('--v0-SN', dest='v0_SN', type=int, default=0,
                         help='S/N limit to replace v0 with neighbouring values. Default: 0 (no replacement)')
+    parser.add_argument('--Niter', dest='Niter', type=int, default=1,
+                        help='Number of iterations for emission line fitting. Default: 1')
 
     return parser.parse_args()
 ###############################################################################
@@ -94,7 +96,7 @@ class DobbyAdapter(object):
     def __init__(self, filename, mode='readonly', correct_good_frac=False,
                  kin_ties=False, bal_lim=False, noHa=False, model='gaussian',
                  use_running_mean=False, N_running_mean=10, N_clip=10, Nsig=2,
-                 v0_SN=0):
+                 v0_SN=0, Niter=1):
         log.debug('Reading cube: %s' % filename)
         c = FitsCube(filename, mode=mode)
         self._c = c
@@ -116,6 +118,7 @@ class DobbyAdapter(object):
         self.N_clip = N_clip
         self.Nsig = Nsig
         self.v0_SN = v0_SN
+        self.Niter = Niter
             
         if c.hasSegmentationMask:
             log.debug('Cube is segmented.')
@@ -298,7 +301,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                ll, vd_inst, vd_max,
                kinematic_ties_on, balmer_limit_on, noHa, model,
                degree, debug, display_plot,
-               use_running_mean, N_running_mean, N_clip, Nsig, v0_SN):
+               use_running_mean, N_running_mean, N_clip, Nsig, v0_SN, Niter):
     
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
@@ -324,7 +327,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                           noHa=noHa, model=model,
                           degree=degree, Nsig=Nsig,
                           use_running_mean=use_running_mean, N_running_mean=N_running_mean,
-                          N_clip=N_clip, v0_SN=v0_SN,
+                          N_clip=N_clip, v0_SN=v0_SN, Niter=Niter,
                           saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=stellar_v0, stellar_vd=min(stellar_vd, vd_max))
     
@@ -341,7 +344,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
 def fit_integrated(da, suffix, tmpdir, vd_inst,
                    kinematic_ties_on, balmer_limit_on, noHa, model,
                    degree, debug, vd_max, display_plot,
-                   use_running_mean, N_running_mean, N_clip, Nsig, v0_SN):
+                   use_running_mean, N_running_mean, N_clip, Nsig, v0_SN, Niter):
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
 
@@ -371,7 +374,7 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
                           noHa=noHa, model=model,
                           degree=degree, Nsig=Nsig,
                           use_running_mean=use_running_mean, N_running_mean=N_running_mean,
-                          N_clip=N_clip, v0_SN=v0_SN,
+                          N_clip=N_clip, v0_SN=v0_SN, Niter=Niter,
                           saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=min(da.integ_v_d, vd_max))
     elines, spec = summary_elines(el)
@@ -415,7 +418,7 @@ if __name__ == '__main__':
                       model=args.model,
                       use_running_mean=args.use_running_mean,
                       N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig,
-                      v0_SN=args.v0_SN,)
+                      v0_SN=args.v0_SN, Niter=args.Niter,)
 
     el_dir = path.join(args.tmpDir, da.name)
     if not path.exists(el_dir):
@@ -431,7 +434,7 @@ if __name__ == '__main__':
                                               model=args.model,
                                               use_running_mean=args.use_running_mean,
                                               N_running_mean=args.N_running_mean, N_clip=args.N_clip,
-                                              Nsig=args.Nsig, v0_SN=args.v0_SN,
+                                              Nsig=args.Nsig, v0_SN=args.v0_SN, Niter=args.Niter,
                                               degree=args.degree, debug=args.debug, vd_max=args.vd_max,
                                               display_plot=args.displayPlots)
     if integ_elines is not None:
@@ -461,6 +464,7 @@ if __name__ == '__main__':
               'N_clip' : args.N_clip,
               'Nsig' : args.Nsig,
               'v0_SN' : args.v0_SN,
+              'Niter' : args.Niter,
              }
     
     queue_length = args.queueLength
