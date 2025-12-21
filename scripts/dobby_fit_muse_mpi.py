@@ -87,6 +87,8 @@ def parse_args():
                         help='S/N limit to replace v0 with neighbouring values. Default: 0 (no replacement)')
     parser.add_argument('--Niter', dest='Niter', type=int, default=1,
                         help='Number of iterations for emission line fitting. Default: 1')
+    parser.add_argument('--use-spaxel-kin', dest='use_spaxel_kin', action='store_true',
+                        help='Use v0 and vd from spaxel, and not integrated spectrum, as a first guess.')
 
     return parser.parse_args()
 ###############################################################################
@@ -96,7 +98,7 @@ class DobbyAdapter(object):
     def __init__(self, filename, mode='readonly', correct_good_frac=False,
                  kin_ties=False, bal_lim=False, noHa=False, model='gaussian',
                  use_running_mean=False, N_running_mean=10, N_clip=10, Nsig=2,
-                 v0_SN=0, Niter=1):
+                 v0_SN=0, Niter=1, use_spaxel_kin=False):
         log.debug('Reading cube: %s' % filename)
         c = FitsCube(filename, mode=mode)
         self._c = c
@@ -119,6 +121,7 @@ class DobbyAdapter(object):
         self.Nsig = Nsig
         self.v0_SN = v0_SN
         self.Niter = Niter
+        self.use_spaxel_kin = use_spaxel_kin
             
         if c.hasSegmentationMask:
             log.debug('Cube is segmented.')
@@ -249,7 +252,10 @@ class DobbyAdapter(object):
         f_res = f_obs - f_syn
         f_flagged = ((flags.no_starlight & self.f_flag[:, j, i]) > 0)
         f_res[f_flagged] = np.ma.masked
-        return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
+        if self.use_spaxel_kin:
+            return j, i, f_res, f_syn, f_err, self.v_0[j, i], self.v_d[j, i]
+        else:
+            return j, i, f_res, f_syn, f_err, self.integ_v_0, self.integ_v_d
     
     def __iter__(self):
         for j in range(self.Ny):
@@ -301,7 +307,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                ll, vd_inst, vd_max,
                kinematic_ties_on, balmer_limit_on, noHa, model,
                degree, debug, display_plot,
-               use_running_mean, N_running_mean, N_clip, Nsig, v0_SN, Niter):
+               use_running_mean, N_running_mean, N_clip, Nsig, v0_SN, Niter, use_spaxel_kin):
     
     Nmasked = np.ma.getmaskarray(f_res).sum()
     if (Nmasked / len(f_res)) > 0.5:
@@ -327,7 +333,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
                           noHa=noHa, model=model,
                           degree=degree, Nsig=Nsig,
                           use_running_mean=use_running_mean, N_running_mean=N_running_mean,
-                          N_clip=N_clip, v0_SN=v0_SN, Niter=Niter,
+                          N_clip=N_clip, v0_SN=v0_SN, Niter=Niter, use_spaxel_kin=use_spaxel_kin,
                           saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=stellar_v0, stellar_vd=min(stellar_vd, vd_max))
     
@@ -344,7 +350,7 @@ def fit_spaxel(iy, ix, f_res, f_syn, f_err, stellar_v0, stellar_vd,
 def fit_integrated(da, suffix, tmpdir, vd_inst,
                    kinematic_ties_on, balmer_limit_on, noHa, model,
                    degree, debug, vd_max, display_plot,
-                   use_running_mean, N_running_mean, N_clip, Nsig, v0_SN, Niter):
+                   use_running_mean, N_running_mean, N_clip, Nsig, v0_SN, Niter, use_spaxel_kin):
     name = suffix + '.' + 'integ'
     outfile = path.join(el_dir, '%s.hdf5' % name)
 
@@ -374,7 +380,7 @@ def fit_integrated(da, suffix, tmpdir, vd_inst,
                           noHa=noHa, model=model,
                           degree=degree, Nsig=Nsig,
                           use_running_mean=use_running_mean, N_running_mean=N_running_mean,
-                          N_clip=N_clip, v0_SN=v0_SN, Niter=Niter,
+                          N_clip=N_clip, v0_SN=v0_SN, Niter=Niter, use_spaxel_kin=use_spaxel_kin,
                           saveAll=True, outname=name, outdir=tmpdir, overwrite=True,
                           vd_kms=True, stellar_v0=da.integ_v_0, stellar_vd=min(da.integ_v_d, vd_max))
     elines, spec = summary_elines(el)
@@ -418,7 +424,7 @@ if __name__ == '__main__':
                       model=args.model,
                       use_running_mean=args.use_running_mean,
                       N_running_mean=args.N_running_mean, N_clip=args.N_clip, Nsig=args.Nsig,
-                      v0_SN=args.v0_SN, Niter=args.Niter,)
+                      v0_SN=args.v0_SN, Niter=args.Niter, use_spaxel_kin=args.use_spaxel_kin,)
 
     el_dir = path.join(args.tmpDir, da.name)
     if not path.exists(el_dir):
@@ -435,6 +441,7 @@ if __name__ == '__main__':
                                               use_running_mean=args.use_running_mean,
                                               N_running_mean=args.N_running_mean, N_clip=args.N_clip,
                                               Nsig=args.Nsig, v0_SN=args.v0_SN, Niter=args.Niter,
+                                              use_spaxel_kin=args.use_spaxel_kin,
                                               degree=args.degree, debug=args.debug, vd_max=args.vd_max,
                                               display_plot=args.displayPlots)
     if integ_elines is not None:
@@ -465,6 +472,7 @@ if __name__ == '__main__':
               'Nsig' : args.Nsig,
               'v0_SN' : args.v0_SN,
               'Niter' : args.Niter,
+              'use_spaxel_kin' : args.use_spaxel_kin,
              }
     
     queue_length = args.queueLength
