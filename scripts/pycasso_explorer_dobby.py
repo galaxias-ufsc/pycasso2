@@ -14,7 +14,7 @@ from pycasso2.segmentation import spatialize
 
 class PycassoExplorer:
 
-    def __init__(self, cube, figsize=(8, 8), Re_file=None):
+    def __init__(self, cube, figsize=(8, 8), Re_file=None, ned_coords=False, get_centre_fnormMax=True):
         self.c = FitsCube(cube)
 
         self.Re = None
@@ -30,13 +30,24 @@ class PycassoExplorer:
         else:
             self.y0 = self.c.y0
 
-        try:
-            coords_world = SkyCoord.from_name(self.c.name)
-            coords_pix = self.c._wcs.dropaxis(-1).wcs_world2pix(coords_world.ra.degree, coords_world.dec.degree, 1)
-            self.y0, self.x0 = coords_pix
-        except:
-            pass
-        
+        if get_centre_fnormMax:
+            mmax = 5
+            my, mx = int(self.c.Ny / mmax), int(self.c.Nx / mmax)
+            x = np.linspace(0, self.c.Nx-1, self.c.Nx)
+            y = np.linspace(0, self.c.Ny-1, self.c.Ny)
+            ix, iy = np.meshgrid(x, y)
+            mask_edges = (np.abs(ix - self.c.Nx/2) > mx) | (np.abs(iy - self.c.Ny/2) > my)
+            fnorm_masked = np.ma.array(self.c.flux_norm_window, mask=mask_edges)
+            self.y0, self.x0 = np.unravel_index(np.argmax(fnorm_masked), fnorm_masked.shape)
+            
+        if ned_coords:
+            try:
+                coords_world = SkyCoord.from_name(self.c.name)
+                coords_pix = self.c._wcs.dropaxis(-1).wcs_world2pix(coords_world.ra.degree, coords_world.dec.degree, 1)
+                self.y0, self.x0 = coords_pix
+            except:
+                pass
+
         self.createUI(figsize)
         self.raiseImage('1')
         self.selectPixel(self.x0, self.y0)
@@ -219,7 +230,7 @@ class PycassoExplorer:
                 'O3Hb': 0.8,
                 'HaHb': 0.8,
                 'HbO3Ha': None,
-                'WHa': np.log10(50),
+                'WHa': np.log10(80),
                 }
         
         cmap = {'light': 'viridis_r',

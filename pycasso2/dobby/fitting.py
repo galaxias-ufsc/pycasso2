@@ -125,7 +125,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                      saveAll = False, saveHDF5 = False, saveTXT = False,
                      outname = None, outdir = None, debug = False,
                      stellar_v0=0., stellar_vd_stronglines=100., stellar_vd_weaklines=100.,
-                     dv0 = 500., vd_max = 500., Nsig = 5,
+                     dv0 = 500., vd_max = 500., Nsig = 5, chi2red_lim_4v0 = 10.,
                      use_running_mean = False, N_running_mean = 50, N_clip = 1e30,
                      hii_ties_on = False, Niter=1, chi2_red_lim=0.7,
                      **kwargs):
@@ -300,7 +300,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
             # Subsequent iterations: subtract fitted emission line models for continuum fitting
             log.info(f'Subtracting fitted emission line models from iteration {iteration} for pseudocontinuum fit.')
             el_extra_previous = el_previous[-1]
-            
+
             # Get full modelled spectrum
             m = calc_fmod(_ll, el) / np.abs(med)
 
@@ -314,8 +314,14 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
                         if n in fitted_model.submodel_names:
                             fitted_v0 = fitted_model[n].v0.value
                             fitted_vd = fitted_model[n].vd.value
+                            fitted_f  = fitted_model[n].flux.value
+                            fitted_cr = el_extra_previous[f'chi2red_{n}']
                             break
                     
+                    print(n, fitted_f, fitted_cr)
+                    if (fitted_f <= 0) | (fitted_cr > chi2red_lim_4v0): 
+                        fitted_v0 = stellar_v0
+                        fitted_vd = stellar_vd
                     l_cen = l_center * (1. + fitted_v0 / c)
                     sig_l = l_center * (fitted_vd / c)
                     flag_line = (_ll >= (l_cen - Nsig * sig_l)) & (_ll <= (l_cen + Nsig * sig_l))
@@ -371,7 +377,8 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         total_lc = total_lc / np.abs(med)
         el_extra['total_lc'] = total_lc * np.abs(med)
 
-        if debug:
+        if True:
+        # if debug:
             import matplotlib.pyplot as plt
             plt.figure('cont', figsize=(15,10))
             plt.clf()
@@ -1048,7 +1055,9 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
         #############################################################################################################
         # Rescale by the median
-        el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, mod_fit_Fe3, mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3]
+        el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, 
+              mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, 
+              mod_fit_Fe3, mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3]
         for model in el:
             for name in model.submodel_names:
                 model[name].flux.value *= np.abs(med)
@@ -1160,6 +1169,40 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         el_extra['chi2_red'] = chi2_red
         log.info(f'chi2 = {chi2}, chi2_red = {chi2_red}')
 
+        # Get new v0 & vd based on chi2 & flux around each strong line
+        strong_lines = np.array(['3726', '3729', '4861', '4959', '5007', '6548', '6563', '6584', '6716', '6731'])
+        name = np.char.mod('%d', lines_windows['namel'])
+        l0 = get_central_wavelength(name)
+        v0_new = []
+        vd_new = []
+        for n in name:
+            if n in el_extra:
+                l_center = l0[(name == n)]
+
+                # Find the model containing this line
+                for fitted_model in el[:-1]:
+                    if n in fitted_model.submodel_names:
+                        fitted_v0 = fitted_model[n].v0.value
+                        fitted_vd = fitted_model[n].vd.value
+                        fitted_f  = fitted_model[n].flux.value
+                        break
+                
+                l_cen = l_center * (1. + fitted_v0 / c)
+                sig_l = l_center * (fitted_vd / c)
+                flag_line = (_ll >= (l_cen - Nsig * sig_l)) & (_ll <= (l_cen + Nsig * sig_l))
+                _f = flag_line
+                chi2, chi2_red = calc_chi2(f_res[_f], f_mod[_f], f_err[_f], flag_elines[_f])
+                el_extra[f'chi2red_{n}'] = chi2_red
+                # print(n, chi2_red, fitted_v0, fitted_f)
+                if (chi2_red <= chi2red_lim_4v0) & (fitted_f > 0) & (n in strong_lines):
+                    v0_new.append(fitted_v0)
+                    vd_new.append(fitted_vd)
+
+        med_v0 = np.median(np.array(v0_new))
+        med_vd = np.median(np.array(vd_new))
+        if np.isfinite(med_v0): stellar_v0 = med_v0
+        if np.isfinite(med_vd): stellar_vd = med_vd
+
         if debug:
             import matplotlib.pyplot as plt
             plt.figure(f'chi2 {iteration}')
@@ -1170,10 +1213,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
 
         #########################################################################################################
         # Store results from this iteration
-        el = [mod_fit_O2, mod_fit_HbHg, mod_fit_O3, mod_fit_O3_weak, mod_fit_O1S3, 
-              mod_fit_HaN2, mod_fit_N2He2He1, mod_fit_S2, mod_fit_O2_weak, mod_fit_Ar3, 
-              mod_fit_Fe3, mod_fit_Ne3, mod_fit_Ar4, mod_fit_Cl3, el_extra]
-        
         if iteration == 0:
             el_previous = el
         else:
