@@ -377,8 +377,7 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         total_lc = total_lc / np.abs(med)
         el_extra['total_lc'] = total_lc * np.abs(med)
 
-        if True:
-        # if debug:
+        if debug:
             import matplotlib.pyplot as plt
             plt.figure('cont', figsize=(15,10))
             plt.clf()
