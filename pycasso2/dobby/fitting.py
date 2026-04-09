@@ -743,7 +743,6 @@ def fit_strong_lines(_ll, _f_res, _f_syn, _f_err,
         # [O II] F7330/F7320 den=1e4 =  0.6736464205478534 o_ii_atom_FFT04.dat
         # [O II] F7330/F7320 den=1e6 =  0.639507406844097 o_ii_atom_FFT04.dat
         # 0.86 is a good guess for H II regions / SF galaxies
-        hii_ties_on = True
         if hii_ties_on:
             mod_init_O2_weak['7330'].flux.tied = lambda m: 0.86 * m['7320'].flux
 
